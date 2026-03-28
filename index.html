@@ -18,17 +18,24 @@
     </style>
 </head>
 <body>
-    <div class="top-bar">
-        <div class="d-flex align-items-center gap-3">
-            <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Cambia Evento</a>
-            <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold">Caricamento...</h4>
-             <div class="text-center">
+   <div class="top-bar d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3" style="flex: 1;">
+        <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold" style="font-size: 1.1rem;">Caricamento...</h4>
+    </div>
+
+    <div class="text-center" style="flex: 1;">
         <button onclick="exportToExcel()" class="btn btn-sm btn-success shadow-sm">
             <i class="fas fa-file-excel me-1"></i> Esporta Dati
         </button>
     </div>
-        <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
+
+    <div class="text-end" style="flex: 1;">
+        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
     </div>
+</div>
 
     <div class="container">
         <div class="main-form-card">
