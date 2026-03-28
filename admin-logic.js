@@ -23,6 +23,30 @@ async function loadEvents() {
         select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
     });
 }
+function exportAdminToExcel() {
+    const table = document.querySelector("table");
+    let csv = [];
+    const rows = table.querySelectorAll("tr");
+    
+    for (let i = 0; i < rows.length; i++) {
+        let row = [], cols = rows[i].querySelectorAll("td, th");
+        for (let j = 0; j < cols.length; j++) {
+            // Pulizia testo e separatore punto e virgola per Excel italiano
+            let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/;/g, ",");
+            row.push(`"${data}"`); // Mettiamo i dati tra virgolette per sicurezza
+        }
+        csv.push(row.join(";")); // Usiamo il punto e virgola come separatore (standard Excel ITA)
+    }
+
+    const csvContent = "\uFEFF" + csv.join("\n"); // Aggiunge il BOM per i caratteri speciali (accenti)
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `REPORT_GLOBALE_GARE_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 async function createEvent(e) {
     e.preventDefault();
