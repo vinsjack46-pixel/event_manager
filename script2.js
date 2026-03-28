@@ -184,3 +184,40 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('birthdate').addEventListener('change', handleBirthdateChange);
     document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
 });
+function exportToExcel() {
+    // 1. Seleziona la tabella
+    const table = document.querySelector("table");
+    let csv = [];
+    
+    // 2. Estrai le righe
+    const rows = table.querySelectorAll("tr");
+    
+    for (let i = 0; i < rows.length; i++) {
+        let row = [], cols = rows[i].querySelectorAll("td, th");
+        
+        for (let j = 0; j < cols.length; j++) {
+            // Pulizia del testo: rimuove spazi extra e virgole che rompono il CSV
+            let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/,/g, ";");
+            // Non esportare la colonna "Azione" (quella del tasto elimina)
+            if (cols[j].innerText.toLowerCase().includes("azione") || cols[j].querySelector("button")) {
+                continue;
+            }
+            row.push(data);
+        }
+        csv.push(row.join(","));
+    }
+
+    // 3. Crea il file e scaricalo
+    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
+    const downloadLink = document.createElement("a");
+    
+    // Nome file personalizzato con data
+    const fileName = `esportazione_atleti_${new Date().toLocaleDateString()}.csv`;
+    
+    downloadLink.download = fileName;
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = "none";
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+}
