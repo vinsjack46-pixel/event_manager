@@ -158,7 +158,7 @@
             try {
                 // Usiamo supabaseClient (il nome che hai definito in script.js)
                 const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-                   redirectTo: 'https://iscrizioni.vercel.app/update-password.html',
+                   redirectTo: 'https://event-manager-pearl-five.vercel.app/update-password.html',
                 });
 
                 if (error) {
