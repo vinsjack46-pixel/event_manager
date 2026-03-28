@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Seleziona Evento</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="card p-4 shadow">
+            <div id="adminBadge" style="display: none;" class="text-right">
+                <a href="admin.html" class="btn btn-warning btn-sm mb-3">⚙️ Pannello Amministratore</a>
+            </div>
+            
+            <h2 class="text-center">Seleziona l'Evento</h2>
+            <p class="text-center text-muted">Scegli la competizione a cui vuoi iscrivere gli atleti</p>
+            <hr>
+            
+            <div id="eventContainer" class="list-group">
+                <div class="text-center">Caricamento eventi...</div>
+            </div>
+
+            <button class="btn btn-outline-danger mt-4 btn-block" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script>
+        const sb = window.supabaseClient;
+
+        async function init() {
+            // 1. Controlla chi è l'utente
+            const { data: { user } } = await sb.auth.getUser();
+            if (!user) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // 2. Controlla se è Admin per mostrare il tasto segreto
+            const { data: soc } = await sb.from('societa').select('is_admin').eq('user_id', user.id).single();
+            if (soc?.is_admin) {
+                document.getElementById('adminBadge').style.display = 'block';
+            }
+
+            // 3. Carica gli eventi attivi
+            const { data: eventi, error } = await sb.from('eventi').select('*').eq('attivo', true).order('data_evento');
+            
+            const container = document.getElementById('eventContainer');
+            container.innerHTML = '';
+
+            if (eventi && eventi.length > 0) {
+                eventi.forEach(e => {
+                    container.innerHTML += `
+                        <button onclick="selezionaEvento('${e.id}', '${e.nome}')" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                            <div>
+                                <strong>${e.nome}</strong><br>
+                                <small class="text-muted">${e.data_evento} - ${e.luogo}</small>
+                            </div>
+                            <span class="badge badge-primary badge-pill">Seleziona</span>
+                        </button>
+                    `;
+                });
+            } else {
+                container.innerHTML = '<div class="alert alert-warning text-center">Nessun evento attivo al momento.</div>';
+            }
+        }
+
+        function selezionaEvento(id, nome) {
+            // Salviamo l'evento scelto in SessionStorage per usarlo nella pagina successiva
+            sessionStorage.setItem('selectedEventId', id);
+            sessionStorage.setItem('selectedEventName', nome);
+            window.location.href = 'index.html'; // Vai alla pagina delle iscrizioni
+        }
+
+        async function logout() {
+            await sb.auth.signOut();
+            window.location.href = 'login.html';
+        }
+
+        init();
+    </script>
+</body>
+</html>
