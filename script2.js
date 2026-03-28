@@ -1,4 +1,4 @@
-const sb = window.supabaseClient;
+ const sb = window.supabaseClient;
 
 // Funzione principale di inizializzazione
 async function initPage() {
