@@ -100,6 +100,14 @@ async function fetchAthletes() {
 // Inserimento
 async function addAthlete(e) {
     e.preventDefault();
+    
+    // Recupero ID evento
+    const eventId = document.getElementById('selectedEventId').value;
+    if (!eventId) {
+        alert("Errore: ID Evento mancante.");
+        return;
+    }
+
     const athleteData = {
         first_name: document.getElementById('first_name').value,
         last_name: document.getElementById('last_name').value,
@@ -110,14 +118,36 @@ async function addAthlete(e) {
         belt: document.getElementById('belt').value,
         weight_category: document.getElementById('weight_category').value,
         society_id: window.currentSocietyId,
-        event_id: document.getElementById('selectedEventId').value
+        event_id: eventId
     };
 
     const { error } = await sb.from('atleti').insert([athleteData]);
-    if (error) alert("Errore: " + error.message);
-    else {
-        document.getElementById('athleteForm').reset();
-        fetchAthletes();
+
+    if (error) {
+        alert("Errore durante l'iscrizione: " + error.message);
+    } else {
+        alert("Atleta registrato con successo!");
+        
+        // --- LOGICA DI RESET COMPLETO ---
+        const form = document.getElementById('athleteForm');
+        form.reset(); // Resetta i campi standard (Nome, Cognome, Data)
+
+        // Reset manuale dei campi dinamici/speciali
+        document.getElementById('classe').innerHTML = ""; // Svuota la classe calcolata
+        document.getElementById('specialty').innerHTML = ""; // Svuota le specialità
+        document.getElementById('belt').innerHTML = ""; // Svuota le cinture
+        
+        const weightField = document.getElementById('weight_category');
+        weightField.innerHTML = '<option value="-">-</option>';
+        weightField.value = "-";
+        weightField.disabled = true; // Torna disabilitato come all'inizio
+
+        // Nasconde eventuali messaggi di errore della data
+        const errorDisplay = document.getElementById("dateError");
+        if(errorDisplay) errorDisplay.style.display = "none";
+
+        // Ricarica la tabella e i contatori
+        await fetchAthletes();
     }
 }
 
