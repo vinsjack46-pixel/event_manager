@@ -1,0 +1,254 @@
+body {
+  font-family: 'Arial', sans-serif;
+  padding: 20px;
+  /* Restored original blue and turquoise background */
+  background: linear-gradient(45deg, #00ced1, #40e0d0, #48d1cc, #00bfff, #1e90ff);
+  background-size: 400% 400%;
+  animation: gradientAnimation 15s ease infinite;
+  color: #333; /* Default text color */
+  display: flex;
+  justify-content: center; /* Center content by default */
+  align-items: center; /* Center content vertically by default */
+  min-height: 100vh; /* Ensure full viewport height */
+}
+
+@keyframes gradientAnimation {
+  0% {
+      background-position: 0% 50%;
+  }
+  50% {
+      background-position: 100% 50%;
+  }
+  100% {
+      background-position: 0% 50%;
+  }
+}
+
+/* Style for the container in login.txt and registrazione.txt */
+.container {
+  width: 350px; /* Slightly wider container */
+  margin: 0 auto; /* Center the container */
+  /* Applied the neutral grey gradient background to the module */
+  background: linear-gradient(45deg, #e0e0e0, #f0f0f0, #e0e0e0); /* Light grey gradient */
+  background-size: 200% 200%; /* Adjusted size for smaller area */
+  animation: gradientAnimation 10s ease infinite; /* Slightly faster animation for module */
+  padding: 40px; /* Increased padding */
+  border-radius: 15px; /* More rounded corners */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+  border: none; /* Removed border */
+  text-align: center; /* Center content */
+}
+
+/* Style for the form container in index.txt */
+.form-container {
+  flex: 1;
+  max-width: 1100px;
+  /* Applied the neutral grey gradient background to the module */
+  background: linear-gradient(45deg, #e0e0e0, #f0f0f0, #e0e0e0); /* Light grey gradient */
+  background-size: 200% 200%; /* Adjusted size for smaller area */
+  animation: gradientAnimation 10s ease infinite; /* Slightly faster animation for module */
+  padding: 50px;
+  border-radius: 15px; /* More rounded corners */
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2); /* Stronger shadow */
+  margin-right: 20px;
+  border: none; /* Removed border */
+  /* Override default body alignment for index.txt layout */
+  display: block;
+}
+
+/* Keyframes for module gradient animation (can reuse body animation or define separately if needed) */
+/* We are reusing the body animation keyframes here */
+
+h1, h2 {
+  text-align: center;
+  margin-bottom: 30px;
+  color: #00ced1; /* Turquoise color for headings */
+  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2); /* Adjusted text shadow */
+  font-weight: bold;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2f4f4f; /* Dark Slate Grey for labels for better contrast on light background */
+  font-weight: bold;
+  text-align: left; /* Align labels to the left by default */
+}
+
+/* Adjust label alignment specifically for the index page if needed */
+.form-container label {
+  text-align: left;
+}
+
+input[type="text"],
+input[type="date"],
+select,
+input[type="email"],
+input[type="password"] {
+  width: 100%;
+  padding: 12px; /* Increased padding */
+  margin-bottom: 15px;
+  border: 1px solid #a9a9a9; /* Dark Grey border for inputs */
+  border-radius: 8px; /* More rounded corners */
+  box-sizing: border-box; /* Include padding in width */
+  color: #333; /* Text color for inputs */
+  background-color: #fff; /* White background for inputs */
+}
+
+input[type="radio"] {
+  margin-right: 8px;
+  accent-color: #00ced1; /* Turquoise accent for radio buttons */
+}
+
+fieldset {
+  border: none;
+  margin-bottom: 20px;
+  padding: 0;
+}
+
+button {
+  background-color: #48d1cc; /* Medium Turquoise color for default buttons */
+  color: white;
+  padding: 12px 24px; /* Increased padding */
+  border: none;
+  border-radius: 8px; /* More rounded corners */
+  cursor: pointer;
+  margin-top: 15px;
+  font-weight: bold;
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+button:hover {
+  background-color: #40e0d0; /* Turquoise color on hover */
+}
+
+/* Specific style for the 'Aggiungi Atleta' button */
+button[onclick="addAthlete()"] {
+  background-color: #20b2aa; /* Light Sea Green */
+}
+
+button[onclick="addAthlete()"]:hover {
+  background-color: #008b8b; /* Dark Cyan */
+}
+
+/* Specific style for the 'Logout' button */
+button[onclick="logout()"] {
+  background-color: #dc143c; /* Crimson Red */
+}
+
+button[onclick="logout()"]:hover {
+  background-color: #ff6347; /* Tomato */
+}
+
+button[type="submit"] {
+  background-color: #00bfff; /* Deep Sky Blue color for submit buttons */
+  color: white;
+  padding: 12px 24px; /* Increased padding */
+  border: none;
+  border-radius: 8px; /* More rounded corners */
+  cursor: pointer;
+  margin-top: 20px; /* Increased top margin */
+  font-weight: bold;
+  transition: background-color 0.3s ease; /* Smooth transition */
+}
+
+button[type="submit"]:hover {
+  background-color: #1e90ff; /* Dodger Blue on hover */
+}
+
+
+p {
+  margin-top: 20px;
+  color: #555; /* Slightly lighter text color for paragraphs */
+}
+
+a {
+  color: #008080; /* Teal color for links */
+  text-decoration: none;
+  font-weight: bold;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Styles specific to the table in index.txt */
+table {
+  width: 100%;
+  margin-top: 30px;
+  border-collapse: separate; /* Essential for individual cell borders and radius */
+  border-spacing: 0; /* Remove space between borders */
+  border: 2px solid #00ced1; /* Add a border to the table itself */
+  border-radius: 10px; /* Rounded corners for the entire table */
+  overflow: hidden; /* Hide content that overflows the rounded corners */
+  background-color: #ffffff; /* White background for the table content area */
+}
+
+th,
+td {
+  padding: 12px;
+  text-align: left;
+  color: #333; /* Default text color for table cells */
+  border-bottom: 1px solid #e0ffff; /* Light cyan border for rows */
+  /* Initial borders for cells - will be overridden by specific rules */
+  border-right: 1px solid #e0ffff;
+}
+
+/* Remove the bottom border from the last row */
+tr:last-child td {
+  border-bottom: none;
+}
+
+/* Remove the right border from the last column */
+td:last-child, th:last-child {
+  border-right: none;
+}
+
+
+th {
+  background-color: #00ced1; /* Turquoise color for table header */
+  color: white;
+  font-weight: bold;
+  border-bottom: 1px solid #00ced1; /* Header bottom border */
+}
+
+/* Rounded corners for the top-left header cell */
+th:first-child {
+  border-top-left-radius: 8px;
+}
+
+/* Rounded corners for the bottom-left cell in the last row */
+tr:last-child td:first-child {
+  border-bottom-left-radius: 8px;
+}
+
+/* Rounded corners for the top-right header cell */
+th:last-child {
+   border-top-right-radius: 8px;
+}
+
+/* Rounded corners for the bottom-right cell in the last row */
+tr:last-child td:last-child {
+  border-bottom-right-radius: 8px;
+}
+
+
+tr:nth-child(even) td {
+  background-color: #f0f8ff; /* AliceBlue background for even rows' cells */
+}
+tr:nth-child(odd) td {
+  background-color: #ffffff; /* White background for odd rows' cells */
+}
+
+
+/* Ensure the remove button in the table (if applicable) keeps a red style */
+.btn-danger {
+  background-color: #dc143c !important; /* Crimson Red */
+  border-color: #dc143c !important;
+  color: white !important; /* Ensure text is white */
+}
+
+.btn-danger:hover {
+  background-color: #ff6347 !important; /* Tomato color on hover */
+  border-color: #ff6347 !important;
+}

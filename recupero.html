@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Recupera Password</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-4 card p-4">
+                <h4>Password dimenticata?</h4>
+                <p class="text-muted">Riceverai un link per impostarne una nuova.</p>
+                <form id="resetForm">
+                    <input type="email" id="resetEmail" class="form-control mb-3" placeholder="Tua Email" required>
+                    <button type="submit" class="btn btn-primary btn-block">Invia Link</button>
+                </form>
+                <div class="text-center mt-3"><a href="login.html">Torna al login</a></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+    <script>
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('resetEmail').value;
+            
+            // Usiamo supabaseClient (il nome che hai definito in script.js)
+            const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
+               redirectTo: 'https://iscrizioni.vercel.app/update-password.html',
+            });
+
+            if (error) {
+                alert("Errore: " + error.message);
+            } else {
+                alert("Email inviata! Controlla la tua posta in arrivo.");
+            }
+        });
+    </script>
+</body>
+</html>

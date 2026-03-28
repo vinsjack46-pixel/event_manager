@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Registrazione Società</title>
+    <style>
+        body { font-family: sans-serif; }
+        .container { width: 300px; margin: 50px auto; }
+    </style>
+</head>
+    <link rel="stylesheet" href="style.css">
+<body>
+    <div class="container">
+        <h1>Registrazione Società</h1>
+        <form id="registrazioneForm">
+            <label for="nomeSocieta">Nome Società:</label><br>
+            <input type="text" id="nomeSocieta" required><br><br>
+            
+            <label for="email">Email:</label><br>
+            <input type="email" id="email" required><br><br>
+            
+            <label for="emailConfirm">Conferma Email:</label><br>
+            <input type="email" id="emailConfirm" required><br><br>
+            
+            <label for="password">Password:</label><br>
+            <input type="password" id="password" required><br><br>
+            
+            <label for="passwordConfirm">Conferma Password:</label><br>
+            <input type="password" id="passwordConfirm" required><br><br>
+            
+            <label for="cfs">Codice Fiscale Societa:</label><br>
+             <input type="Text" id="cfs" maxlength="16" minlength="11"><br><br>
+            
+             <label for="cell">Cellulare Tecnico:</label><br>
+             <input type="text" id="cell" maxlength="10" minlength="10"><br><br>
+            <button type="submit">Registrati</button>
+        </form>
+        <p>Già registrato? <a href="login.html">Accedi</a></p>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="script.js"></script>
+</body>
+</html>
