@@ -1,3 +1,4 @@
+
 const sb = window.supabaseClient;
 
 document.addEventListener('DOMContentLoaded', () => {
