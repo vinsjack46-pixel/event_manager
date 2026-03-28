@@ -21,7 +21,6 @@
             padding-bottom: 50px;
         }
 
-        /* Top Bar */
         .top-bar {
             background: white;
             padding: 10px 25px;
@@ -29,161 +28,123 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
         }
 
-        .event-info-header h4 { margin: 0; color: var(--primary-color); font-weight: 700; font-size: 1.1rem; }
-
-        /* Card Principale (Form Ingrandito) */
-        .main-form-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-            border: none;
-            margin-top: 25px;
-            padding: 30px;
-        }
-
-        .form-label { font-weight: 600; font-size: 0.9rem; color: #444; }
-        
-        /* Input più grandi e leggibili */
-        .form-control-lg, .form-select-lg {
-            border-radius: 12px;
-            font-size: 1rem;
-            border: 2px solid #edf2f7;
-        }
-
-        /* Sezione Statistiche compatta */
-        .mini-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .stat-box {
-            background: white;
-            padding: 10px 15px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
+        .event-banner {
+            background: var(--bg-gradient);
+            color: white;
+            padding: 10px 25px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-weight: 600;
         }
 
-        .stat-box span:first-child { font-size: 0.75rem; font-weight: 700; color: #718096; text-transform: uppercase; }
-        .stat-box span:last-child { font-weight: 800; color: var(--primary-color); }
-
-        /* Tabella compatta in basso */
-        .table-container-bottom {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            padding: 20px;
-            margin-top: 30px;
-        }
-
-        .table-sm th { font-size: 0.8rem; color: #a0aec0; text-transform: uppercase; border-top: none; }
-        .table-sm td { font-size: 0.9rem; padding: 10px 5px; }
-
-        .btn-back { color: #666; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
-        .btn-back:hover { color: var(--primary-color); }
+        .main-container { padding: 30px; }
+        .form-card { background: white; border-radius: 15px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); height: 100%; }
+        .stat-box { background: white; padding: 15px; border-radius: 12px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-bottom: 4px solid var(--primary-color); }
+        .stat-box span:first-child { display: block; font-size: 0.8rem; color: #666; text-transform: uppercase; }
+        .stat-box span:last-child { font-size: 1.5rem; font-weight: 700; color: #333; }
+        .table-container-bottom { background: white; border-radius: 15px; padding: 20px; margin-top: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
-        <div class="d-flex align-items-center gap-3">
-            <a href="scelta-evento.html" class="btn-back">
-                <i class="fas fa-arrow-left me-1"></i> Cambia Evento
-            </a>
-            <div class="vr mx-2 text-muted" style="height: 20px;"></div>
-            <div class="event-info-header">
-                <h4 id="societyNameDisplay">Caricamento...</h4>
-            </div>
-        </div>
-        <button class="btn btn-sm btn-outline-danger fw-bold" onclick="logout()">
-            <i class="fas fa-sign-out-alt"></i> Logout
-        </button>
+        <h5 class="m-0 fw-bold text-primary"><i class="fas fa-user-tie me-2"></i><span id="societyNameDisplay">Caricamento...</span></h5>
+        <button class="btn btn-sm btn-outline-danger border-0 fw-bold" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
     </div>
 
-    <div class="container">
-        <div class="main-form-card">
-            <div class="d-flex align-items-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 40px; height: 40px;">
-                    <i class="fas fa-user-plus"></i>
-                </div>
-                <h3 class="fw-bold m-0">Inserimento Atleta</h3>
-            </div>
+    <div class="event-banner">
+        <span><i class="fas fa-trophy me-2 text-warning"></i> Evento: <span id="eventNameDisplay">Seleziona un evento</span></span>
+        <a href="scelta-evento.html" class="btn btn-sm btn-light text-primary fw-bold shadow-sm">Cambia Evento</a>
+    </div>
 
-            <form id="athleteForm">
-                <div class="row g-4">
-                    <div class="col-md-4">
-                        <label class="form-label">Nome</label>
-                        <input type="text" id="first_name" class="form-control form-control-lg" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cognome</label>
-                        <input type="text" id="last_name" class="form-control form-control-lg" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Genere</label>
-                        <select class="form-select form-select-lg" name="gender" onchange="toggleWeightCategory()">
-                            <option value="Maschio">Maschio</option>
-                            <option value="Femmina">Femmina</option>
-                        </select>
-                    </div>
+    <div class="container-fluid main-container">
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="form-card">
+                    <h4 class="mb-4 fw-bold"><i class="fas fa-user-plus me-2 text-primary"></i>Nuova Iscrizione Atleta</h4>
+                    
+                    <form id="athleteForm">
+                        <input type="hidden" id="selectedEventId">
 
-                    <div class="col-md-4">
-                        <label class="form-label">Data di Nascita</label>
-                        <input type="date" id="birthdate" class="form-control form-control-lg" oninput="updateSpecialtyOptionsBasedOnBirthdate()" required>
-                        <small id="dateError" class="text-danger" style="display:none;">Range: 2013-2022</small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Classe</label>
-                        <select id="classe" class="form-select form-select-lg bg-light" readonly required></select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cintura</label>
-                        <select id="belt" class="form-select form-select-lg" required></select>
-                    </div>
+                        <div class="row g-3">
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label small fw-bold">Nome</label>
+                                <input type="text" id="firstName" class="form-control shadow-sm" placeholder="Nome" required>
+                            </div>
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label small fw-bold">Cognome</label>
+                                <input type="text" id="lastName" class="form-control shadow-sm" placeholder="Cognome" required>
+                            </div>
+                            <div class="col-md-6 mt-3">
+                                <label class="form-label small fw-bold">Data di Nascita</label>
+                                <input type="date" id="birthdate" class="form-control shadow-sm" required>
+                                <small id="dateError" class="text-danger" style="display:none;">Anno non valido (2013-2022)</small>
+                            </div>
+                            <div class="col-md-6 mt-3 text-center">
+                                <label class="form-label d-block small fw-bold">Sesso</label>
+                                <div class="btn-group w-100" role="group">
+                                    <input type="radio" class="btn-check" name="gender" id="maschio" value="Maschio" checked>
+                                    <label class="btn btn-outline-primary" for="maschio">Maschio</label>
+                                    <input type="radio" class="btn-check" name="gender" id="femmina" value="Femmina">
+                                    <label class="btn btn-outline-primary" for="femmina">Femmina</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mt-3">
+                                <label class="form-label small fw-bold">Classe</label>
+                                <select id="classe" class="form-select shadow-sm" disabled></select>
+                            </div>
+                            <div class="col-md-4 mt-3">
+                                <label class="form-label small fw-bold">Specialità</label>
+                                <select id="specialty" class="form-select shadow-sm"></select>
+                            </div>
+                            <div class="col-md-4 mt-3">
+                                <label class="form-label small fw-bold">Cintura</label>
+                                <select id="belt" class="form-select shadow-sm"></select>
+                            </div>
+                            <div class="col-md-12 mt-3" id="weightContainer" style="display:none;">
+                                <label class="form-label small fw-bold">Categoria Peso / Para</label>
+                                <select id="weight_category" class="form-select shadow-sm"></select>
+                            </div>
+                        </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Specialità</label>
-                        <select id="specialty" class="form-select form-select-lg" onchange="toggleWeightCategory()" required></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Categoria Peso / Para</label>
-                        <select id="weightCategory" class="form-select form-select-lg" disabled></select>
-                    </div>
-
-                    <div class="col-12 text-center mt-5">
-                        <button type="submit" class="btn btn-primary btn-lg px-5 fw-bold shadow-sm" style="border-radius: 15px;">
-                            <i class="fas fa-save me-2"></i>Registra Atleta
+                        <button type="submit" class="btn btn-primary w-100 mt-4 py-2 fw-bold shadow">
+                            <i class="fas fa-check-circle me-2"></i>Conferma Iscrizione
                         </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <h5 class="fw-bold mb-3">Statistiche Gara Corrente</h5>
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <span>Kumite</span>
+                            <span id="kumiteAthleteCountDisplay">0</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <span>Kata</span>
+                            <span id="kataAthleteCountDisplay">0</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <span>Para</span>
+                            <span id="ParaKarateAthleteCountDisplay">0</span>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <span>Kids</span>
+                            <span id="KIDSAthleteCountDisplay">0</span>
+                        </div>
                     </div>
                 </div>
-            </form>
-        </div>
-
-        <div class="mini-stats-grid">
-            <div class="stat-box">
-                <span>Kumite</span>
-                <span id="kumiteAthleteCountDisplay">0</span>
-            </div>
-            <div class="stat-box">
-                <span>Kata</span>
-                <span id="kataAthleteCountDisplay">0</span>
-            </div>
-            <div class="stat-box">
-                <span>Para</span>
-                <span id="ParaKarateAthleteCountDisplay">0</span>
-            </div>
-            <div class="stat-box">
-                <span>Kids</span>
-                <span id="KIDSAthleteCountDisplay">0</span>
             </div>
         </div>
 
@@ -214,5 +175,35 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script src="script2.js"></script>
+    
+    <script>
+        // Inizializzazione pagina con controllo evento
+        window.onload = async () => {
+            const eventId = sessionStorage.getItem('selectedEventId');
+            const eventName = sessionStorage.getItem('selectedEventName');
+
+            if (!eventId) {
+                // Se non c'è un evento selezionato, torna alla scelta
+                window.location.href = "scelta-evento.html";
+                return;
+            }
+
+            // Popola i dati dell'evento nella pagina
+            document.getElementById('selectedEventId').value = eventId;
+            document.getElementById('eventNameDisplay').innerText = eventName;
+
+            // Avvia il caricamento atleti (già presente in script2.js)
+            if (typeof fetchAthletes === "function") {
+                fetchAthletes();
+            }
+        };
+
+        async function logout() {
+            if(confirm("Vuoi uscire dal sistema?")) {
+                await window.supabaseClient.auth.signOut();
+                window.location.href = "login.html";
+            }
+        }
+    </script>
 </body>
 </html>
