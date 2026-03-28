@@ -13,21 +13,12 @@ window.supabaseClient = supabaseClient;
 async function signIn(email, password) {
     try {
         const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
         
-        if (error) {
-            // Se l'errore contiene "confirm", avvisa l'utente
-            if (error.message.includes("confirm") || error.status === 400) {
-                alert("Controlla la tua posta: devi confermare l'email prima di accedere.");
-            } else {
-                throw error;
-            }
-            return;
-        }
-        
-        alert('Login avvenuto con successo!');
-        window.location.href = 'index.html';
+        // REINDIRIZZAMENTO ALLA SCELTA EVENTO
+        window.location.href = 'scelta-evento.html'; 
     } catch (error) {
-        alert('Errore: Credenziali non valide.');
+        alert('Credenziali non valide.');
     }
 }
 
