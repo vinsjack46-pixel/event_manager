@@ -138,77 +138,123 @@ async function updateAllCounters() {
     
     return counts;
 }
-
-// --- 5. AGGIUNTA ATLETA (Validazione e Salvataggio) ---
-async function addAthlete(event) {
-    event.preventDefault();
-    if (!currentSocietyId) return alert("Errore: Società non identificata.");
-
-    const spec = document.getElementById('specialty').value;
-    const counts = await updateAllCounters();
+async function addAthlete(e) {
+    e.preventDefault();
     
-    // Controllo Limiti: Se superato, blocca l'invio
-    let limitReached = false;
-    if (spec === "Kumite" && counts.kumite >= LIMITI.Kumite) limitReached = true;
-    else if (spec === "Kata" && counts.kata >= LIMITI.Kata) limitReached = true;
-    else if (spec === "ParaKarate" && counts.para >= LIMITI.ParaKarate) limitReached = true;
-    else if (["Percorso-Palloncino", "Percorso-Kata", "Palloncino","Combinata"].includes(spec) && counts.kids >= LIMITI.KIDS) limitReached = true;
-
-    if (limitReached) {
-        alert("ATTENZIONE: Posti esauriti per questa specialità!");
+    // Recuperiamo l'ID dell'evento dal campo nascosto
+    const eventId = document.getElementById('selectedEventId').value;
+    if (!eventId) {
+        alert("Errore: Nessun evento selezionato!");
         return;
     }
 
-    const athleteData = {
-        first_name: document.getElementById('first_name').value,
-        last_name: document.getElementById('last_name').value,
-        gender: document.querySelector('input[name="gender"]:checked').value,
-        birthdate: document.getElementById('birthdate').value,
-        belt: document.getElementById('belt').value,
-        classe: document.getElementById('classe').value,
-        specialty: spec,
-        weight_category: document.getElementById('weightCategory').value,
-        society_id: currentSocietyId
-    };
+    const firstName = document.getElementById('firstName').value;
+    const lastName = document.getElementById('lastName').value;
+    const birthdate = document.getElementById('birthdate').value;
+    const classe = document.getElementById('classe').value;
+    const specialty = document.getElementById('specialty').value;
+    const belt = document.getElementById('belt').value;
+    const gender = document.querySelector('input[name="gender"]:checked')?.value;
+    const weight = document.getElementById('weight_category')?.value || '-';
 
-    const { error } = await sb.from('atleti').insert([athleteData]);
-    if (error) alert("Errore Supabase: " + error.message);
-    else {
-        alert("Atleta registrato correttamente!");
+    // Inserimento nel database con event_id
+    const { data, error } = await sb.from('atleti').insert([{
+        society_id: currentSocietyId,
+        event_id: eventId, // <-- Fondamentale
+        first_name: firstName,
+        last_name: lastName,
+        gender: gender,
+        birthdate: birthdate,
+        classe: classe,
+        specialty: specialty,
+        belt: belt,
+        weight_category: weight
+    }]);
+
+    if (error) {
+        alert("Errore durante l'inserimento: " + error.message);
+    } else {
+        alert("Atleta iscritto con successo!");
         document.getElementById('athleteForm').reset();
-        fetchAthletes();
+        fetchAthletes(); // Ricarica la lista filtrata
     }
 }
-
 // --- 6. VISUALIZZAZIONE TABELLA COMPLETA ---
 async function fetchAthletes() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
+    const eventId = sessionStorage.getItem('selectedEventId');
+    const eventName = sessionStorage.getItem('selectedEventName');
+    
+    if (!eventId) {
+        window.location.href = "scelta-evento.html";
+        return;
+    }
 
-    const { data: society } = await sb.from('societa').select('id, nome').eq('user_id', user.id).single();
+    // Aggiorna l'interfaccia con i dati dell'evento
+    document.getElementById('selectedEventId').value = eventId;
+    document.getElementById('eventNameDisplay').innerText = eventName;
+
+    const { data: { user } } = await sb.auth.getUser();
+    const { data: society } = await sb.from('societa').select('*').eq('user_id', user.id).single();
+
     if (society) {
         currentSocietyId = society.id;
-        document.getElementById('societyNameDisplay').textContent = society.nome;
-        
-        const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', society.id);
+        document.getElementById('societyNameDisplay').innerText = society.nome;
+
+        // FILTRO: prendi solo atleti della società PER questo evento
+        const { data: athletes } = await sb.from('atleti')
+            .select('*')
+            .eq('society_id', society.id)
+            .eq('event_id', eventId);
+
         const list = document.getElementById('athleteList');
         if (list) {
             list.innerHTML = '';
             athletes?.forEach(a => {
                 const row = list.insertRow();
                 row.innerHTML = `
-                    <td>${a.first_name} ${a.last_name}</td>
-                  <td>${a.classe}</td>
-                  <td>${a.specialty}</td>
-                   <td>${a.belt}</td>
+                    <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                    <td>${a.classe}</td>
+                    <td>${a.specialty}</td>
+                    <td>${a.belt}</td>
                     <td>${a.gender}</td>
-                   <td>${a.weight_category || '-'}</td>
-                    <td><button class="btn btn-danger btn-sm" onclick="removeAthlete('${a.id}')">Elimina</button></td>
+                    <td>${a.weight_category || '-'}</td>
+                    <td class="text-end"><button class="btn btn-danger btn-sm" onclick="removeAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td>
                 `;
             });
         }
     }
     await updateAllCounters();
+}
+
+async function updateAllCounters() {
+    const eventId = sessionStorage.getItem('selectedEventId');
+    
+    // Conteggia tutti gli atleti iscritti a QUESTO evento (di tutte le società)
+    const { data: allEventAthletes } = await sb.from('atleti')
+        .select('specialty')
+        .eq('event_id', eventId);
+
+    const counts = { Kumite: 0, Kata: 0, ParaKarate: 0, KIDS: 0 };
+
+    allEventAthletes?.forEach(a => {
+        if (a.specialty === 'Kumite') counts.Kumite++;
+        else if (a.specialty === 'Kata') counts.Kata++;
+        else if (a.specialty === 'ParaKarate') counts.ParaKarate++;
+        else counts.KIDS++; // Altre specialità kids
+    });
+
+    // Aggiorna i display
+    document.getElementById('kumiteAthleteCountDisplay').innerText = counts.Kumite;
+    document.getElementById('kataAthleteCountDisplay').innerText = counts.Kata;
+    document.getElementById('ParaKarateAthleteCountDisplay').innerText = counts.ParaKarate;
+    document.getElementById('KIDSAthleteCountDisplay').innerText = counts.KIDS;
+
+    // Logica di blocco se superano i LIMITI
+    const spSel = document.getElementById("specialty");
+    if (spSel) {
+        if (counts.Kumite >= LIMITI.Kumite) /* disabilita opzione Kumite ... */
+        if (counts.Kata >= LIMITI.Kata) /* disabilita opzione Kata ... */
+    }
 }
 
 async function removeAthlete(id) {
