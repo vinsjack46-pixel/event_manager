@@ -255,7 +255,7 @@ async function updateAllCounters() {
         if (counts.Kumite >= LIMITI.Kumite) /* disabilita opzione Kumite ... */
         if (counts.Kata >= LIMITI.Kata) /* disabilita opzione Kata ... */
     }
-}
+}}
 
 async function removeAthlete(id) {
     if (confirm("Eliminare definitivamente questo atleta?")) {
