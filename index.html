@@ -19,21 +19,16 @@
 </head>
 <body>
     <div class="top-bar">
-   <div class="top-bar d-flex align-items-center">
-    <div class="flex-1" style="flex: 1;">
-        <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold">Caricamento...</h4>
-    </div>
-
-    <div class="text-center">
+        <div class="d-flex align-items-center gap-3">
+            <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Cambia Evento</a>
+            <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold">Caricamento...</h4>
+       <div class="text-center">
         <button onclick="exportToExcel()" class="btn btn-sm btn-success shadow-sm">
             <i class="fas fa-file-excel me-1"></i> Esporta Dati
         </button>
     </div>
-
-    <div class="text-end" style="flex: 1;">
-        <button class="btn btn-sm btn-outline-danger" onclick="logout()">Logout</button>
+        <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
     </div>
-</div>
 
     <div class="container">
         <div class="main-form-card">
