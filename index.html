@@ -23,6 +23,9 @@
             <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary"><i class="fas fa-arrow-left"></i> Cambia Evento</a>
             <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold">Caricamento...</h4>
         </div>
+        <button onclick="exportToExcel()" class="btn btn-success mb-3">
+    <i class="fas fa-file-excel me-2"></i> Esporta in Excel (CSV)
+    </div>
         <button class="btn btn-sm btn-danger" onclick="logout()">Logout</button>
     </div>
 
@@ -76,8 +79,6 @@
                 </div>
             </form>
         </div>
-<button onclick="exportToExcel()" class="btn btn-success mb-3">
-    <i class="fas fa-file-excel me-2"></i> Esporta in Excel (CSV)
 </button>
         <div class="mini-stats-grid">
             <div class="stat-box"><span>Kumite</span><span id="kumiteAthleteCountDisplay">0</span></div>
