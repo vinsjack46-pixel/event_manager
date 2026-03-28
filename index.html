@@ -11,197 +11,178 @@
     <style>
         :root {
             --primary-color: #1e90ff;
-            --secondary-bg: #f8f9fa;
-            --accent-color: #00ced1;
             --bg-gradient: linear-gradient(135deg, #00ced1 0%, #1e90ff 100%);
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #f0f2f5;
-            min-height: 100vh;
+            background: #f4f7f9;
             margin: 0;
-            padding-bottom: 40px;
+            padding-bottom: 30px;
         }
 
-        /* Navbar / Header fluido */
+        /* Navbar potenziata */
         .top-bar {
             background: white;
-            padding: 15px 30px;
+            padding: 12px 30px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
-        .society-name {
-            color: var(--primary-color);
-            font-weight: 700;
-            margin: 0;
+        .event-info-box {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
-        /* Container delle Cards */
+        /* Dashboard Cards */
         .dashboard-card {
             background: white;
             border: none;
             border-radius: 15px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             margin-bottom: 20px;
-            overflow: hidden;
         }
 
         .card-header-custom {
-            background: white;
-            padding: 20px;
+            padding: 15px 20px;
             border-bottom: 1px solid #edf2f7;
+            font-weight: 700;
+            color: #333;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .card-header-custom h5 {
-            margin: 0;
-            font-weight: 700;
-            color: #333;
+        /* FORM INSERIMENTO (Più grande) */
+        .main-form-section {
+            padding: 30px;
         }
+        .form-label { font-weight: 600; font-size: 0.95rem; color: #444; }
+        .form-control-lg, .form-select-lg { font-size: 1rem; border-radius: 10px; }
 
-        .form-section { padding: 25px; }
-
-        /* Form styling */
-        .form-label {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #555;
-            margin-bottom: 5px;
-        }
-
-        .form-control, .form-select {
+        /* STATS E TABELLA (Più piccole) */
+        .side-stats { font-size: 0.85rem; }
+        .stat-mini-card {
+            background: #f8f9fa;
+            padding: 8px 12px;
             border-radius: 8px;
-            border: 1px solid #dee2e6;
-            padding: 10px;
-            font-size: 0.95rem;
-        }
-
-        .form-control:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
-        }
-
-        /* Stats styling */
-        .stat-item {
-            background: var(--secondary-bg);
-            border-radius: 10px;
-            padding: 12px 15px;
-            margin-bottom: 10px;
-            border-left: 4px solid var(--primary-color);
-            transition: transform 0.2s;
+            border-left: 3px solid var(--primary-color);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
-        .stat-item:hover { transform: translateX(5px); }
+        .small-table {
+            font-size: 0.8rem; /* Tabella molto compatta */
+        }
+        .small-table th { font-weight: 600; text-transform: uppercase; color: #777; }
 
-        .stat-label { font-size: 0.8rem; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
-        .stat-value { font-weight: 700; color: #333; font-size: 1.1rem; }
+        .btn-back-event {
+            background: #f0f2f5;
+            color: #555;
+            border: none;
+            font-weight: 600;
+            border-radius: 8px;
+            padding: 8px 15px;
+            transition: 0.3s;
+        }
+        .btn-back-event:hover { background: #e2e5e9; color: #000; }
 
-        /* Table styling */
-        .table-responsive { padding: 0 20px 20px; }
-        .table { font-size: 0.9rem; vertical-align: middle; }
-        .thead-dark th { background: #f8f9fa; color: #444; font-weight: 600; border-top: none; }
-        
-        .btn-add {
+        .btn-add-atleta {
             background: var(--bg-gradient);
             border: none;
             color: white;
+            padding: 15px;
             font-weight: 700;
-            padding: 12px;
-            border-radius: 10px;
-            transition: 0.3s;
-        }
-
-        .btn-add:hover { opacity: 0.9; transform: translateY(-1px); color: white; }
-
-        .btn-logout {
-            border-radius: 8px;
-            font-weight: 600;
-            padding: 6px 15px;
+            border-radius: 12px;
+            font-size: 1.1rem;
         }
     </style>
 </head>
 <body>
 
     <div class="top-bar">
-        <div>
-            <span class="text-muted small">Accesso effettuato come:</span>
-            <h4 class="society-name" id="societyNameDisplay">Caricamento...</h4>
+        <div class="event-info-box">
+            <a href="event-selector.html" class="btn btn-back-event">
+                <i class="fas fa-arrow-left me-2"></i>Cambia Evento
+            </a>
+            <div>
+                <small class="text-muted d-block">Società collegata:</small>
+                <strong id="societyNameDisplay">...</strong>
+            </div>
         </div>
-        <button class="btn btn-outline-danger btn-logout btn-sm" onclick="logout()">
-            <i class="fas fa-sign-out-alt me-2"></i>Esci
-        </button>
+        
+        <div class="d-flex align-items-center gap-3">
+            <div class="text-end d-none d-md-block">
+                <small class="text-muted d-block">Evento selezionato:</small>
+                <span class="badge bg-light text-dark border" id="selectedEventNameDisplay">Gara Regionale</span>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" onclick="logout()">Esci</button>
+        </div>
     </div>
 
     <div class="container-fluid px-4">
         <div class="row">
-            <div class="col-lg-5 col-xl-4">
+            
+            <div class="col-lg-7 col-xl-8">
                 <div class="dashboard-card">
                     <div class="card-header-custom">
                         <i class="fas fa-user-plus text-primary"></i>
-                        <h5>Nuova Iscrizione</h5>
+                        <span>MODULO ISCRIZIONE ATLETA</span>
                     </div>
-                    <div class="form-section">
+                    <div class="main-form-section">
                         <form id="athleteForm">
-                            <div class="row g-3">
+                            <div class="row g-4">
                                 <div class="col-md-6">
                                     <label class="form-label">Nome</label>
-                                    <input type="text" id="first_name" class="form-control" placeholder="Mario" required>
+                                    <input type="text" id="first_name" class="form-control form-control-lg" placeholder="Inserisci nome" required>
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">Cognome</label>
-                                    <input type="text" id="last_name" class="form-control" placeholder="Rossi" required>
+                                    <input type="text" id="last_name" class="form-control form-control-lg" placeholder="Inserisci cognome" required>
                                 </div>
                                 
-                                <div class="col-12">
-                                    <label class="form-label">Genere</label>
-                                    <div class="d-flex gap-3 mt-1">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="gender" value="Maschio" id="m" onchange="toggleWeightCategory()" checked>
-                                            <label class="form-check-label" for="m">Maschio</label>
-                                        </div>
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="radio" name="gender" value="Femmina" id="f" onchange="toggleWeightCategory()">
-                                            <label class="form-check-label" for="f">Femmina</label>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="col-12">
+                                <div class="col-md-4">
                                     <label class="form-label">Data di Nascita</label>
-                                    <input type="date" id="birthdate" class="form-control" oninput="updateSpecialtyOptionsBasedOnBirthdate()" required>
-                                    <small id="dateError" class="text-danger mt-1 d-block" style="display:none;">Range ammesso: 2013-2022</small>
+                                    <input type="date" id="birthdate" class="form-control form-control-lg" oninput="updateSpecialtyOptionsBasedOnBirthdate()" required>
                                 </div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label">Classe (auto)</label>
-                                    <select id="classe" class="form-select bg-light" readonly required></select>
+                                <div class="col-md-4">
+                                    <label class="form-label">Genere</label>
+                                    <select class="form-select form-select-lg" id="genderSelect" onchange="toggleWeightCategory()">
+                                        <option value="Maschio">Maschio</option>
+                                        <option value="Femmina">Femmina</option>
+                                    </select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label class="form-label">Cintura</label>
-                                    <select id="belt" class="form-select" required>
+                                    <select id="belt" class="form-select form-select-lg" required>
                                         <option value="">Scegli...</option>
                                     </select>
                                 </div>
 
-                                <div class="col-md-6">
-                                    <label class="form-label">Specialità</label>
-                                    <select id="specialty" class="form-select" onchange="toggleWeightCategory()" required></select>
+                                <div class="col-md-4">
+                                    <label class="form-label">Classe</label>
+                                    <select id="classe" class="form-select form-select-lg bg-light" readonly required></select>
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
+                                    <label class="form-label">Specialità</label>
+                                    <select id="specialty" class="form-select form-select-lg" onchange="toggleWeightCategory()" required></select>
+                                </div>
+                                <div class="col-md-4">
                                     <label class="form-label">Peso / Para</label>
-                                    <select id="weightCategory" class="form-select" disabled></select>
+                                    <select id="weightCategory" class="form-select form-select-lg" disabled></select>
                                 </div>
 
                                 <div class="col-12 mt-4">
-                                    <button type="submit" class="btn btn-add w-100">
-                                        <i class="fas fa-plus-circle me-2"></i>Conferma Iscrizione
+                                    <button type="submit" class="btn btn-add-atleta w-100 shadow-sm">
+                                        <i class="fas fa-check-circle me-2"></i>REGISTRA ATLETA NELL'EVENTO
                                     </button>
                                 </div>
                             </div>
@@ -210,51 +191,39 @@
                 </div>
             </div>
 
-            <div class="col-lg-7 col-xl-8">
-                <div class="row g-3 mb-4">
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="stat-item bg-white shadow-sm border-0">
-                            <div class="stat-label">Kumite</div>
-                            <div class="stat-value" id="kumiteAthleteCountDisplay">...</div>
-                        </div>
+            <div class="col-lg-5 col-xl-4">
+                
+                <div class="dashboard-card p-3 side-stats">
+                    <h6 class="fw-bold mb-3"><i class="fas fa-chart-pie me-2 text-primary"></i>Limiti Iscrizioni</h6>
+                    <div class="stat-mini-card">
+                        <span>Kumite</span>
+                        <strong id="kumiteAthleteCountDisplay">...</strong>
                     </div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="stat-item bg-white shadow-sm border-0">
-                            <div class="stat-label">Kata</div>
-                            <div class="stat-value" id="kataAthleteCountDisplay">...</div>
-                        </div>
+                    <div class="stat-mini-card">
+                        <span>Kata</span>
+                        <strong id="kataAthleteCountDisplay">...</strong>
                     </div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="stat-item bg-white shadow-sm border-0">
-                            <div class="stat-label">ParaKarate</div>
-                            <div class="stat-value" id="ParaKarateAthleteCountDisplay">...</div>
-                        </div>
+                    <div class="stat-mini-card">
+                        <span>ParaKarate</span>
+                        <strong id="ParaKarateAthleteCountDisplay">...</strong>
                     </div>
-                    <div class="col-sm-6 col-xl-3">
-                        <div class="stat-item bg-white shadow-sm border-0">
-                            <div class="stat-label">Kids (Percorsi)</div>
-                            <div class="stat-value" id="KIDSAthleteCountDisplay">...</div>
-                        </div>
+                    <div class="stat-mini-card">
+                        <span>KIDS</span>
+                        <strong id="KIDSAthleteCountDisplay">...</strong>
                     </div>
                 </div>
 
                 <div class="dashboard-card">
-                    <div class="card-header-custom justify-content-between">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="fas fa-list text-primary"></i>
-                            <h5>Atleti Iscritti</h5>
-                        </div>
-                        <span class="badge bg-primary rounded-pill">Totale: <span id="totalAthletes">0</span></span>
+                    <div class="card-header-custom p-3 d-flex justify-content-between">
+                        <span class="small fw-bold">ELENCO ISCRITTI</span>
+                        <span class="badge bg-primary" id="totalCount">0</span>
                     </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm small-table align-middle">
                             <thead class="table-light">
                                 <tr>
                                     <th>Atleta</th>
-                                    <th>Classe</th>
                                     <th>Spec.</th>
-                                    <th>Cintura</th>
-                                    <th>Peso</th>
                                     <th class="text-end">Azione</th>
                                 </tr>
                             </thead>
@@ -263,6 +232,7 @@
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -271,6 +241,9 @@
     <script src="script.js"></script>
     <script src="script2.js"></script>
     <script>
+        // Carica nome evento da sessionStorage
+        document.getElementById('selectedEventNameDisplay').innerText = sessionStorage.getItem('selectedEventName') || 'Evento non selezionato';
+
         window.onload = async () => {
             if (window.supabaseClient) {
                 const { data } = await window.supabaseClient.auth.getUser();
