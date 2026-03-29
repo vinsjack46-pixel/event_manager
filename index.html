@@ -44,6 +44,33 @@
             
             <form id="athleteForm">
                 <input type="hidden" id="selectedEventId">
+             <div class="col-12 mb-3">
+    <div class="btn-group w-100" role="group">
+        <input type="radio" class="btn-check" name="regType" id="typeIndividual" value="individual" checked onchange="toggleRegMode()">
+        <label class="btn btn-outline-primary" for="typeIndividual">Atleta Singolo</label>
+
+        <input type="radio" class="btn-check" name="regType" id="typeTeam" value="team" onchange="toggleRegMode()">
+        <label class="btn btn-outline-primary" for="typeTeam">Team / Squadra</label>
+    </div>
+</div>
+
+<div id="teamFields" style="display: none;" class="row g-3">
+    <div class="col-md-12">
+        <label class="form-label">Nome della Squadra</label>
+        <input type="text" id="team_name" class="form-control form-control-lg" placeholder="Es: Ken Zen Ichiro Squadra A">
+    </div>
+    <div class="col-md-12">
+        <label class="form-label">Componenti della Squadra (Min 3, Max 6)</label>
+        <div id="membersContainer">
+            </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addMemberField()">
+            <i class="fas fa-plus me-1"></i> Aggiungi Componente
+        </button>
+    </div>
+</div>
+
+<div id="individualFields" class="row g-3">
+    </div>
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label">Nome</label>
