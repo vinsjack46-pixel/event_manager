@@ -142,11 +142,11 @@
   <div id="teamFields" style="display: none;">
     <div class="row g-3">
         <div class="col-md-6">
-            <label class="form-label fw-bold text-success small">Nome della Squadra</label>
+            <label class="form-label fw-bold text-success small text-uppercase">Nome della Squadra</label>
             <input type="text" id="team_name" class="form-control form-control-lg border-success" placeholder="Es: Ken Zen Ichiro Squadra A">
         </div>
         <div class="col-md-6">
-            <label class="form-label small fw-bold text-secondary">Genere Squadra</label>
+            <label class="form-label small fw-bold text-secondary text-uppercase">Genere Squadra</label>
             <select id="team_gender" class="form-select form-select-lg">
                 <option value="Maschile">Maschile</option>
                 <option value="Femminile">Femminile</option>
@@ -155,25 +155,31 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label small fw-bold text-secondary">Anno di Nascita (Riferimento)</label>
+            <label class="form-label small fw-bold text-secondary text-uppercase">Anno di Nascita (Riferimento)</label>
             <input type="number" id="team_year" class="form-control form-control-lg" placeholder="Es: 2012" onchange="handleTeamYearChange()">
-            <small class="text-muted">L'anno serve a calcolare la classe corretta.</small>
+            <small class="text-muted" style="font-size: 0.75rem;">Necessario per il calcolo della Classe/Categoria.</small>
         </div>
-        <div class="col-md-6 d-flex align-items-end">
-            <button type="button" class="btn btn-outline-success w-100 btn-lg" onclick="addMemberField()">
-                <i class="fas fa-user-plus me-2"></i>Aggiungi Componente
-            </button>
-        </div>
+        
+        <div class="col-md-6"></div>
 
-        <div class="col-12 mt-3">
-            <label class="form-label small fw-bold text-secondary text-uppercase">Elenco Componenti</label>
+        <div class="col-12 mt-4">
+            <div class="d-flex align-items-center mb-2">
+                <label class="form-label small fw-bold text-secondary text-uppercase m-0">Elenco Componenti</label>
+                <hr class="flex-grow-1 ms-3 my-0" style="opacity: 0.1;">
+            </div>
+            
             <div id="membersContainer" class="row g-2">
                 </div>
+
+            <div class="mt-3">
+                <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 rounded-pill" onclick="addMemberField()">
+                    <i class="fas fa-plus-circle me-1"></i> Aggiungi Componente
+                </button>
+            </div>
         </div>
     </div>
 </div>
-    </div>
-
+        
     <div class="technical-section border-top pt-4 mt-4">
         <div class="row g-3">
             <div class="col-md-6">
