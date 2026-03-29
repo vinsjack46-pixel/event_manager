@@ -223,6 +223,7 @@ function completeReset() {
     document.getElementById('classe').innerHTML = "";
     document.getElementById('specialty').innerHTML = "";
     document.getElementById('belt').innerHTML = "";
+    ocument.getElementById('weight_category').innerHTML = "";
     document.getElementById('typeIndividual').checked = true;
     toggleRegMode();
     fetchAthletes();
