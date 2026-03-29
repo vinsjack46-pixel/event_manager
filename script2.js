@@ -72,94 +72,6 @@ function handleSpecialtyChange() {
         wInput.innerHTML = '<option value="-">-</option>';
     }
 }
-// --- NUOVE FUNZIONI VERSIONE 3.0 ---
-
-function toggleRegMode() {
-    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
-    const indFields = document.getElementById('individualFields');
-    const teamFields = document.getElementById('teamFields');
-    const title = document.querySelector('.main-form-card h3');
-
-    if (isTeam) {
-        indFields.style.display = 'none';
-        teamFields.style.display = 'flex';
-        if (title) title.innerHTML = '<i class="fas fa-users text-success me-2"></i>Iscrizione Team';
-
-        document.getElementById('team_name').required = true;
-        document.getElementById('first_name').required = false;
-        document.getElementById('last_name').required = false;
-        document.getElementById('birthdate').required = false;
-
-        // Inizializza 3 membri se il contenitore è vuoto
-        if (document.getElementById('membersContainer').children.length === 0) {
-            for(let i=0; i<3; i++) addMemberField();
-        }
-    } else {
-        indFields.style.display = 'flex';
-        teamFields.style.display = 'none';
-        if (title) title.innerHTML = '<i class="fas fa-user-plus text-primary me-2"></i>Iscrizione Atleta';
-
-        document.getElementById('team_name').required = false;
-        document.getElementById('first_name').required = true;
-        document.getElementById('last_name').required = true;
-        document.getElementById('birthdate').required = true;
-    }
-}
-
-function addMemberField() {
-    const container = document.getElementById('membersContainer');
-    const currentCount = container.querySelectorAll('.member-input').length;
-    if (currentCount >= 6) return alert("Massimo 6 componenti.");
-
-    const div = document.createElement('div');
-    div.className = "input-group mb-2";
-    div.innerHTML = `
-        <span class="input-group-text">${currentCount + 1}</span>
-        <input type="text" class="form-control member-input" placeholder="Nome e Cognome" required>
-        ${currentCount >= 3 ? '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.remove()">X</button>' : ''}
-    `;
-    container.appendChild(div);
-}
-
-// Funzione per caricare la tabella dei Team (necessaria per completeReset)
-async function fetchTeams() {
-    const eventId = sessionStorage.getItem('selectedEventId');
-    const { data: teams } = await sb.from('teams')
-        .select('*')
-        .eq('event_id', eventId)
-        .eq('society_id', window.currentSocietyId);
-
-    const list = document.getElementById('teamList');
-    if (!list) return; // Evita errori se la tabella non esiste
-    list.innerHTML = "";
-    teams?.forEach(t => {
-        list.innerHTML += `
-            <tr>
-                <td class="fw-bold text-success">${t.team_name}</td>
-                <td>${t.classe}</td>
-                <td>${t.specialty}</td>
-                <td><small>${t.members.join(", ")}</small></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteTeam('${t.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>`;
-    });
-}
-
-async function deleteTeam(id) {
-    if (confirm("Eliminare la squadra?")) {
-        await sb.from('teams').delete().eq('id', id);
-        fetchTeams();
-    }
-}
-
-// Funzione mancante chiamata in completeReset
-async function updateAllCounters() {
-    // Richiamiamo fetchAthletes che aggiorna già i contatori individuali
-    await fetchAthletes();
-}
 // Carica Lista Atleti
 async function fetchAthletes() {
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -182,6 +94,84 @@ async function fetchAthletes() {
             </tr>`;
     });
     updateCounters(athletes);
+}
+// --- LOGICA INTERFACCIA 3.0 ---
+
+function toggleRegMode() {
+    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
+    const indFields = document.getElementById('individualFields');
+    const teamFields = document.getElementById('teamFields');
+    
+    // Gestione Visibilità
+    if (isTeam) {
+        indFields.style.display = 'none';
+        teamFields.style.display = 'block';
+        
+        // Imposta obbligatori per Team
+        document.getElementById('team_name').required = true;
+        document.getElementById('team_year').required = true;
+        
+        // Rimuovi obbligatori per Singolo
+        document.getElementById('first_name').required = false;
+        document.getElementById('last_name').required = false;
+        document.getElementById('birthdate').required = false;
+
+        // Inizializza componenti se vuoto
+        if (document.getElementById('membersContainer').children.length === 0) {
+            for(let i=0; i<3; i++) addMemberField();
+        }
+    } else {
+        indFields.style.display = 'block';
+        teamFields.style.display = 'none';
+        
+        // Imposta obbligatori per Singolo
+        document.getElementById('first_name').required = true;
+        document.getElementById('last_name').required = true;
+        document.getElementById('birthdate').required = true;
+        
+        // Rimuovi obbligatori per Team
+        document.getElementById('team_name').required = false;
+        document.getElementById('team_year').required = false;
+    }
+}
+
+function addMemberField() {
+    const container = document.getElementById('membersContainer');
+    const currentCount = container.querySelectorAll('.member-input').length;
+    if (currentCount >= 6) return alert("Massimo 6 componenti per squadra.");
+
+    const div = document.createElement('div');
+    div.className = "col-md-4 mb-2"; // Layout a griglia per i componenti
+    div.innerHTML = `
+        <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light">${currentCount + 1}</span>
+            <input type="text" class="form-control member-input" placeholder="Nome Cognome" required>
+            ${currentCount >= 3 ? '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button>' : ''}
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+// Calcolo Classe basato sull'anno inserito per i Team
+function handleTeamYearChange() {
+    const year = parseInt(document.getElementById('team_year').value);
+    if (!year) return;
+
+    const clSel = document.getElementById('classe');
+    const spSel = document.getElementById('specialty');
+    clSel.innerHTML = "";
+    spSel.innerHTML = "";
+
+    let classe = "";
+    let specs = ["Kata Squadre", "Kumite Squadre"];
+
+    // Logica semplificata per classi Team (puoi personalizzarla)
+    if (year >= 2013 && year <= 2014) classe = "Team Esordienti";
+    else if (year >= 2011 && year <= 2012) classe = "Team Ragazzi";
+    else classe = "Team Open / Altro";
+
+    clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
+    specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
 }
 
 // Inserimento
