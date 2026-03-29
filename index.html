@@ -43,77 +43,81 @@
             <h3 class="fw-bold mb-4"><i class="fas fa-user-plus text-primary me-2"></i>Iscrizione Atleta</h3>
             <h6 class="text-muted mb-4">Stai iscrivendo a: <span id="eventNameDisplay" class="fw-bold">---</span></h6>
             
-            <form id="athleteForm">
-                <input type="hidden" id="selectedEventId">
-             <div class="col-12 mb-3">
-    <div class="btn-group w-100" role="group">
-        <input type="radio" class="btn-check" name="regType" id="typeIndividual" value="individual" checked onchange="toggleRegMode()">
-        <label class="btn btn-outline-primary" for="typeIndividual">Atleta Singolo</label>
+           <form id="athleteForm">
+    <input type="hidden" id="selectedEventId">
 
-        <input type="radio" class="btn-check" name="regType" id="typeTeam" value="team" onchange="toggleRegMode()">
-        <label class="btn btn-outline-primary" for="typeTeam">Team / Squadra</label>
-    </div>
-</div>
+    <div class="col-12 mb-4">
+        <div class="btn-group w-100" role="group">
+            <input type="radio" class="btn-check" name="regType" id="typeIndividual" value="individual" checked onchange="toggleRegMode()">
+            <label class="btn btn-outline-primary py-2" for="typeIndividual"><i class="fas fa-user me-2"></i>Atleta Singolo</label>
 
-<div id="teamFields" style="display: none;" class="row g-3">
-    <div class="col-md-12">
-        <label class="form-label">Nome della Squadra</label>
-        <input type="text" id="team_name" class="form-control form-control-lg" placeholder="Es: Ken Zen Ichiro Squadra A">
+            <input type="radio" class="btn-check" name="regType" id="typeTeam" value="team" onchange="toggleRegMode()">
+            <label class="btn btn-outline-primary py-2" for="typeTeam"><i class="fas fa-users me-2"></i>Team / Squadra</label>
+        </div>
     </div>
-    <div class="col-md-12">
-        <label class="form-label">Componenti della Squadra (Min 3, Max 6)</label>
-        <div id="membersContainer">
-            </div>
-        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addMemberField()">
-            <i class="fas fa-plus me-1"></i> Aggiungi Componente
-        </button>
-    </div>
-</div>
 
-<div id="individualFields" class="row g-3">
+    <div id="individualFields" class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Nome</label>
+            <input type="text" id="first_name" class="form-control" placeholder="Mario">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cognome</label>
+            <input type="text" id="last_name" class="form-control" placeholder="Rossi">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Genere</label>
+            <select id="gender" class="form-select">
+                <option value="Maschio">Maschio</option>
+                <option value="Femmina">Femmina</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Data di Nascita</label>
+            <input type="date" id="birthdate" class="form-control" onchange="handleBirthdateChange()">
+            <small id="dateError" class="text-danger" style="display:none;">Anno non valido</small>
+        </div>
     </div>
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-label">Nome</label>
-                        <input type="text" id="first_name" class="form-control" placeholder="Mario" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cognome</label>
-                        <input type="text" id="last_name" class="form-control" placeholder="Rossi" required>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Genere</label>
-                        <select id="gender" class="form-select">
-                            <option value="Maschio">Maschio</option>
-                            <option value="Femmina">Femmina</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Data di Nascita</label>
-                        <input type="date" id="birthdate" class="form-control" required>
-                        <small id="dateError" class="text-danger" style="display:none;">Anno non valido (2013-2022)</small>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Classe (Automatica)</label>
-                        <select id="classe" class="form-select bg-light" required></select>
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-label">Cintura</label>
-                        <select id="belt" class="form-select" required></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Specialità</label>
-                        <select id="specialty" class="form-select" required></select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Peso / Para</label>
-                        <select id="weight_category" class="form-select" disabled></select>
-                    </div>
-                    <div class="col-12 mt-4">
-                        <button type="submit" class="btn btn-primary w-100 fw-bold py-2">REGISTRA ATLETA</button>
-                    </div>
+
+    <div id="teamFields" style="display: none;" class="row g-3 mt-1">
+        <div class="col-md-12">
+            <label class="form-label fw-bold text-success">Nome della Squadra</label>
+            <input type="text" id="team_name" class="form-control form-control-lg border-success" placeholder="Es: Ken Zen Ichiro Squadra A">
+        </div>
+        <div class="col-md-12">
+            <label class="form-label">Componenti della Squadra (Min 3, Max 6)</label>
+            <div id="membersContainer">
                 </div>
-            </form>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addMemberField()">
+                <i class="fas fa-plus me-1"></i> Aggiungi Componente
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-md-4">
+            <label class="form-label">Classe</label>
+            <select id="classe" class="form-select bg-light" required></select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cintura</label>
+            <select id="belt" class="form-select" required></select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Specialità</label>
+            <select id="specialty" class="form-select" required onchange="handleSpecialtyChange()"></select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Peso / Para</label>
+            <select id="weight_category" class="form-select" disabled></select>
+        </div>
+        <div class="col-12 mt-4">
+            <button type="submit" class="btn btn-primary w-100 fw-bold py-3 shadow">
+                <i class="fas fa-save me-2"></i>REGISTRA ISCRIZIONE
+            </button>
+        </div>
+    </div>
+</form>
         </div>
         <div class="mini-stats-grid">
             <div class="stat-box"><span>Kumite</span><span id="kumiteAthleteCountDisplay">0</span></div>
