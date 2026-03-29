@@ -100,57 +100,93 @@ async function fetchAthletes() {
 // Inserimento
 async function addAthlete(e) {
     e.preventDefault();
-    
-    // Recupero ID evento
+
+    // 1. Capire cosa stiamo iscrivendo
+    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     const eventId = document.getElementById('selectedEventId').value;
+
     if (!eventId) {
-        alert("Errore: ID Evento mancante.");
+        alert("Errore: ID Evento mancante. Ricarica la pagina.");
         return;
     }
 
-    const athleteData = {
-        first_name: document.getElementById('first_name').value,
-        last_name: document.getElementById('last_name').value,
-        birthdate: document.getElementById('birthdate').value,
-        gender: document.getElementById('gender').value,
-        classe: document.getElementById('classe').value,
-        specialty: document.getElementById('specialty').value,
-        belt: document.getElementById('belt').value,
-        weight_category: document.getElementById('weight_category').value,
-        society_id: window.currentSocietyId,
-        event_id: eventId
-    };
+    // 2. LOGICA PER IL TEAM
+    if (isTeam) {
+        const teamName = document.getElementById('team_name').value.trim();
+        const members = Array.from(document.querySelectorAll('.member-input'))
+                             .map(input => input.value.trim())
+                             .filter(name => name !== ""); // Rimuove eventuali campi vuoti
 
-    const { error } = await sb.from('atleti').insert([athleteData]);
+        // Validazione minima
+        if (!teamName) return alert("Inserisci il nome della squadra!");
+        if (members.length < 3) return alert("Una squadra deve avere almeno 3 componenti!");
 
-    if (error) {
-        alert("Errore durante l'iscrizione: " + error.message);
-    } else {
-        alert("Atleta registrato con successo!");
-        
-        // --- LOGICA DI RESET COMPLETO ---
-        const form = document.getElementById('athleteForm');
-        form.reset(); // Resetta i campi standard (Nome, Cognome, Data)
+        const teamData = {
+            team_name: teamName,
+            members: members,
+            classe: document.getElementById('classe').value,
+            specialty: document.getElementById('specialty').value,
+            society_id: window.currentSocietyId,
+            event_id: eventId
+        };
 
-        // Reset manuale dei campi dinamici/speciali
-        document.getElementById('classe').innerHTML = ""; // Svuota la classe calcolata
-        document.getElementById('specialty').innerHTML = ""; // Svuota le specialità
-        document.getElementById('belt').innerHTML = ""; // Svuota le cinture
-        
-        const weightField = document.getElementById('weight_category');
-        weightField.innerHTML = '<option value="-">-</option>';
-        weightField.value = "-";
-        weightField.disabled = true; // Torna disabilitato come all'inizio
+        const { error } = await sb.from('teams').insert([teamData]);
 
-        // Nasconde eventuali messaggi di errore della data
-        const errorDisplay = document.getElementById("dateError");
-        if(errorDisplay) errorDisplay.style.display = "none";
+        if (error) {
+            alert("Errore inserimento Team: " + error.message);
+        } else {
+            alert("Squadra registrata con successo!");
+            completeReset(); // Funzione di pulizia che scriveremo sotto
+        }
 
-        // Ricarica la tabella e i contatori
-        await fetchAthletes();
+    } 
+    // 3. LOGICA PER ATLETA SINGOLO
+    else {
+        const athleteData = {
+            first_name: document.getElementById('first_name').value,
+            last_name: document.getElementById('last_name').value,
+            birthdate: document.getElementById('birthdate').value,
+            gender: document.getElementById('gender').value,
+            classe: document.getElementById('classe').value,
+            specialty: document.getElementById('specialty').value,
+            belt: document.getElementById('belt').value,
+            weight_category: document.getElementById('weight_category').value,
+            society_id: window.currentSocietyId,
+            event_id: eventId
+        };
+
+        const { error } = await sb.from('atleti').insert([athleteData]);
+
+        if (error) {
+            alert("Errore inserimento Atleta: " + error.message);
+        } else {
+            alert("Atleta registrato con successo!");
+            completeReset();
+        }
     }
 }
 
+// Funzione di supporto per pulire tutto dopo l'invio
+async function completeReset() {
+    // Resetta il form
+    const form = document.getElementById('athleteForm');
+    form.reset();
+
+    // Svuota i campi dinamici (quelli che dipendono dalla data o dai team)
+    document.getElementById('classe').innerHTML = "";
+    document.getElementById('specialty').innerHTML = "";
+    document.getElementById('belt').innerHTML = "";
+    document.getElementById('membersContainer').innerHTML = ""; // Svuota i nomi della squadra
+    
+    // Riabilita la modalità individuale come default
+    document.getElementById('typeIndividual').checked = true;
+    toggleRegMode(); 
+
+    // Aggiorna le tabelle e i contatori
+    await fetchAthletes(); // Carica lista singoli
+    await fetchTeams();    // Carica lista squadre
+    await updateAllCounters(); // Aggiorna i box numerici
+}
 async function deleteAthlete(id) {
     if (confirm("Eliminare l'atleta?")) {
         await sb.from('atleti').delete().eq('id', id);
