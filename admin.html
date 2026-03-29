@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="it">
 <head>
     <meta charset="UTF-8">
@@ -10,7 +10,8 @@
     
     <style>
         :root {
-            --primary-color: #1e90ff;
+            --primary-color: #0d6efd;
+            --success-color: #198754;
             --admin-accent: #ffc107;
             --bg-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
         }
@@ -38,80 +39,58 @@
             font-size: 0.9rem;
             transition: 0.3s;
         }
-
         .btn-back-light:hover { color: var(--admin-accent); }
 
         .admin-card {
             background: white;
-            border-radius: 15px;
+            border-radius: 12px;
             border: none;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             margin-bottom: 25px;
+            overflow: hidden;
         }
 
         .card-title-custom {
-            padding: 20px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background: #fff;
         }
 
         .card-title-custom h4 {
             margin: 0;
             font-weight: 700;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: #333;
         }
 
         .event-scroll-list {
-            max-height: 350px;
+            max-height: 400px;
             overflow-y: auto;
-            padding: 10px;
         }
 
-        .form-label { font-weight: 600; font-size: 0.85rem; color: #666; }
-        .form-control, .form-select { border-radius: 8px; border: 1px solid #dee2e6; padding: 10px; }
-
-        .table-responsive-custom { padding: 20px; }
+        .form-label { font-weight: 600; font-size: 0.8rem; color: #555; }
+        .form-control, .form-select { border-radius: 6px; font-size: 0.9rem; }
 
         .table thead th {
-            background: #f8f9fa;
-            font-size: 0.8rem;
+            background: #fdfdfd;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: #777;
+            color: #888;
             padding: 12px;
+            border-bottom: 2px solid #f1f1f1;
         }
 
-        .badge-total {
-            background: var(--primary-color);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+        .table-success-light { background-color: #f8fff9; }
+
+        .badge-count {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 10px;
         }
 
-        .btn-admin {
-            background: #28a745;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-        .btn-admin:hover { background: #218838; transform: translateY(-2px); color: white; }
-        
-        .btn-export {
-            background-color: #217346; /* Colore Excel */
-            color: white;
-            border-radius: 8px;
-            font-weight: 600;
-            padding: 8px 16px;
-            transition: all 0.3s;
-        }
-        .btn-export:hover {
-            background-color: #1a5a37;
-            color: white;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
+        /* Scrollbar personalizzata per lista eventi */
+        .event-scroll-list::-webkit-scrollbar { width: 5px; }
+        .event-scroll-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -119,101 +98,115 @@
     <nav class="admin-nav">
         <div class="d-flex align-items-center">
             <a href="scelta-evento.html" class="btn-back-light me-3">
-                <i class="fas fa-arrow-left me-1"></i> Uscita Admin
+                <i class="fas fa-arrow-left me-1"></i> Esci
             </a>
-            <h5 class="m-0 fw-bold"><i class="fas fa-user-shield text-warning me-2"></i>Dashboard Amministratore</h5>
+            <h5 class="m-0 fw-bold"><i class="fas fa-user-shield text-warning me-2"></i>Pannello Admin</h5>
         </div>
-        <div class="d-none d-md-block">
-            <span class="badge bg-secondary">Versione Sistema 2.0</span>
+        <div>
+            <span class="badge bg-dark border border-secondary" id="totalCounter">Caricamento...</span>
         </div>
     </nav>
 
     <div class="container-fluid p-4">
         <div class="row">
             
-            <div class="col-lg-4 col-xl-3">
+            <div class="col-lg-3">
                 <div class="admin-card mb-4">
                     <div class="card-title-custom">
-                        <h4><i class="fas fa-calendar-plus me-2 text-success"></i>Nuovo Evento</h4>
+                        <h4><i class="fas fa-plus-circle me-2 text-success"></i>Nuovo Evento</h4>
                     </div>
-                    <div class="p-4">
+                    <div class="p-3">
                         <form id="eventForm">
-                            <div class="mb-3">
+                            <div class="mb-2">
                                 <label class="form-label">Nome Gara</label>
-                                <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Karate 2024" required>
+                                <input type="text" id="eventName" class="form-control" placeholder="Es. Campionato Regionale" required>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Data Svolgimento</label>
+                            <div class="mb-2">
+                                <label class="form-label">Data</label>
                                 <input type="date" id="eventDate" class="form-control" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Luogo / Palazzetto</label>
-                                <input type="text" id="eventLocation" class="form-control" placeholder="Città, Provincia">
+                                <label class="form-label">Luogo</label>
+                                <input type="text" id="eventLocation" class="form-control" placeholder="Città">
                             </div>
-                            <button type="submit" class="btn btn-admin w-100 mt-2">
-                                <i class="fas fa-plus me-2"></i>Crea Evento
-                            </button>
+                            <button type="submit" class="btn btn-success w-100 btn-sm fw-bold">CREA EVENTO</button>
                         </form>
                     </div>
                 </div>
 
                 <div class="admin-card">
                     <div class="card-title-custom">
-                        <h4><i class="fas fa-history me-2 text-muted"></i>Eventi Attivi</h4>
+                        <h4><i class="fas fa-list me-2 text-muted"></i>Lista Eventi</h4>
                     </div>
-                    <div class="event-scroll-list" id="eventList"></div>
+                    <div class="event-scroll-list" id="eventList">
+                        </div>
                 </div>
             </div>
 
-            <div class="col-lg-8 col-xl-9">
-                <div class="admin-card">
-                    <div class="card-title-custom d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <h4 class="me-3">Lista Globale Iscritti</h4>
-                            <span class="badge badge-total" id="totalCounter">0 Atleti Totali</span>
+            <div class="col-lg-9">
+                
+                <div class="admin-card p-3 mb-4 bg-white">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <select id="filterEvent" class="form-select shadow-sm">
+                                <option value="">Tutti gli Eventi</option>
+                            </select>
                         </div>
-                        <button onclick="exportAdminToExcel()" class="btn btn-export btn-sm">
-                            <i class="fas fa-file-excel me-2"></i>Esporta Lista
-                        </button>
-                    </div>
-
-                    <div class="p-4 bg-light border-bottom">
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label">Filtra per Evento</label>
-                                <select id="filterEvent" class="form-select">
-                                    <option value="">Tutti gli Eventi</option>
-                                </select>
-                            </div>
-                            <div class="col-md-8">
-                                <label class="form-label">Ricerca Rapida</label>
-                                <div class="input-group">
-                                    <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-                                    <input type="text" id="globalSearch" class="form-control" placeholder="Cerca Atleta, Società o Classe...">
-                                </div>
+                        <div class="col-md-8">
+                            <div class="input-group shadow-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="globalSearch" class="form-control border-start-0" placeholder="Cerca atleta, società, classe o team...">
                             </div>
                         </div>
                     </div>
+                </div>
 
-                    <div class="table-responsive-custom">
-                        <table class="table table-hover align-middle">
+                <div class="admin-card mb-4">
+                    <div class="card-title-custom d-flex justify-content-between align-items-center">
+                        <h4><i class="fas fa-user me-2 text-primary"></i>ATLETI INDIVIDUALI</h4>
+                        <span class="badge bg-primary badge-count" id="countInd">0</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
                             <thead>
                                 <tr>
                                     <th>Atleta</th>
-                                    <th>Evento</th>
                                     <th>Società</th>
                                     <th>Classe / Spec.</th>
+                                    <th>Cintura</th>
+                                    <th>Sesso</th>
                                     <th>Peso</th>
-                                    <th class="text-center">Sesso</th>
+                                    <th class="text-end">Azioni</th>
                                 </tr>
                             </thead>
                             <tbody id="adminAthleteList"></tbody>
                         </table>
                     </div>
                 </div>
-            </div>
 
-        </div>
+                <div class="admin-card">
+                    <div class="card-title-custom d-flex justify-content-between align-items-center">
+                        <h4><i class="fas fa-users me-2 text-success"></i>SQUADRE / TEAM</h4>
+                        <span class="badge bg-success badge-count" id="countTeam">0</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle m-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome Team / Membri</th>
+                                    <th>Società</th>
+                                    <th>Classe / Spec.</th>
+                                    <th>Sesso</th>
+                                    <th>Info Extra</th>
+                                    <th class="text-end">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminTeamList"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div> </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
