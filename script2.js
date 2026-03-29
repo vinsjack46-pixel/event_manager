@@ -132,7 +132,7 @@ async function fetchAthletes() {
     const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
     const list = document.getElementById('athleteList');
     list.innerHTML = "";
-    athletes?.forEach(a => {
+    athletes?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
         list.innerHTML += `
             <tr>
                 <td><strong>${a.last_name} ${a.first_name}</strong></td>
@@ -141,7 +141,7 @@ async function fetchAthletes() {
                 <td>${a.specialty}</td>
                 <td>${a.belt}</td>
                 <td>${a.weight_category}</td>
-                <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td>
+                <td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td>
             </tr>`;
     });
     updateCounters(athletes);
@@ -161,12 +161,12 @@ async function fetchTeams() {
                 <td>${t.specialty}</td>
                 <td>${t.belt || '-'}</td>
                 <td>${t.weight_category || '-'}</td>
-                <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td>
+                <td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td>
             </tr>`;
     });
 }
 
-// --- 5. AGGIUNTA (CON MESSAGGI) ---
+// --- 5. AGGIUNTA ---
 async function addAthlete(e) {
     e.preventDefault();
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
@@ -192,12 +192,8 @@ async function addAthlete(e) {
             members: members
         }]);
 
-        if (error) {
-            alert("Errore Team: " + error.message);
-        } else {
-            alert("Squadra registrata con successo!");
-            completeReset();
-        }
+        if (error) alert("Errore Team: " + error.message);
+        else { alert("Squadra registrata!"); completeReset(); }
     } else {
         const { error } = await sb.from('atleti').insert([{
             ...commonData,
@@ -207,25 +203,37 @@ async function addAthlete(e) {
             gender: document.getElementById('gender').value
         }]);
 
-        if (error) {
-            alert("Errore Atleta: " + error.message);
-        } else {
-            alert("Atleta registrato con successo!");
-            completeReset();
-        }
+        if (error) alert("Errore Atleta: " + error.message);
+        else { alert("Atleta registrato!"); completeReset(); }
     }
 }
 
 // --- 6. UTILITY E RESET ---
 function completeReset() {
-    document.getElementById('athleteForm').reset();
-    document.getElementById('membersContainer').innerHTML = "";
+    // Salviamo la modalità attuale (team o individual)
+    const currentMode = document.querySelector('input[name="regType"]:checked').id;
+
+    // Resetta solo i campi di testo, NON i radio button
+    document.getElementById('first_name').value = "";
+    document.getElementById('last_name').value = "";
+    document.getElementById('birthdate').value = "";
+    document.getElementById('team_name').value = "";
+    document.getElementById('team_year').value = "";
+    
+    // Resetta le tendine dinamiche
     document.getElementById('classe').innerHTML = "";
     document.getElementById('specialty').innerHTML = "";
     document.getElementById('belt').innerHTML = "";
-    ocument.getElementById('weight_category').innerHTML = "";
-    document.getElementById('typeIndividual').checked = true;
-    toggleRegMode();
+    document.getElementById('weight_category').innerHTML = '<option value="-">-</option>';
+    document.getElementById('weight_category').disabled = true;
+
+    // Svuota i componenti del team ma ne ricrea 3 se siamo in modalità team
+    document.getElementById('membersContainer').innerHTML = "";
+    if (currentMode === "typeTeam") {
+        for(let i=0; i<3; i++) addMemberField();
+    }
+
+    // Ricarica le tabelle
     fetchAthletes();
     fetchTeams();
 }
@@ -245,15 +253,21 @@ function updateCounters(athletes) {
 }
 
 function exportToExcel() {
-    let csv = ["Nome,Classe,Sesso,Specialità,Cintura,Peso"];
-    document.querySelectorAll("table tbody tr").forEach(tr => {
+    let csv = ["Tipo,Nome/Squadra,Classe,Sesso,Specialità,Cintura,Peso"];
+    // Estrazione atleti
+    document.querySelectorAll("#athleteList tr").forEach(tr => {
         let data = Array.from(tr.querySelectorAll("td")).slice(0, 6).map(td => td.innerText.replace(/\n/g, " ").trim());
-        csv.push(data.join(","));
+        csv.push("Atleta," + data.join(","));
+    });
+    // Estrazione team
+    document.querySelectorAll("#teamList tr").forEach(tr => {
+        let data = Array.from(tr.querySelectorAll("td")).slice(0, 6).map(td => td.innerText.replace(/\n/g, " ").trim());
+        csv.push("Team," + data.join(","));
     });
     const blob = new Blob([csv.join("\n")], { type: "text/csv" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "esportazione_iscritti.csv";
+    link.download = `iscritti_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
 }
 
