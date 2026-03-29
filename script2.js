@@ -25,7 +25,7 @@ async function initPage() {
     }
 }
 
-// --- 2. LOGICA UI ---
+// --- 2. LOGICA UI (SWITCH TEAM/SINGOLO) ---
 function toggleRegMode() {
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     const indFields = document.getElementById('individualFields');
@@ -67,15 +67,15 @@ function addMemberField() {
     const div = document.createElement('div');
     div.className = "col-md-4 mb-2";
     div.innerHTML = `
-        <div class="input-group input-group-sm shadow-sm">
-            <span class="input-group-text bg-light">${count + 1}</span>
+        <div class="input-group input-group-sm">
+            <span class="input-group-text">${count + 1}</span>
             <input type="text" class="form-control member-input" placeholder="Nome Cognome" required>
             ${count >= 3 ? '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button>' : ''}
         </div>`;
     container.appendChild(div);
 }
 
-// --- 3. LOGICA DINAMICA ---
+// --- 3. LOGICA DINAMICA (CLASSI E CINTURE) ---
 function handleBirthdateChange() {
     const dateVal = document.getElementById('birthdate').value;
     if (!dateVal) return;
@@ -126,23 +126,22 @@ function handleSpecialtyChange() {
     }
 }
 
-// --- 4. DATABASE ---
+// --- 4. CARICAMENTO TABELLE ---
 async function fetchAthletes() {
     const eventId = sessionStorage.getItem('selectedEventId');
     const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
-
     const list = document.getElementById('athleteList');
     list.innerHTML = "";
     athletes?.forEach(a => {
         list.innerHTML += `
             <tr>
                 <td><strong>${a.last_name} ${a.first_name}</strong></td>
-                <td><span class="badge bg-light text-dark border">${a.classe}</span></td>
+                <td>${a.classe}</td>
                 <td>${a.gender}</td>
                 <td>${a.specialty}</td>
-                <td><span class="badge" style="background-color: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1;">${a.belt}</span></td>
+                <td>${a.belt}</td>
                 <td>${a.weight_category}</td>
-                <td class="text-end"><button class="btn btn-sm btn-link text-danger" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td>
+                <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td>
             </tr>`;
     });
     updateCounters(athletes);
@@ -151,30 +150,28 @@ async function fetchAthletes() {
 async function fetchTeams() {
     const eventId = sessionStorage.getItem('selectedEventId');
     const { data: teams } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
-
     const list = document.getElementById('teamList');
     list.innerHTML = "";
     teams?.forEach(t => {
         list.innerHTML += `
             <tr>
-                <td>
-                    <div class="fw-bold text-primary">${t.team_name}</div>
-                    <div class="text-muted small" style="font-size: 0.75rem;">${t.members.join(", ")}</div>
-                </td>
-                <td><span class="badge bg-light text-dark border">${t.classe}</span></td>
+                <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
+                <td>${t.classe}</td>
                 <td>${t.gender}</td>
                 <td>${t.specialty}</td>
-                <td><span class="badge" style="background-color: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1;">${t.belt || '-'}</span></td>
+                <td>${t.belt || '-'}</td>
                 <td>${t.weight_category || '-'}</td>
-                <td class="text-end"><button class="btn btn-sm btn-link text-danger" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td>
+                <td class="text-end"><button class="btn btn-sm btn-outline-danger" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td>
             </tr>`;
     });
 }
 
+// --- 5. AGGIUNTA (CON MESSAGGI) ---
 async function addAthlete(e) {
     e.preventDefault();
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     const eventId = document.getElementById('selectedEventId').value;
+    
     const commonData = {
         event_id: eventId,
         society_id: window.currentSocietyId,
@@ -194,7 +191,13 @@ async function addAthlete(e) {
             gender: document.getElementById('team_gender').value,
             members: members
         }]);
-        if (error) alert(error.message); else completeReset();
+
+        if (error) {
+            alert("Errore Team: " + error.message);
+        } else {
+            alert("Squadra registrata con successo!");
+            completeReset();
+        }
     } else {
         const { error } = await sb.from('atleti').insert([{
             ...commonData,
@@ -203,22 +206,31 @@ async function addAthlete(e) {
             birthdate: document.getElementById('birthdate').value,
             gender: document.getElementById('gender').value
         }]);
-        if (error) alert(error.message); else completeReset();
+
+        if (error) {
+            alert("Errore Atleta: " + error.message);
+        } else {
+            alert("Atleta registrato con successo!");
+            completeReset();
+        }
     }
 }
 
-// --- 5. UTILITY ---
+// --- 6. UTILITY E RESET ---
 function completeReset() {
     document.getElementById('athleteForm').reset();
     document.getElementById('membersContainer').innerHTML = "";
+    document.getElementById('classe').innerHTML = "";
+    document.getElementById('specialty').innerHTML = "";
+    document.getElementById('belt').innerHTML = "";
     document.getElementById('typeIndividual').checked = true;
     toggleRegMode();
     fetchAthletes();
     fetchTeams();
 }
 
-async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
-async function deleteTeam(id) { if (confirm("Eliminare?")) { await sb.from('teams').delete().eq('id', id); fetchTeams(); } }
+async function deleteAthlete(id) { if (confirm("Eliminare l'atleta?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
+async function deleteTeam(id) { if (confirm("Eliminare la squadra?")) { await sb.from('teams').delete().eq('id', id); fetchTeams(); } }
 
 function updateCounters(athletes) {
     const c = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
@@ -232,7 +244,7 @@ function updateCounters(athletes) {
 }
 
 function exportToExcel() {
-    let csv = ["Atleta/Squadra,Classe,Sesso,Specialità,Cintura,Peso"];
+    let csv = ["Nome,Classe,Sesso,Specialità,Cintura,Peso"];
     document.querySelectorAll("table tbody tr").forEach(tr => {
         let data = Array.from(tr.querySelectorAll("td")).slice(0, 6).map(td => td.innerText.replace(/\n/g, " ").trim());
         csv.push(data.join(","));
@@ -240,7 +252,7 @@ function exportToExcel() {
     const blob = new Blob([csv.join("\n")], { type: "text/csv" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = "iscritti_karate.csv";
+    link.download = "esportazione_iscritti.csv";
     link.click();
 }
 
