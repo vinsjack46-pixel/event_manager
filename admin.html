@@ -80,7 +80,7 @@
             border-bottom: 2px solid #f1f1f1;
         }
 
-        .table-success-light { background-color: #f8fff9; }
+        .table-success-light { background-color: #f8fff9 !important; }
 
         .badge-count {
             font-size: 0.75rem;
@@ -88,7 +88,6 @@
             border-radius: 10px;
         }
 
-        /* Scrollbar personalizzata per lista eventi */
         .event-scroll-list::-webkit-scrollbar { width: 5px; }
         .event-scroll-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
     </style>
@@ -103,7 +102,7 @@
             <h5 class="m-0 fw-bold"><i class="fas fa-user-shield text-warning me-2"></i>Pannello Admin</h5>
         </div>
         <div>
-            <span class="badge bg-dark border border-secondary" id="totalCounter">Caricamento...</span>
+            <span class="badge bg-dark border border-secondary" id="totalCounter">Inizializzazione...</span>
         </div>
     </nav>
 
@@ -119,7 +118,7 @@
                         <form id="eventForm">
                             <div class="mb-2">
                                 <label class="form-label">Nome Gara</label>
-                                <input type="text" id="eventName" class="form-control" placeholder="Es. Campionato Regionale" required>
+                                <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Karate" required>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label">Data</label>
@@ -138,14 +137,13 @@
                     <div class="card-title-custom">
                         <h4><i class="fas fa-list me-2 text-muted"></i>Lista Eventi</h4>
                     </div>
-                    <div class="event-scroll-list" id="eventList">
-                        </div>
+                    <div class="event-scroll-list" id="eventList"></div>
                 </div>
             </div>
 
             <div class="col-lg-9">
                 
-                <div class="admin-card p-3 mb-4 bg-white">
+                <div class="admin-card p-3 mb-4">
                     <div class="row g-3">
                         <div class="col-md-4">
                             <select id="filterEvent" class="form-select shadow-sm">
@@ -153,9 +151,14 @@
                             </select>
                         </div>
                         <div class="col-md-8">
-                            <div class="input-group shadow-sm">
-                                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                                <input type="text" id="globalSearch" class="form-control border-start-0" placeholder="Cerca atleta, società, classe o team...">
+                            <div class="d-flex gap-2">
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                    <input type="text" id="globalSearch" class="form-control border-start-0" placeholder="Cerca atleta, società o team...">
+                                </div>
+                                <button onclick="exportAllToCSV()" class="btn btn-success shadow-sm d-flex align-items-center">
+                                    <i class="fas fa-file-excel me-2"></i> Esporta
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -197,7 +200,7 @@
                                     <th>Società</th>
                                     <th>Classe / Spec.</th>
                                     <th>Sesso</th>
-                                    <th>Info Extra</th>
+                                    <th>Cintura/Peso</th>
                                     <th class="text-end">Azioni</th>
                                 </tr>
                             </thead>
@@ -206,7 +209,8 @@
                     </div>
                 </div>
 
-            </div> </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
