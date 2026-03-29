@@ -4,88 +4,81 @@ async function initAdmin() {
     await loadFilterEvents();
     await fetchGlobalData();
 
-    // Event Listeners per i filtri
     document.getElementById('filterEvent').addEventListener('change', fetchGlobalData);
-    document.getElementById('globalSearch').addEventListener('input', filterTable);
+    document.getElementById('globalSearch').addEventListener('input', filterTables);
     document.getElementById('eventForm').addEventListener('submit', createEvent);
 }
 
-// --- CARICAMENTO DATI ---
 async function fetchGlobalData() {
     const filterEventId = document.getElementById('filterEvent').value;
 
-    // 1. Recupera Società ed Eventi per il mapping dei nomi
+    // Recupero mapping Società ed Eventi
     const { data: societa } = await sb.from('societa').select('id, nome');
     const { data: eventi } = await sb.from('eventi').select('id, nome');
-    
     const socMap = Object.fromEntries(societa.map(s => [s.id, s.nome]));
     const evMap = Object.fromEntries(eventi.map(e => [e.id, e.nome]));
 
-    // 2. Query Atleti
-    let queryAtleti = sb.from('atleti').select('*');
-    if (filterEventId) queryAtleti = queryAtleti.eq('event_id', filterEventId);
-    const { data: atleti } = await queryAtleti;
+    // Query Atleti Individuali
+    let qA = sb.from('atleti').select('*').order('last_name');
+    if (filterEventId) qA = qA.eq('event_id', filterEventId);
+    const { data: atleti } = await qA;
 
-    // 3. Query Team
-    let queryTeams = sb.from('teams').select('*');
-    if (filterEventId) queryTeams = queryTeams.eq('event_id', filterEventId);
-    const { data: teams } = await queryTeams;
+    // Query Team
+    let qT = sb.from('teams').select('*').order('team_name');
+    if (filterEventId) qT = qT.eq('event_id', filterEventId);
+    const { data: teams } = await qT;
 
-    renderAdminTable(atleti, teams, socMap, evMap);
+    renderTables(atleti, teams, socMap, evMap);
 }
 
-// --- RENDERING TABELLA ---
-function renderAdminTable(atleti, teams, socMap, evMap) {
-    const tbody = document.getElementById('adminAthleteList');
-    tbody.innerHTML = "";
-    let totalCount = 0;
+function renderTables(atleti, teams, socMap, evMap) {
+    const listInd = document.getElementById('adminAthleteList');
+    const listTeam = document.getElementById('adminTeamList');
+    
+    listInd.innerHTML = "";
+    listTeam.innerHTML = "";
 
-    // Render Atleti Individuali
+    // Popolamento Atleti
     atleti?.forEach(a => {
-        totalCount++;
-        tbody.innerHTML += `
-            <tr class="athlete-row">
-                <td>
-                    <div class="fw-bold text-dark">${a.last_name} ${a.first_name}</div>
-                    <small class="badge bg-info-subtle text-info px-2" style="font-size:0.65rem">INDIVIDUALE</small>
-                </td>
-                <td><small>${evMap[a.event_id] || 'N/D'}</small></td>
-                <td><span class="text-muted">${socMap[a.society_id] || 'N/D'}</span></td>
-                <td>${a.classe} <br> <small class="text-primary">${a.specialty}</small></td>
+        listInd.innerHTML += `
+            <tr>
+                <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                <td><small>${evMap[a.event_id] || '-'}</small></td>
+                <td>${socMap[a.society_id] || '-'}</td>
+                <td>${a.classe}<br><small class="text-primary">${a.specialty}</small></td>
+                <td><span class="badge bg-light text-dark border">${a.belt}</span></td>
+                <td>${a.gender}</td>
                 <td>${a.weight_category}</td>
-                <td class="text-center"><span class="badge bg-light text-dark border">${a.gender}</span></td>
             </tr>`;
     });
 
-    // Render Team
+    // Popolamento Team
     teams?.forEach(t => {
-        totalCount++;
-        tbody.innerHTML += `
-            <tr class="team-row table-success-light">
+        listTeam.innerHTML += `
+            <tr class="table-success-light">
                 <td>
                     <div class="fw-bold text-success">${t.team_name}</div>
-                    <small class="text-muted" style="font-size:0.75rem">${t.members?.join(", ")}</small><br>
-                    <small class="badge bg-success-subtle text-success px-2" style="font-size:0.65rem">SQUADRA</small>
+                    <div class="small text-muted">${t.members?.join(" • ")}</div>
                 </td>
-                <td><small>${evMap[t.event_id] || 'N/D'}</small></td>
-                <td><span class="text-muted">${socMap[t.society_id] || 'N/D'}</span></td>
-                <td>${t.classe} <br> <small class="text-primary">${t.specialty}</small></td>
-                <td>${t.weight_category || '-'}</td>
-                <td class="text-center"><span class="badge bg-light text-dark border">${t.gender}</span></td>
+                <td><small>${evMap[t.event_id] || '-'}</small></td>
+                <td>${socMap[t.society_id] || '-'}</td>
+                <td>${t.classe}<br><small class="text-primary">${t.specialty}</small></td>
+                <td>${t.gender}</td>
+                <td><small>${t.belt || '-'} / ${t.weight_category || '-'}</small></td>
             </tr>`;
     });
 
-    document.getElementById('totalCounter').innerText = `${totalCount} Iscrizioni Totali`;
+    // Aggiorna Contatori
+    document.getElementById('countInd').innerText = atleti?.length || 0;
+    document.getElementById('countTeam').innerText = teams?.length || 0;
+    document.getElementById('totalCounter').innerText = `${(atleti?.length || 0) + (teams?.length || 0)} Totali`;
 }
 
-// --- FILTRO RICERCA RAPIDA ---
-function filterTable() {
-    const searchText = document.getElementById('globalSearch').value.toLowerCase();
-    const rows = document.querySelectorAll('#adminAthleteList tr');
-
-    rows.forEach(row => {
-        const text = row.innerText.toLowerCase();
-        row.style.display = text.includes(searchText) ? '' : 'none';
+// Filtro di ricerca che agisce su ENTRAMBE le tabelle
+function filterTables() {
+    const val = document.getElementById('globalSearch').value.toLowerCase();
+    document.querySelectorAll('tbody tr').forEach(tr => {
+        tr.style.display = tr.innerText.toLowerCase().includes(val) ? '' : 'none';
     });
 }
 
