@@ -1,122 +1,167 @@
-
 const sb = window.supabaseClient;
 
-document.addEventListener('DOMContentLoaded', () => {
-    loadEvents();
-    loadAllAthletes();
-    
-    document.getElementById('eventForm').addEventListener('submit', createEvent);
-    document.getElementById('globalSearch').addEventListener('input', filterAthletes);
-    document.getElementById('filterEvent').addEventListener('change', filterAthletes);
-});
+async function initAdmin() {
+    await loadFilterEvents();
+    await fetchGlobalData();
 
-// --- GESTIONE EVENTI ---
-async function loadEvents() {
-    const { data: eventi } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
-    const list = document.getElementById('eventList');
-    const select = document.getElementById('filterEvent');
+    // Event Listeners per i filtri
+    document.getElementById('filterEvent').addEventListener('change', fetchGlobalData);
+    document.getElementById('globalSearch').addEventListener('input', filterTable);
+    document.getElementById('eventForm').addEventListener('submit', createEvent);
+}
+
+// --- CARICAMENTO DATI ---
+async function fetchGlobalData() {
+    const filterEventId = document.getElementById('filterEvent').value;
+
+    // 1. Recupera Società ed Eventi per il mapping dei nomi
+    const { data: societa } = await sb.from('societa').select('id, nome');
+    const { data: eventi } = await sb.from('eventi').select('id, nome');
     
-    list.innerHTML = '';
-    eventi?.forEach(e => {
-        list.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center">
-            ${e.nome} <small>${e.data_evento}</small>
-        </li>`;
-        select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
+    const socMap = Object.fromEntries(societa.map(s => [s.id, s.nome]));
+    const evMap = Object.fromEntries(eventi.map(e => [e.id, e.nome]));
+
+    // 2. Query Atleti
+    let queryAtleti = sb.from('atleti').select('*');
+    if (filterEventId) queryAtleti = queryAtleti.eq('event_id', filterEventId);
+    const { data: atleti } = await queryAtleti;
+
+    // 3. Query Team
+    let queryTeams = sb.from('teams').select('*');
+    if (filterEventId) queryTeams = queryTeams.eq('event_id', filterEventId);
+    const { data: teams } = await queryTeams;
+
+    renderAdminTable(atleti, teams, socMap, evMap);
+}
+
+// --- RENDERING TABELLA ---
+function renderAdminTable(atleti, teams, socMap, evMap) {
+    const tbody = document.getElementById('adminAthleteList');
+    tbody.innerHTML = "";
+    let totalCount = 0;
+
+    // Render Atleti Individuali
+    atleti?.forEach(a => {
+        totalCount++;
+        tbody.innerHTML += `
+            <tr class="athlete-row">
+                <td>
+                    <div class="fw-bold text-dark">${a.last_name} ${a.first_name}</div>
+                    <small class="badge bg-info-subtle text-info px-2" style="font-size:0.65rem">INDIVIDUALE</small>
+                </td>
+                <td><small>${evMap[a.event_id] || 'N/D'}</small></td>
+                <td><span class="text-muted">${socMap[a.society_id] || 'N/D'}</span></td>
+                <td>${a.classe} <br> <small class="text-primary">${a.specialty}</small></td>
+                <td>${a.weight_category}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${a.gender}</span></td>
+            </tr>`;
+    });
+
+    // Render Team
+    teams?.forEach(t => {
+        totalCount++;
+        tbody.innerHTML += `
+            <tr class="team-row table-success-light">
+                <td>
+                    <div class="fw-bold text-success">${t.team_name}</div>
+                    <small class="text-muted" style="font-size:0.75rem">${t.members?.join(", ")}</small><br>
+                    <small class="badge bg-success-subtle text-success px-2" style="font-size:0.65rem">SQUADRA</small>
+                </td>
+                <td><small>${evMap[t.event_id] || 'N/D'}</small></td>
+                <td><span class="text-muted">${socMap[t.society_id] || 'N/D'}</span></td>
+                <td>${t.classe} <br> <small class="text-primary">${t.specialty}</small></td>
+                <td>${t.weight_category || '-'}</td>
+                <td class="text-center"><span class="badge bg-light text-dark border">${t.gender}</span></td>
+            </tr>`;
+    });
+
+    document.getElementById('totalCounter').innerText = `${totalCount} Iscrizioni Totali`;
+}
+
+// --- FILTRO RICERCA RAPIDA ---
+function filterTable() {
+    const searchText = document.getElementById('globalSearch').value.toLowerCase();
+    const rows = document.querySelectorAll('#adminAthleteList tr');
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(searchText) ? '' : 'none';
     });
 }
-function exportAdminToExcel() {
-    const table = document.querySelector("table");
-    let csv = [];
-    const rows = table.querySelectorAll("tr");
-    
-    for (let i = 0; i < rows.length; i++) {
-        let row = [], cols = rows[i].querySelectorAll("td, th");
-        for (let j = 0; j < cols.length; j++) {
-            // Pulizia testo e separatore punto e virgola per Excel italiano
-            let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, "").replace(/;/g, ",");
-            row.push(`"${data}"`); // Mettiamo i dati tra virgolette per sicurezza
-        }
-        csv.push(row.join(";")); // Usiamo il punto e virgola come separatore (standard Excel ITA)
-    }
 
-    const csvContent = "\uFEFF" + csv.join("\n"); // Aggiunge il BOM per i caratteri speciali (accenti)
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `REPORT_GLOBALE_GARE_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+// --- GESTIONE EVENTI (LISTA A SINISTRA) ---
+async function loadFilterEvents() {
+    const { data: eventi } = await sb.from('eventi').select('*').order('data', { ascending: false });
+    const select = document.getElementById('filterEvent');
+    const scrollList = document.getElementById('eventList');
+    
+    select.innerHTML = '<option value="">Tutti gli Eventi</option>';
+    scrollList.innerHTML = "";
+
+    eventi?.forEach(e => {
+        select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
+        scrollList.innerHTML += `
+            <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="fw-bold" style="font-size:0.9rem">${e.nome}</div>
+                    <small class="text-muted">${new Date(e.data).toLocaleDateString()}</small>
+                </div>
+                <button onclick="deleteEvent('${e.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash-alt"></i></button>
+            </div>`;
+    });
 }
 
 async function createEvent(e) {
     e.preventDefault();
     const nome = document.getElementById('eventName').value;
-    const data_evento = document.getElementById('eventDate').value;
+    const data = document.getElementById('eventDate').value;
     const luogo = document.getElementById('eventLocation').value;
 
-    const { error } = await sb.from('eventi').insert([{ nome, data_evento, luogo }]);
+    const { error } = await sb.from('eventi').insert([{ nome, data, luogo }]);
     if (error) alert(error.message);
     else {
         alert("Evento creato!");
-        location.reload();
+        document.getElementById('eventForm').reset();
+        initAdmin();
     }
 }
 
-// --- GESTIONE ATLETI (RICERCA GLOBALE) ---
-let allAthletesData = []; // Cache locale per ricerca veloce
-
-async function loadAllAthletes() {
-    // Carichiamo atleti uniti a societa ed eventi (grazie alle foreign keys)
-    const { data, error } = await sb
-        .from('atleti')
-        .select(`
-            *,
-            eventi (nome),
-            societa (nome)
-        `);
-
-    if (error) return console.error(error);
-    allAthletesData = data;
-    renderTable(allAthletesData);
+async function deleteEvent(id) {
+    if (confirm("Attenzione: eliminando l'evento eliminerai anche tutti gli iscritti collegati. Procedere?")) {
+        await sb.from('eventi').delete().eq('id', id);
+        initAdmin();
+    }
 }
 
-function renderTable(data) {
-    const tbody = document.getElementById('adminAthleteList');
-    const counter = document.getElementById('totalCounter');
-    tbody.innerHTML = '';
-    counter.innerText = data.length;
-
-    data.forEach(a => {
-        tbody.innerHTML += `
-            <tr>
-                <td><strong>${a.last_name} ${a.first_name}</strong></td>
-                <td><small>${a.eventi?.nome || 'N/A'}</small></td>
-                <td>${a.societa?.nome || 'N/A'}</td>
-                <td>${a.classe} / ${a.specialty}</td>
-                <td>${a.weight_category}</td>
-                <td>${a.gender}</td>
-            </tr>
-        `;
+// --- EXPORT ADMIN ---
+function exportAdminToExcel() {
+    let csv = ["Tipo,Nome/Team,Membri,Evento,Società,Classe,Specialità,Sesso,Peso"];
+    document.querySelectorAll("#adminAthleteList tr").forEach(tr => {
+        const cells = tr.querySelectorAll("td");
+        if (cells.length > 0) {
+            const tipo = cells[0].querySelector(".badge").innerText;
+            const nome = cells[0].querySelector(".fw-bold").innerText;
+            const membri = tipo === "SQUADRA" ? cells[0].querySelector(".text-muted").innerText.replace(/,/g, " - ") : "";
+            const rowData = [
+                tipo,
+                nome,
+                membri,
+                cells[1].innerText,
+                cells[2].innerText,
+                cells[3].querySelector("div")?.innerText || cells[3].innerText.split('\n')[0],
+                cells[3].querySelector("small")?.innerText || "",
+                cells[5].innerText,
+                cells[4].innerText
+            ];
+            csv.push(rowData.map(v => `"${v}"`).join(","));
+        }
     });
+    
+    const blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `REPORT_TOTALE_GARE.csv`;
+    link.click();
 }
 
-function filterAthletes() {
-    const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
-    const eventId = document.getElementById('filterEvent').value;
-
-    const filtered = allAthletesData.filter(a => {
-        const matchesSearch = 
-            a.first_name.toLowerCase().includes(searchTerm) ||
-            a.last_name.toLowerCase().includes(searchTerm) ||
-            (a.societa?.nome || "").toLowerCase().includes(searchTerm) ||
-            a.classe.toLowerCase().includes(searchTerm) ||
-            a.specialty.toLowerCase().includes(searchTerm);
-        
-        const matchesEvent = eventId === "" || a.event_id === eventId;
-
-        return matchesSearch && matchesEvent;
-    });
-
-    renderTable(filtered);
-}
+document.addEventListener('DOMContentLoaded', initAdmin);
