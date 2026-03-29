@@ -1,42 +1,33 @@
 const sb = window.supabaseClient;
 
-// Cache locale per permettere la ricerca istantanea senza stressare il database
+// Cache per filtri istantanei
 let allAthletes = [];
 let allTeams = [];
 
 async function initAdmin() {
-    console.log("Admin Initializing...");
-    
-    // 1. Carichiamo gli eventi (per filtri e lista laterale)
+    console.log("Admin Dashboard Initializing...");
     await loadFilterEvents();
-    
-    // 2. Carichiamo tutti i dati (Atleti e Team)
     await fetchGlobalData();
 
-    // 3. Setup dei listener
-    const eventForm = document.getElementById('eventForm');
-    if (eventForm) {
-        eventForm.addEventListener('submit', createEvent);
-    }
-
+    // Event Listeners
+    document.getElementById('eventForm').addEventListener('submit', createEvent);
     document.getElementById('filterEvent').addEventListener('change', filterAll);
     document.getElementById('globalSearch').addEventListener('input', filterAll);
 }
 
-// --- CARICAMENTO DATI (CON JOIN) ---
+// --- RECUPERO DATI (CON JOIN) ---
 async function fetchGlobalData() {
-    // Carichiamo Atleti + nomi Società ed Eventi in un colpo solo
+    // Carichiamo atleti e team includendo i nomi di società ed eventi tramite foreign keys
     const { data: atleti, error: errA } = await sb
         .from('atleti')
         .select('*, societa(nome), eventi(nome)');
 
-    // Carichiamo Team + nomi Società ed Eventi
     const { data: teams, error: errT } = await sb
         .from('teams')
         .select('*, societa(nome), eventi(nome)');
 
     if (errA || errT) {
-        console.error("Errore Supabase:", errA || errT);
+        console.error("Errore caricamento dati:", errA || errT);
         return;
     }
 
@@ -54,7 +45,7 @@ function renderTables(atleti, teams) {
     listInd.innerHTML = "";
     listTeam.innerHTML = "";
 
-    // Rendering Atleti Individuali
+    // Rendering Individuali
     atleti.forEach(a => {
         listInd.innerHTML += `
             <tr>
@@ -93,13 +84,12 @@ function renderTables(atleti, teams) {
             </tr>`;
     });
 
-    // Aggiornamento Contatori
     document.getElementById('countInd').innerText = atleti.length;
     document.getElementById('countTeam').innerText = teams.length;
-    document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Iscrizioni Totali`;
+    document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
 }
 
-// --- FILTRI (RICERCA + EVENTO) ---
+// --- FILTRI ---
 function filterAll() {
     const searchTerm = document.getElementById('globalSearch').value.toLowerCase();
     const eventId = document.getElementById('filterEvent').value;
@@ -119,25 +109,69 @@ function filterAll() {
     renderTables(filteredAthletes, filteredTeams);
 }
 
-// --- GESTIONE CANCELLAZIONE ---
+// --- EXPORT UNIFICATO ---
+function exportAllToCSV() {
+    let csv = [];
+    csv.push("TIPO;NOME/TEAM;MEMBRI;EVENTO;SOCIETA;CLASSE;SPECIALITA;CINTURA;SESSO;PESO");
+
+    // Atleti
+    document.querySelectorAll("#adminAthleteList tr").forEach(tr => {
+        const cols = tr.querySelectorAll("td");
+        if (cols.length > 0) {
+            let riga = [
+                "Individuale",
+                cols[0].querySelector('strong').innerText,
+                "-",
+                cols[0].querySelector('small').innerText,
+                cols[1].innerText,
+                cols[2].innerText.split('\n')[0],
+                cols[2].querySelector('small')?.innerText || "",
+                cols[3].innerText,
+                cols[4].innerText,
+                cols[5].innerText
+            ];
+            csv.push(riga.map(v => `"${v.trim()}"`).join(";"));
+        }
+    });
+
+    // Team
+    document.querySelectorAll("#adminTeamList tr").forEach(tr => {
+        const cols = tr.querySelectorAll("td");
+        if (cols.length > 0) {
+            let riga = [
+                "Team",
+                cols[0].querySelector('.fw-bold').innerText,
+                cols[0].querySelector('.small').innerText.replace(/ • /g, " - "),
+                cols[0].querySelector('small').innerText,
+                cols[1].innerText,
+                cols[2].innerText.split('\n')[0],
+                cols[2].querySelector('small')?.innerText || "",
+                cols[4].innerText.split(' / ')[0],
+                cols[3].innerText,
+                cols[4].innerText.split(' / ')[1] || "-"
+            ];
+            csv.push(riga.map(v => `"${v.trim()}"`).join(";"));
+        }
+    });
+
+    const csvContent = "\uFEFF" + csv.join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `ISCRITTI_GARE_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.click();
+}
+
+// --- GESTIONE CANCELLAZIONI ---
 async function deleteRecord(table, id) {
-    if (confirm("Sei sicuro di voler eliminare questa iscrizione?")) {
-        const { error } = await sb.from(table).delete().eq('id', id);
-        if (error) alert("Errore: " + error.message);
-        else await fetchGlobalData(); // Ricarica tutto
+    if (confirm("Eliminare definitivamente questa iscrizione?")) {
+        await sb.from(table).delete().eq('id', id);
+        await fetchGlobalData();
     }
 }
 
-// --- GESTIONE EVENTI (CORRETTO data_evento) ---
 async function loadFilterEvents() {
-    // CORREZIONE: Uso 'data_evento' invece di 'data'
-    const { data: eventi, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
-    
-    if (error) {
-        console.error("Errore caricamento eventi:", error);
-        return;
-    }
-
+    const { data: eventi } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
     const select = document.getElementById('filterEvent');
     const scrollList = document.getElementById('eventList');
     
@@ -164,8 +198,7 @@ async function createEvent(e) {
     const luogo = document.getElementById('eventLocation').value;
 
     const { error } = await sb.from('eventi').insert([{ nome, data_evento, luogo }]);
-    
-    if (error) alert("Errore: " + error.message);
+    if (error) alert(error.message);
     else {
         document.getElementById('eventForm').reset();
         await loadFilterEvents();
@@ -174,12 +207,11 @@ async function createEvent(e) {
 }
 
 async function deleteEvent(id) {
-    if (confirm("ATTENZIONE: Eliminando l'evento eliminerai TUTTI gli iscritti associati. Procedere?")) {
+    if (confirm("Eliminando l'evento cancellerai TUTTI gli iscritti associati. Confermi?")) {
         await sb.from('eventi').delete().eq('id', id);
         await loadFilterEvents();
         await fetchGlobalData();
     }
 }
 
-// Avvio
 document.addEventListener('DOMContentLoaded', initAdmin);
