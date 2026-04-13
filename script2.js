@@ -2,7 +2,7 @@ const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
 // --- 1. CONFIGURAZIONE LIMITI RIGIDI (Sistema 2) ---
-const LIMITI = {
+const LIMITI = { 
     "Kumite": 400,
     "Kata": 300,
     "ParaKarate": 50,
