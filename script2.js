@@ -3,7 +3,7 @@ window.currentSocietyId = null;
 
 // --- 1. CONFIGURAZIONE LIMITI RIGIDI (Sistema 2) ---
 const LIMITI = {
-    "Kumite": 5,
+    "Kumite": 400,
     "Kata": 300,
     "ParaKarate": 50,
     "KIDS": 250 // Include Combinata e specialità propedeutiche
