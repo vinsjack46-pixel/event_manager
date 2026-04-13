@@ -130,33 +130,32 @@ function updateClassSpecsAndBelts(year) {
 
     clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     
-// 2. Logica Cinture
+// 2. Logica Cinture (Corretta)
     let belts = [];
     if (["U6", "U8"].includes(classe)) {
-        // Solo 2 cinture per i più piccoli
         belts = ["Bianca/Gialla", "Arancio/Verde"];
-    } else if(["U10", "U12"].includes(classe)){ 
+    } else if (["U10", "U12"].includes(classe)) {
         belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-        } else {
-        // Da U14 in su specialità standard
-        specs = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"];
+    } else {
+        // Da U14 in su tutte incluse
+        belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"];
     }
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
-    // 3. Logica Specialità
+    // 3. Logica Specialità (Corretta)
     let specs = [];
     if (["U6", "U8"].includes(classe)) {
-        // Specialità KIDS/Propedeutiche fino a U12
+        // I più piccoli hanno la Combinata
         specs = ["Combinata", "Kata", "Kumite", "ParaKarate"];
     } else {
-        // Da U14 in su specialità standard
+        // Da U10 in su specialità standard
         specs = ["Kata", "Kumite", "ParaKarate"];
     }
 
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     
-    handleSpecialtyChange(); // Reset dei pesi
+    handleSpecialtyChange(); 
 }
 
 function handleSpecialtyChange() {
