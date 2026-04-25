@@ -1,4 +1,4 @@
-const sb = window.supabaseClient;
+ const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
 // --- 1. CONFIGURAZIONE LIMITI RIGIDI (Aggiornato: Somma Kata+Kumite) ---
