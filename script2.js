@@ -115,7 +115,7 @@ function updateClassSpecsAndBelts(year) {
     let belts = [];
     if (["U6", "U8"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde"];
     else if (["U10", "U12"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-    else belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone", "Nera"];
+    else belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
     
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
@@ -151,8 +151,10 @@ function handleSpecialtyChange() {
         let weights = [];
         if (classe === "U14") {
             weights = (gender === "Maschio") ? ["-40", "-45", "-50", "-55", "55+"] : ["-42", "-47", "-52", "52+"];
-        } else if (["U12", "U10", "U8", "U6"].includes(classe)) {
-            weights = (gender === "Maschio") ? ["-30", "-35", "-40", "40+"] : ["-30", "-35", "35+"];
+        } else if (["U12"].includes(classe)) {
+            weights = (gender === "Maschio") ? ["-32", "-37", "-42","-47", "47+"] : ["-32", "-37", "-42","-47", "47+"];
+         } else if (["U10"].includes(classe)) {
+            weights = (gender === "Maschio") ? ["-22", "-27", "-32","-37", "37+"] : ["-22", "-27", "-32","-37", "37+"];
         } else { weights = ["Open"]; }
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
