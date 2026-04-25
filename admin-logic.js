@@ -7,7 +7,7 @@ async function checkAdminAccess() {
     const { data: { user }, error } = await sb.auth.getUser();
 
     // MODIFICA QUI: Metti la tua email tra le virgolette
-    const authorizedAdmins = ["TUA_EMAIL_QUI@ESEMPIO.IT"]; 
+    const authorizedAdmins = ["vinsjack46@gmail.com"]; 
 
     if (error || !user || !authorizedAdmins.includes(user.email)) {
         alert("Accesso negato: Non sei autorizzato a vedere questa pagina.");
