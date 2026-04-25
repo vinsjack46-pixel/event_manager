@@ -235,10 +235,24 @@ async function addAthlete(e) {
     const spec = document.getElementById('specialty').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
+    // --- 1. CONTROLLO FASCIA ETÀ (2013 - 2018) ---
+    let birthYear;
+    if (isTeam) {
+        birthYear = parseInt(document.getElementById('team_year').value);
+    } else {
+        const birthdate = document.getElementById('birthdate').value;
+        birthYear = new Date(birthdate).getFullYear();
+    }
+
+    if (birthYear < 2013 || birthYear > 2018) {
+        return alert("ATTENZIONE: L'iscrizione è riservata esclusivamente ai nati tra il 2013 e il 2018.");
+    }
+    // ----------------------------------------------
+
     const globalCounts = await updateGlobalCounters(eventId);
     let isFull = false;
 
-    // --- LOGICA MODIFICATA: SOMMA KATA + KUMITE ---
+    // --- 2. LOGICA LIMITI: SOMMA KATA + KUMITE ---
     const currentSum = globalCounts.Kata + globalCounts.Kumite;
 
     if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
@@ -248,7 +262,6 @@ async function addAthlete(e) {
     } else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(spec) && globalCounts.Kids >= LIMITI.KIDS) {
         isFull = true;
     }
-    // ----------------------------------------------
 
     if (isFull) return alert(`ATTENZIONE: Posti esauriti! Il limite massimo di ${LIMITI.KataKumiteSum} iscritti tra Kata e Kumite è stato raggiunto.`);
 
@@ -261,14 +274,30 @@ async function addAthlete(e) {
         weight_category: document.getElementById('weight_category').value || '-'
     };
 
+    // --- 3. INVIO DATI ---
     if (isTeam) {
         const members = Array.from(document.querySelectorAll('.member-input')).map(i => i.value.trim()).filter(v => v !== "");
         if (members.length < 3) return alert("Inserisci almeno 3 componenti.");
-        const { error } = await sb.from('teams').insert([{...commonData, team_name: document.getElementById('team_name').value, gender: document.getElementById('team_gender').value, members: members}]);
+        
+        const { error } = await sb.from('teams').insert([{
+            ...commonData, 
+            team_name: document.getElementById('team_name').value, 
+            gender: document.getElementById('team_gender').value, 
+            members: members,
+            team_year: birthYear // Aggiungiamo l'anno per coerenza nel DB
+        }]);
+        
         if (error) alert("Errore: " + error.message);
         else { alert("Squadra registrata!"); completeReset(); }
     } else {
-        const { error } = await sb.from('atleti').insert([{...commonData, first_name: document.getElementById('first_name').value, last_name: document.getElementById('last_name').value, birthdate: document.getElementById('birthdate').value, gender: document.querySelector('input[name="gender"]:checked')?.value || "Maschio"}]);
+        const { error } = await sb.from('atleti').insert([{
+            ...commonData, 
+            first_name: document.getElementById('first_name').value, 
+            last_name: document.getElementById('last_name').value, 
+            birthdate: document.getElementById('birthdate').value, 
+            gender: document.querySelector('input[name="gender"]:checked')?.value || "Maschio"
+        }]);
+        
         if (error) alert("Errore: " + error.message);
         else { alert("Atleta registrato!"); completeReset(); }
     }
