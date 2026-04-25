@@ -132,9 +132,10 @@
                     </select>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label small fw-bold text-secondary">Data di Nascita</label>
-                    <input type="date" id="birthdate" class="form-control form-control-lg" onchange="handleBirthdateChange()">
-                    <small id="dateError" class="text-danger" style="display:none;">Data non valida</small>
+                   <label class="form-label small fw-bold text-secondary">Data di Nascita (2013-2018)</label>
+                    <input type="date" id="birthdate" class="form-control form-control-lg" 
+                           min="2013-01-01" max="2018-12-31" onchange="handleBirthdateChange()">
+                    <small id="dateError" class="text-danger" style="display:none;">Anno non consentito (Range: 2013-2018)</small>
                 </div>
             </div>
         </div>
@@ -155,9 +156,10 @@
         </div>
 
         <div class="col-md-6">
-            <label class="form-label small fw-bold text-secondary text-uppercase">Anno di Nascita (Riferimento)</label>
-            <input type="number" id="team_year" class="form-control form-control-lg" placeholder="Es: 2012" onchange="handleTeamYearChange()">
-            <small class="text-muted" style="font-size: 0.75rem;">Necessario per il calcolo della Classe/Categoria.</small>
+            <label class="form-label small fw-bold text-secondary text-uppercase">Anno di Nascita Riferimento (2013-2018)</label>
+                    <input type="number" id="team_year" class="form-control form-control-lg" 
+                           min="2013" max="2018" placeholder="Es: 2015" onchange="handleTeamYearChange()">
+                    <small id="teamYearError" class="text-danger" style="display:none;">Anno non consentito per questa categoria</small>
         </div>
         
         <div class="col-md-6"></div>
