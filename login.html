@@ -89,5 +89,31 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
+ <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const btn = e.target.querySelector('button');
+
+        // UI Feedback: disabilitiamo il tasto mentre lavora
+        btn.disabled = true;
+        btn.innerHTML = 'Accesso in corso...';
+
+        const { data, error } = await window.supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password,
+        });
+
+        if (error) {
+            alert("Errore di accesso: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = 'Accedi';
+        } else {
+            // Se il login è ok, vai alla pagina admin
+            window.location.href = 'admin.html';
+        }
+    });
+</script>
 </body>
 </html>
