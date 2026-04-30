@@ -1,11 +1,12 @@
- const sb = window.supabaseClient;
+const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
-// --- 1. CONFIGURAZIONE LIMITI RIGIDI (Aggiornato: Somma Kata+Kumite) ---
+// --- 1. CONFIGURAZIONE LIMITI RIGIDI (Sistema 2) ---
 const LIMITI = { 
-    "KataKumiteSum": 300, // <--- MODIFICA: Limite unico per la somma
+    "Kumite": 400,
+    "Kata": 300,
     "ParaKarate": 50,
-    "KIDS": 250 
+    "KIDS": 250 // Include Combinata e specialità propedeutiche
 };
 
 // --- 2. INIZIALIZZAZIONE ---
@@ -43,11 +44,13 @@ function toggleRegMode() {
     if (isTeam) {
         indFields.style.display = 'none';
         teamFields.style.display = 'block';
+        
         document.getElementById('team_name').required = true;
         document.getElementById('team_year').required = true;
         document.getElementById('first_name').required = false;
         document.getElementById('last_name').required = false;
         document.getElementById('birthdate').required = false;
+
         document.querySelectorAll('.member-input').forEach(input => input.required = true);
 
         if (document.getElementById('membersContainer').children.length === 0) {
@@ -56,11 +59,13 @@ function toggleRegMode() {
     } else {
         indFields.style.display = 'block';
         teamFields.style.display = 'none';
+
         document.getElementById('team_name').required = false;
         document.getElementById('team_year').required = false;
         document.getElementById('first_name').required = true;
         document.getElementById('last_name').required = true;
         document.getElementById('birthdate').required = true;
+
         document.querySelectorAll('.member-input').forEach(input => input.required = false);
     }
 }
@@ -112,16 +117,24 @@ function updateClassSpecsAndBelts(year) {
 
     clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     
+    // Logica Cinture Richiesta
     let belts = [];
-    if (["U6", "U8"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde"];
-    else if (["U10", "U12"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-    else belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-    
+    if (["U6", "U8"].includes(classe)) {
+        belts = ["Bianca/Gialla", "Arancio/Verde"];
+    } else if (["U10", "U12"].includes(classe)) {
+        belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
+    } else {
+        belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone", "Nera"];
+    }
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
+    // Logica Specialità Richiesta
     let specs = [];
-    if (["U6", "U8"].includes(classe)) specs = ["Combinata", "Kata", "Kumite", "ParaKarate"];
-    else specs = ["Kata", "Kumite", "ParaKarate"];
+    if (["U6", "U8"].includes(classe)) {
+        specs = ["Combinata", "Kata", "Kumite", "ParaKarate"];
+    } else {
+        specs = ["Kata", "Kumite", "ParaKarate"];
+    }
 
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
@@ -134,20 +147,14 @@ function handleSpecialtyChange() {
     const classe = document.getElementById('classe').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     
-  let gender;
+    let gender = "Maschio";
+    if (isTeam) {
+        gender = document.getElementById('team_gender')?.value || "Maschio";
+    } else {
+        const checkedGender = document.querySelector('input[name="gender"]:checked');
+        gender = checkedGender ? checkedGender.value : "Maschio";
+    }
 
-if (isTeam) {
-    gender = document.getElementById('team_gender')?.value;
-} else {
-    const checkedGender = document.querySelector('input[name="gender"]:checked');
-    gender = checkedGender ? checkedGender.value : null;
-}
-
-// VALIDAZIONE: Se gender è null o vuoto, ferma tutto
-if (!gender) {
-    alert("Errore: Devi selezionare il genere dell'atleta!");
-    return; // Blocca l'esecuzione della funzione addAthlete
-}
     const wInput = document.getElementById('weight_category');
     wInput.innerHTML = '';
     wInput.disabled = true;
@@ -157,11 +164,11 @@ if (!gender) {
         let weights = [];
         if (classe === "U14") {
             weights = (gender === "Maschio") ? ["-40", "-45", "-50", "-55", "55+"] : ["-42", "-47", "-52", "52+"];
-        } else if (["U12"].includes(classe)) {
-            weights = (gender === "Maschio") ? ["-32", "-37", "-42","-47", "47+"] : ["-32", "-37", "-42","-47", "47+"];
-         } else if (["U10"].includes(classe)) {
-            weights = (gender === "Maschio") ? ["-22", "-27", "-32","-37", "37+"] : ["-22", "-27", "-32","-37", "37+"];
-        } else { weights = ["Open"]; }
+        } else if (["U12", "U10", "U8", "U6"].includes(classe)) {
+            weights = (gender === "Maschio") ? ["-30", "-35", "-40", "40+"] : ["-30", "-35", "35+"];
+        } else {
+            weights = ["Open"];
+        }
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
         wInput.disabled = false;
@@ -171,11 +178,13 @@ if (!gender) {
     }
 }
 
-// --- 5. CARICAMENTO E CONTEGGI ---
+// --- 5. CARICAMENTO E CONTEGGI (VISUALIZZAZIONE PRIVATA) ---
 async function fetchAthletes() {
     const eventId = sessionStorage.getItem('selectedEventId');
     if (!window.currentSocietyId) return;
+
     const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
+
     const list = document.getElementById('athleteList');
     if (list) {
         list.innerHTML = "";
@@ -200,10 +209,12 @@ async function fetchTeams() {
 }
 
 async function updateGlobalCounters(eventId) {
+    // 1. Dati GLOBALI per i limiti (nascosti alla società)
     const { data: allA } = await sb.from('atleti').select('specialty').eq('event_id', eventId);
     const { data: allT } = await sb.from('teams').select('specialty').eq('event_id', eventId);
     const globalTotal = [...(allA || []), ...(allT || [])];
 
+    // 2. Dati SOCIETÀ per la visualizzazione
     const { data: socA } = await sb.from('atleti').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
     const { data: socT } = await sb.from('teams').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
     const socTotal = [...(socA || []), ...(socT || [])];
@@ -224,15 +235,16 @@ async function updateGlobalCounters(eventId) {
         else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) sCount.Kids++;
     });
 
-    if(document.getElementById('kumiteAthleteCountDisplay')) document.getElementById('kumiteAthleteCountDisplay').innerText = sCount.Kumite;
-    if(document.getElementById('kataAthleteCountDisplay')) document.getElementById('kataAthleteCountDisplay').innerText = sCount.Kata;
-    if(document.getElementById('ParaKarateAthleteCountDisplay')) document.getElementById('ParaKarateAthleteCountDisplay').innerText = sCount.Para;
-    if(document.getElementById('KIDSAthleteCountDisplay')) document.getElementById('KIDSAthleteCountDisplay').innerText = sCount.Kids;
+    // Aggiorniamo la UI solo con i numeri della società
+    document.getElementById('kumiteAthleteCountDisplay').innerText = sCount.Kumite;
+    document.getElementById('kataAthleteCountDisplay').innerText = sCount.Kata;
+    document.getElementById('ParaKarateAthleteCountDisplay').innerText = sCount.Para;
+    document.getElementById('KIDSAthleteCountDisplay').innerText = sCount.Kids;
     
-    return gCount;
+    return gCount; // Restituisce il totale dell'evento per il blocco addAthlete
 }
 
-// --- 6. AGGIUNTA (CON BLOCCO LIMITI SOMMATI) ---
+// --- 6. AGGIUNTA (CON BLOCCO LIMITI) ---
 async function addAthlete(e) {
     e.preventDefault();
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -241,35 +253,14 @@ async function addAthlete(e) {
     const spec = document.getElementById('specialty').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
-    // --- 1. CONTROLLO FASCIA ETÀ (2013 - 2018) ---
-    let birthYear;
-    if (isTeam) {
-        birthYear = parseInt(document.getElementById('team_year').value);
-    } else {
-        const birthdate = document.getElementById('birthdate').value;
-        birthYear = new Date(birthdate).getFullYear();
-    }
-
-    if (birthYear < 2013 || birthYear > 2018) {
-        return alert("ATTENZIONE: L'iscrizione è riservata esclusivamente ai nati tra il 2013 e il 2018.");
-    }
-    // ----------------------------------------------
-
     const globalCounts = await updateGlobalCounters(eventId);
     let isFull = false;
+    if (spec === "Kumite" && globalCounts.Kumite >= LIMITI.Kumite) isFull = true;
+    else if (spec === "Kata" && globalCounts.Kata >= LIMITI.Kata) isFull = true;
+    else if (spec === "ParaKarate" && globalCounts.Para >= LIMITI.ParaKarate) isFull = true;
+    else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(spec) && globalCounts.Kids >= LIMITI.KIDS) isFull = true;
 
-    // --- 2. LOGICA LIMITI: SOMMA KATA + KUMITE ---
-    const currentSum = globalCounts.Kata + globalCounts.Kumite;
-
-    if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
-        isFull = true;
-    } else if (spec === "ParaKarate" && globalCounts.Para >= LIMITI.ParaKarate) {
-        isFull = true;
-    } else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(spec) && globalCounts.Kids >= LIMITI.KIDS) {
-        isFull = true;
-    }
-
-    if (isFull) return alert(`ATTENZIONE: Posti esauriti! Il limite massimo di ${LIMITI.KataKumiteSum} iscritti tra Kata e Kumite è stato raggiunto.`);
+    if (isFull) return alert("ATTENZIONE: Posti esauriti per questa specialità nell'evento!");
 
     const commonData = {
         event_id: eventId,
@@ -280,30 +271,14 @@ async function addAthlete(e) {
         weight_category: document.getElementById('weight_category').value || '-'
     };
 
-    // --- 3. INVIO DATI ---
     if (isTeam) {
         const members = Array.from(document.querySelectorAll('.member-input')).map(i => i.value.trim()).filter(v => v !== "");
         if (members.length < 3) return alert("Inserisci almeno 3 componenti.");
-        
-        const { error } = await sb.from('teams').insert([{
-            ...commonData, 
-            team_name: document.getElementById('team_name').value, 
-            gender: document.getElementById('team_gender').value, 
-            members: members,
-            team_year: birthYear // Aggiungiamo l'anno per coerenza nel DB
-        }]);
-        
+        const { error } = await sb.from('teams').insert([{...commonData, team_name: document.getElementById('team_name').value, gender: document.getElementById('team_gender').value, members: members}]);
         if (error) alert("Errore: " + error.message);
         else { alert("Squadra registrata!"); completeReset(); }
     } else {
-        const { error } = await sb.from('atleti').insert([{
-            ...commonData, 
-            first_name: document.getElementById('first_name').value, 
-            last_name: document.getElementById('last_name').value, 
-            birthdate: document.getElementById('birthdate').value, 
-            gender: document.querySelector('input[name="gender"]:checked')?.value || "Maschio"
-        }]);
-        
+        const { error } = await sb.from('atleti').insert([{...commonData, first_name: document.getElementById('first_name').value, last_name: document.getElementById('last_name').value, birthdate: document.getElementById('birthdate').value, gender: document.querySelector('input[name="gender"]:checked')?.value || "Maschio"}]);
         if (error) alert("Errore: " + error.message);
         else { alert("Atleta registrato!"); completeReset(); }
     }
@@ -324,6 +299,23 @@ function completeReset() {
 
 async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
 async function deleteTeam(id) { if (confirm("Eliminare?")) { await sb.from('teams').delete().eq('id', id); fetchTeams(); } }
+
+function exportToExcel() {
+    let csv = ["Tipo,Nome/Squadra,Classe,Sesso,Specialità,Cintura,Peso"];
+    document.querySelectorAll("#athleteList tr").forEach(tr => {
+        let data = Array.from(tr.querySelectorAll("td")).slice(0, 6).map(td => td.innerText.trim());
+        csv.push("Atleta," + data.join(","));
+    });
+    document.querySelectorAll("#teamList tr").forEach(tr => {
+        let data = Array.from(tr.querySelectorAll("td")).slice(0, 6).map(td => td.innerText.trim());
+        csv.push("Team," + data.join(","));
+    });
+    const blob = new Blob([csv.join("\n")], { type: "text/csv" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `iscritti_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+}
 
 async function logout() { await sb.auth.signOut(); window.location.href = "login.html"; }
 
