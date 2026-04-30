@@ -134,14 +134,20 @@ function handleSpecialtyChange() {
     const classe = document.getElementById('classe').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     
-    let gender = "Maschio";
-    if (isTeam) {
-        gender = document.getElementById('team_gender')?.value || "Maschio";
-    } else {
-        const checkedGender = document.querySelector('input[name="gender"]:checked');
-        gender = checkedGender ? checkedGender.value : "Maschio";
-    }
+  let gender;
 
+if (isTeam) {
+    gender = document.getElementById('team_gender')?.value;
+} else {
+    const checkedGender = document.querySelector('input[name="gender"]:checked');
+    gender = checkedGender ? checkedGender.value : null;
+}
+
+// VALIDAZIONE: Se gender è null o vuoto, ferma tutto
+if (!gender) {
+    alert("Errore: Devi selezionare il genere dell'atleta!");
+    return; // Blocca l'esecuzione della funzione addAthlete
+}
     const wInput = document.getElementById('weight_category');
     wInput.innerHTML = '';
     wInput.disabled = true;
