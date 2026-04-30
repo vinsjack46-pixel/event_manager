@@ -1,9 +1,9 @@
- const sb = window.supabaseClient;
+const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
-// --- 1. CONFIGURAZIONE LIMITI RIGIDI (Aggiornato: Somma Kata+Kumite) ---
+// --- 1. CONFIGURAZIONE LIMITI (Verso v6.0: questi diventeranno dinamici) ---
 const LIMITI = { 
-    "KataKumiteSum": 300, // <--- MODIFICA: Limite unico per la somma
+    "KataKumiteSum": 300, 
     "ParaKarate": 50,
     "KIDS": 250 
 };
@@ -48,7 +48,6 @@ function toggleRegMode() {
         document.getElementById('first_name').required = false;
         document.getElementById('last_name').required = false;
         document.getElementById('birthdate').required = false;
-        document.querySelectorAll('.member-input').forEach(input => input.required = true);
 
         if (document.getElementById('membersContainer').children.length === 0) {
             for(let i=0; i<3; i++) addMemberField();
@@ -61,7 +60,6 @@ function toggleRegMode() {
         document.getElementById('first_name').required = true;
         document.getElementById('last_name').required = true;
         document.getElementById('birthdate').required = true;
-        document.querySelectorAll('.member-input').forEach(input => input.required = false);
     }
 }
 
@@ -69,20 +67,19 @@ function addMemberField() {
     const container = document.getElementById('membersContainer');
     const count = container.querySelectorAll('.member-input').length;
     if (count >= 6) return alert("Massimo 6 componenti.");
-    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
-
+    
     const div = document.createElement('div');
     div.className = "col-md-4 mb-2";
     div.innerHTML = `
         <div class="input-group input-group-sm">
             <span class="input-group-text">${count + 1}</span>
-            <input type="text" class="form-control member-input" placeholder="Nome Cognome" ${isTeam ? 'required' : ''}>
+            <input type="text" class="form-control member-input" placeholder="Nome Cognome" required>
             ${count >= 3 ? '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button>' : ''}
         </div>`;
     container.appendChild(div);
 }
 
-// --- 4. LOGICA DINAMICA (CLASSI, CINTURE E PESI) ---
+// --- 4. LOGICA DINAMICA (CLASSI E PESI) ---
 function handleBirthdateChange() {
     const dateVal = document.getElementById('birthdate').value;
     if (!dateVal) return;
@@ -100,29 +97,17 @@ function updateClassSpecsAndBelts(year) {
     const beltSel = document.getElementById('belt');
 
     let classe = "";
-    if (year >= 2021 && year <= 2022) classe = "U6";
-    else if (year >= 2019 && year <= 2020) classe = "U8";
-    else if (year >= 2017 && year <= 2018) classe = "U10";
+    if (year >= 2017 && year <= 2018) classe = "U10";
     else if (year >= 2015 && year <= 2016) classe = "U12";
     else if (year >= 2013 && year <= 2014) classe = "U14";
-    else if (year >= 2011 && year <= 2012) classe = "Cadetti";
-    else if (year >= 2009 && year <= 2010) classe = "Juniores";
-    else if (year >= 1991 && year <= 2008) classe = "Seniores";
-    else if (year >= 1960 && year <= 1990) classe = "Master";
+    else classe = "Fuori Quota";
 
     clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     
-    let belts = [];
-    if (["U6", "U8"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde"];
-    else if (["U10", "U12"].includes(classe)) belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-    else belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
-    
+    let belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
-    let specs = [];
-    if (["U6", "U8"].includes(classe)) specs = ["Combinata", "Kata", "Kumite", "ParaKarate"];
-    else specs = ["Kata", "Kumite", "ParaKarate"];
-
+    let specs = (year >= 2017) ? ["Combinata", "Kata", "Kumite", "ParaKarate"] : ["Kata", "Kumite", "ParaKarate"];
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     
@@ -134,13 +119,8 @@ function handleSpecialtyChange() {
     const classe = document.getElementById('classe').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     
-    let gender = "Maschio";
-    if (isTeam) {
-        gender = document.getElementById('team_gender')?.value || "Maschio";
-    } else {
-        const checkedGender = document.querySelector('input[name="gender"]:checked');
-        gender = checkedGender ? checkedGender.value : "Maschio";
-    }
+    // CORREZIONE v6.0: Legge correttamente dal SELECT o dal TEAM_GENDER
+    let gender = isTeam ? document.getElementById('team_gender').value : document.getElementById('gender').value;
 
     const wInput = document.getElementById('weight_category');
     wInput.innerHTML = '';
@@ -150,11 +130,11 @@ function handleSpecialtyChange() {
         wInput.disabled = false;
         let weights = [];
         if (classe === "U14") {
-            weights = (gender === "Maschio") ? ["-40", "-45", "-50", "-55", "55+"] : ["-42", "-47", "-52", "52+"];
-        } else if (["U12"].includes(classe)) {
-            weights = (gender === "Maschio") ? ["-32", "-37", "-42","-47", "47+"] : ["-32", "-37", "-42","-47", "47+"];
-         } else if (["U10"].includes(classe)) {
-            weights = (gender === "Maschio") ? ["-22", "-27", "-32","-37", "37+"] : ["-22", "-27", "-32","-37", "37+"];
+            weights = (gender === "Maschio" || gender === "Maschile") ? ["-40", "-45", "-50", "-55", "55+"] : ["-42", "-47", "-52", "52+"];
+        } else if (classe === "U12") {
+            weights = ["-32", "-37", "-42", "-47", "47+"];
+        } else if (classe === "U10") {
+            weights = ["-22", "-27", "-32", "-37", "37+"];
         } else { weights = ["Open"]; }
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
@@ -165,68 +145,7 @@ function handleSpecialtyChange() {
     }
 }
 
-// --- 5. CARICAMENTO E CONTEGGI ---
-async function fetchAthletes() {
-    const eventId = sessionStorage.getItem('selectedEventId');
-    if (!window.currentSocietyId) return;
-    const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
-    const list = document.getElementById('athleteList');
-    if (list) {
-        list.innerHTML = "";
-        athletes?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
-            list.innerHTML += `<tr><td><strong>${a.last_name} ${a.first_name}</strong></td><td>${a.classe}</td><td>${a.gender}</td><td>${a.specialty}</td><td>${a.belt}</td><td>${a.weight_category}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
-        });
-    }
-    updateGlobalCounters(eventId);
-}
-
-async function fetchTeams() {
-    const eventId = sessionStorage.getItem('selectedEventId');
-    if (!window.currentSocietyId) return;
-    const { data: teams } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
-    const list = document.getElementById('teamList');
-    if (list) {
-        list.innerHTML = "";
-        teams?.forEach(t => {
-            list.innerHTML += `<tr><td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td><td>${t.classe}</td><td>${t.gender}</td><td>${t.specialty}</td><td>${t.belt || '-'}</td><td>${t.weight_category || '-'}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
-        });
-    }
-}
-
-async function updateGlobalCounters(eventId) {
-    const { data: allA } = await sb.from('atleti').select('specialty').eq('event_id', eventId);
-    const { data: allT } = await sb.from('teams').select('specialty').eq('event_id', eventId);
-    const globalTotal = [...(allA || []), ...(allT || [])];
-
-    const { data: socA } = await sb.from('atleti').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
-    const { data: socT } = await sb.from('teams').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
-    const socTotal = [...(socA || []), ...(socT || [])];
-
-    const gCount = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
-    globalTotal.forEach(item => {
-        if (item.specialty === "Kumite") gCount.Kumite++; 
-        else if (item.specialty === "Kata") gCount.Kata++; 
-        else if (item.specialty === "ParaKarate") gCount.Para++; 
-        else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) gCount.Kids++;
-    });
-
-    const sCount = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
-    socTotal.forEach(item => {
-        if (item.specialty === "Kumite") sCount.Kumite++; 
-        else if (item.specialty === "Kata") sCount.Kata++; 
-        else if (item.specialty === "ParaKarate") sCount.Para++; 
-        else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) sCount.Kids++;
-    });
-
-    if(document.getElementById('kumiteAthleteCountDisplay')) document.getElementById('kumiteAthleteCountDisplay').innerText = sCount.Kumite;
-    if(document.getElementById('kataAthleteCountDisplay')) document.getElementById('kataAthleteCountDisplay').innerText = sCount.Kata;
-    if(document.getElementById('ParaKarateAthleteCountDisplay')) document.getElementById('ParaKarateAthleteCountDisplay').innerText = sCount.Para;
-    if(document.getElementById('KIDSAthleteCountDisplay')) document.getElementById('KIDSAthleteCountDisplay').innerText = sCount.Kids;
-    
-    return gCount;
-}
-
-// --- 6. AGGIUNTA (CON BLOCCO LIMITI SOMMATI) ---
+// --- 5. AGGIUNTA (CON CORREZIONE SESSO E LIMITI) ---
 async function addAthlete(e) {
     e.preventDefault();
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -235,7 +154,7 @@ async function addAthlete(e) {
     const spec = document.getElementById('specialty').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
-    // --- 1. CONTROLLO FASCIA ETÀ (2013 - 2018) ---
+    // 1. Controllo Età (2013-2018)
     let birthYear;
     if (isTeam) {
         birthYear = parseInt(document.getElementById('team_year').value);
@@ -245,25 +164,16 @@ async function addAthlete(e) {
     }
 
     if (birthYear < 2013 || birthYear > 2018) {
-        return alert("ATTENZIONE: L'iscrizione è riservata esclusivamente ai nati tra il 2013 e il 2018.");
+        return alert("Iscrizione riservata ai nati tra il 2013 e il 2018.");
     }
-    // ----------------------------------------------
 
+    // 2. Controllo Limiti Sommati
     const globalCounts = await updateGlobalCounters(eventId);
-    let isFull = false;
-
-    // --- 2. LOGICA LIMITI: SOMMA KATA + KUMITE ---
     const currentSum = globalCounts.Kata + globalCounts.Kumite;
 
     if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
-        isFull = true;
-    } else if (spec === "ParaKarate" && globalCounts.Para >= LIMITI.ParaKarate) {
-        isFull = true;
-    } else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(spec) && globalCounts.Kids >= LIMITI.KIDS) {
-        isFull = true;
+        return alert(`Posti esauriti per Kata/Kumite (Limite: ${LIMITI.KataKumiteSum})`);
     }
-
-    if (isFull) return alert(`ATTENZIONE: Posti esauriti! Il limite massimo di ${LIMITI.KataKumiteSum} iscritti tra Kata e Kumite è stato raggiunto.`);
 
     const commonData = {
         event_id: eventId,
@@ -274,7 +184,6 @@ async function addAthlete(e) {
         weight_category: document.getElementById('weight_category').value || '-'
     };
 
-    // --- 3. INVIO DATI ---
     if (isTeam) {
         const members = Array.from(document.querySelectorAll('.member-input')).map(i => i.value.trim()).filter(v => v !== "");
         if (members.length < 3) return alert("Inserisci almeno 3 componenti.");
@@ -284,33 +193,77 @@ async function addAthlete(e) {
             team_name: document.getElementById('team_name').value, 
             gender: document.getElementById('team_gender').value, 
             members: members,
-            team_year: birthYear // Aggiungiamo l'anno per coerenza nel DB
+            team_year: birthYear
         }]);
-        
-        if (error) alert("Errore: " + error.message);
-        else { alert("Squadra registrata!"); completeReset(); }
+        if (error) alert(error.message); else completeReset();
     } else {
+        // CORREZIONE FINALE: Legge dal SELECT id="gender"
+        const sessoSelezionato = document.getElementById('gender').value;
+
         const { error } = await sb.from('atleti').insert([{
             ...commonData, 
             first_name: document.getElementById('first_name').value, 
             last_name: document.getElementById('last_name').value, 
             birthdate: document.getElementById('birthdate').value, 
-            gender: document.querySelector('input[name="gender"]:checked')?.value || "Maschio"
+            gender: sessoSelezionato // <--- RISOLTO
         }]);
-        
-        if (error) alert("Errore: " + error.message);
-        else { alert("Atleta registrato!"); completeReset(); }
+        if (error) alert(error.message); else { alert("Iscrizione completata!"); completeReset(); }
     }
 }
 
-// --- 7. UTILITY ---
-function completeReset() {
-    const currentMode = document.querySelector('input[name="regType"]:checked').id;
-    document.getElementById('athleteForm').reset();
-    if (currentMode === "typeTeam") {
-        document.getElementById('membersContainer').innerHTML = "";
-        for(let i=0; i<3; i++) addMemberField();
+// --- 6. CONTEGGI E UTILITY ---
+async function updateGlobalCounters(eventId) {
+    const { data: allA } = await sb.from('atleti').select('specialty').eq('event_id', eventId);
+    const { data: allT } = await sb.from('teams').select('specialty').eq('event_id', eventId);
+    const globalTotal = [...(allA || []), ...(allT || [])];
+
+    const gCount = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
+    globalTotal.forEach(item => {
+        if (item.specialty === "Kumite") gCount.Kumite++; 
+        else if (item.specialty === "Kata") gCount.Kata++; 
+        else if (item.specialty === "ParaKarate") gCount.Para++; 
+        else gCount.Kids++;
+    });
+
+    // Aggiorna la tua UI (i box in basso)
+    const { data: socA } = await sb.from('atleti').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
+    const { data: socT } = await sb.from('teams').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
+    const sCount = (socA?.length || 0) + (socT?.length || 0);
+
+    // Esempio: aggiorna solo i conteggi della società loggata per i box UI
+    if(document.getElementById('kumiteAthleteCountDisplay')) document.getElementById('kumiteAthleteCountDisplay').innerText = gCount.Kumite; 
+    // Nota: qui puoi decidere se mostrare il totale globale o quello della società
+    
+    return gCount;
+}
+
+async function fetchAthletes() {
+    const eventId = sessionStorage.getItem('selectedEventId');
+    const { data: athletes } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
+    const list = document.getElementById('athleteList');
+    if (list) {
+        list.innerHTML = "";
+        athletes?.forEach(a => {
+            list.innerHTML += `<tr><td>${a.last_name} ${a.first_name}</td><td>${a.classe}</td><td>${a.gender}</td><td>${a.specialty}</td><td>${a.belt}</td><td>${a.weight_category}</td><td class="text-end"><button class="btn btn-sm text-danger" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+        });
     }
+    updateGlobalCounters(eventId);
+}
+
+async function fetchTeams() {
+    const eventId = sessionStorage.getItem('selectedEventId');
+    const { data: teams } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
+    const list = document.getElementById('teamList');
+    if (list) {
+        list.innerHTML = "";
+        teams?.forEach(t => {
+            list.innerHTML += `<tr><td>${t.team_name}</td><td>${t.classe}</td><td>${t.gender}</td><td>${t.specialty}</td><td>${t.belt}</td><td>${t.weight_category}</td><td class="text-end"><button class="btn btn-sm text-danger" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+        });
+    }
+}
+
+function completeReset() {
+    document.getElementById('athleteForm').reset();
     fetchAthletes();
     fetchTeams();
     toggleRegMode();
@@ -319,14 +272,8 @@ function completeReset() {
 async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
 async function deleteTeam(id) { if (confirm("Eliminare?")) { await sb.from('teams').delete().eq('id', id); fetchTeams(); } }
 
-async function logout() { await sb.auth.signOut(); window.location.href = "login.html"; }
-
 document.addEventListener('DOMContentLoaded', () => {
     initPage();
     document.getElementById('athleteForm').addEventListener('submit', addAthlete);
-    document.getElementById('birthdate').addEventListener('change', handleBirthdateChange);
-    document.getElementById('team_year').addEventListener('change', handleTeamYearChange);
-    document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
-    document.querySelectorAll('input[name="gender"]').forEach(r => r.addEventListener('change', handleSpecialtyChange));
-    document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
+    document.getElementById('gender').addEventListener('change', handleSpecialtyChange);
 });
