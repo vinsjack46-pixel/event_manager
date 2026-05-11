@@ -288,3 +288,30 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
 });
+function exportToExcel() {
+    if (myAthletes.length === 0 && myTeams.length === 0) {
+        return alert("Nessun dato da esportare per questo evento.");
+    }
+
+    // Intestazione delle colonne
+    let csv = ["TIPO;NOME/TEAM;MEMBRI;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
+
+    // Aggiungiamo gli atleti singoli
+    myAthletes.forEach(a => {
+        csv.push(`"Individuale";"${a.last_name} ${a.first_name}";"-";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`);
+    });
+
+    // Aggiungiamo le squadre
+    myTeams.forEach(t => {
+        csv.push(`"Team";"${t.team_name}";"${t.members?.join(' - ')}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`);
+    });
+
+    // Creazione del file e download
+    const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const nomeEvento = sessionStorage.getItem('selectedEventName') || "Esportazione";
+    
+    link.href = URL.createObjectURL(blob);
+    link.download = `Iscritti_${nomeEvento}.csv`;
+    link.click();
+}
