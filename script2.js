@@ -40,25 +40,30 @@ function toggleRegMode() {
     if (isTeam) {
         indFields.style.display = 'none';
         teamFields.style.display = 'block';
+        
+        // Reset individuali
+        indFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
+        
         document.getElementById('team_name').required = true;
         document.getElementById('team_year').required = true;
-        document.getElementById('first_name').required = false;
-        document.getElementById('last_name').required = false;
-        document.getElementById('birthdate').required = false;
+        
         if (document.getElementById('membersContainer').children.length === 0) {
             for(let i=0; i<3; i++) addMemberField();
         }
+        document.querySelectorAll('.member-input').forEach(i => i.required = true);
     } else {
         indFields.style.display = 'block';
         teamFields.style.display = 'none';
-        document.getElementById('team_name').required = false;
-        document.getElementById('team_year').required = false;
+        
+        // Reset squadra
+        teamFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
+        document.querySelectorAll('.member-input').forEach(i => { i.required = false; });
+
         document.getElementById('first_name').required = true;
         document.getElementById('last_name').required = true;
         document.getElementById('birthdate').required = true;
     }
 }
-
 function addMemberField() {
     const container = document.getElementById('membersContainer');
     const count = container.querySelectorAll('.member-input').length;
