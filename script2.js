@@ -90,18 +90,57 @@ function updateClassSpecsAndBelts(year) {
     const spSel = document.getElementById('specialty');
     const beltSel = document.getElementById('belt');
 
+    // 1. Calcolo della Classe
     let classe = "";
     if (year >= 2017 && year <= 2018) classe = "U10";
     else if (year >= 2015 && year <= 2016) classe = "U12";
-    else if (year >= 2013 && year <= 2014) classe = "U14";
+    else if (year >= 2013 && year <= 2014) classe = "Esordienti";
+    else if (year >= 2011 && year <= 2012) classe = "Cadetti";
+    else if (year >= 2009 && year <= 2010) classe = "Juniores";
+    else if (year >= 1991 && year <= 2008) classe = "Seniores";
+    else if (year >= 1960 && year <= 1990) classe = "Master";
     else classe = "Fuori Quota";
 
     clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     
-    let belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
+    // 2. SELEZIONE CINTURE IN BASE ALLA CLASSE
+    let belts = [];
+
+    switch (classe) {
+        case "U10":
+        case "U12":
+            // Cinture per i più piccoli
+            belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
+            break;
+        
+        case "Esordienti":
+                // Cinture per agonisti giovani
+            belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"];
+            break;
+
+        case "Seniores":
+        case "Master":
+        case "Esordienti":
+            // Cinture per adulti (tutte o solo alte)
+            belts = ["Bianca/Gialla/Arancio", "Verde/Blu", "Marrone/Nera"];
+            break;
+
+        default:
+            // Default per Fuori Quota o altre classi
+            belts = ["Bianca/Gialla/Arancio", "Verde/Blu", "Marrone/Nera"];
+    }
+
+    // Inserimento delle cinture nel menu a tendina
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
-    let specs = ["Kata", "Kumite", "ParaKarate", "Combinata"];
+    // 3. SELEZIONE SPECIALITÀ
+    let specs = [];
+    if (classe === "U10" || classe === "U12") {
+        specs = ["Kata", "Kumite", "ParaKarate"];
+    } else {
+        specs = ["ParaKarate"];
+    }
+
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     
@@ -133,7 +172,7 @@ function handleSpecialtyChange() {
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
         wInput.disabled = false;
-        ["K10","K21", "K22", "K30"].forEach(k => wInput.innerHTML += `<option value="${k}">${k}</option>`);
+        ["L10","L20","L21", "L22", "L30", "L31", "L32", "L33", "L34", "L35", "L36", "L40"].forEach(k => wInput.innerHTML += `<option value="${k}">${k}</option>`);
     } else {
         wInput.innerHTML = '<option value="-">-</option>';
     }
@@ -219,8 +258,8 @@ async function addAthlete(e) {
         birthYear = new Date(document.getElementById('birthdate').value).getFullYear();
     }
 
-    if (birthYear < 2013 || birthYear > 2018) {
-        return alert("ATTENZIONE: Iscrizione riservata ai nati tra il 2013 e il 2018.");
+    if (birthYear < 1960 || birthYear > 2018) {
+        return alert("ATTENZIONE: Iscrizione riservata ai nati tra il 1960 e il 2018.");
     }
 
     const globalCounts = await updateGlobalCounters(eventId);
