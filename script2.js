@@ -288,30 +288,56 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
 });
-function exportToExcel() {
-    if (myAthletes.length === 0 && myTeams.length === 0) {
-        return alert("Nessun dato da esportare per questo evento.");
+
+async function exportToExcel() {
+    const eventId = sessionStorage.getItem('selectedEventId');
+    if (!window.currentSocietyId || !eventId) {
+        return alert("Errore: sessione non valida o società non identificata.");
     }
 
-    // Intestazione delle colonne
-    let csv = ["TIPO;NOME/TEAM;MEMBRI;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
+    try {
+        // 1. Recupero dati freschi dal Database (Atleti e Team)
+        const { data: athletes, error: errA } = await sb.from('atleti')
+            .select('*')
+            .eq('society_id', window.currentSocietyId)
+            .eq('event_id', eventId);
 
-    // Aggiungiamo gli atleti singoli
-    myAthletes.forEach(a => {
-        csv.push(`"Individuale";"${a.last_name} ${a.first_name}";"-";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`);
-    });
+        const { data: teams, error: errT } = await sb.from('teams')
+            .select('*')
+            .eq('society_id', window.currentSocietyId)
+            .eq('event_id', eventId);
 
-    // Aggiungiamo le squadre
-    myTeams.forEach(t => {
-        csv.push(`"Team";"${t.team_name}";"${t.members?.join(' - ')}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`);
-    });
+        if (errA || errT) throw new Error("Errore nel recupero dati");
 
-    // Creazione del file e download
-    const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement("a");
-    const nomeEvento = sessionStorage.getItem('selectedEventName') || "Esportazione";
-    
-    link.href = URL.createObjectURL(blob);
-    link.download = `Iscritti_${nomeEvento}.csv`;
-    link.click();
+        if ((!athletes || athletes.length === 0) && (!teams || teams.length === 0)) {
+            return alert("Nessun dato presente da esportare.");
+        }
+
+        // 2. Costruzione del CSV
+        let csv = ["TIPO;NOME/TEAM;MEMBRI;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
+
+        // Aggiunta Atleti Individuali
+        athletes.forEach(a => {
+            csv.push(`"Individuale";"${a.last_name} ${a.first_name}";"-";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`);
+        });
+
+        // Aggiunta Team
+        teams.forEach(t => {
+            const membri = t.members ? t.members.join(' - ') : "-";
+            csv.push(`"Team";"${t.team_name}";"${membri}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`);
+        });
+
+        // 3. Generazione File e Download
+        const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const nomeEvento = sessionStorage.getItem('selectedEventName') || "Evento";
+        
+        link.href = URL.createObjectURL(blob);
+        link.download = `Iscritti_${nomeEvento}.csv`;
+        link.click();
+
+    } catch (error) {
+        console.error(error);
+        alert("Si è verificato un errore durante l'esportazione.");
+    }
 }
