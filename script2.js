@@ -312,11 +312,33 @@ async function addAthlete(e) {
     }
 }
 
+// FUNZIONE DI RESET COMPLETO (Potenziata)
 function completeReset() {
-    document.getElementById('athleteForm').reset();
+    // 1. Reset standard del form (svuota input testo e radio)
+    const form = document.getElementById('athleteForm');
+    form.reset();
+
+    // 2. Svuota il contenitore dei membri della squadra (i campi dinamici 1, 2, 3...)
+    const container = document.getElementById('membersContainer');
+    if (container) container.innerHTML = "";
+
+    // 3. Reset manuale dei menu a tendina dinamici
+    document.getElementById('classe').innerHTML = '<option value="">-- Seleziona Anno --</option>';
+    document.getElementById('specialty').innerHTML = '<option value="">-- Specialità --</option>';
+    document.getElementById('belt').innerHTML = '<option value="">-- Cintura --</option>';
+    
+    const wInput = document.getElementById('weight_category');
+    wInput.innerHTML = '<option value="-">-</option>';
+    wInput.disabled = true;
+
+    // 4. Ricarica le tabelle degli iscritti
     fetchAthletes();
     fetchTeams();
+
+    // 5. Ripristina la visualizzazione corretta (Individuale di default)
     toggleRegMode();
+    
+    console.log("Modulo pulito con successo.");
 }
 
 async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
