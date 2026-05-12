@@ -177,8 +177,8 @@ function handleSpecialtyChange() {
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
         wInput.disabled = false;
-        ["L10","L20","L21", "L22", "L30", "L31", "L32", "L33", "L34", "L35", "L36", "L40"].forEach(k => wInput.innerHTML += `<option value="${k}">${k}</option>`);
-    } else {
+        ["F10","F20","F21", "F22", "F30", "F31", "F32", "F33", "F34", "F35", "F36", "F40"].forEach(k => wInput.innerHTML += `<option value="${k}">${k}</option>`);
+    } else 
         wInput.innerHTML = '<option value="-">-</option>';
     }
 }
