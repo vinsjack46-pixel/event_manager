@@ -178,7 +178,7 @@ function handleSpecialtyChange() {
     } else if (spec === "ParaKarate") {
         wInput.disabled = false;
         ["F10","F20","F21", "F22", "F30", "F31", "F32", "F33", "F34", "F35", "F36", "F40"].forEach(k => wInput.innerHTML += `<option value="${k}">${k}</option>`);
-    } else 
+    } else {
         wInput.innerHTML = '<option value="-">-</option>';
     }
 }
