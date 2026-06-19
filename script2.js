@@ -1,6 +1,9 @@
 const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
+// STATO GLOBALE DI EDITING
+let editingAthleteId = null; 
+
 const LIMITI = { 
     "KataKumiteSum": 300, 
     "ParaKarate": 50, 
@@ -41,9 +44,8 @@ function toggleRegMode() {
         indFields.style.display = 'none';
         teamFields.style.display = 'block';
         
-        // Reset individuali
+        // Reset campi individuali
         indFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
-        
         document.getElementById('team_name').required = true;
         document.getElementById('team_year').required = true;
         
@@ -54,8 +56,8 @@ function toggleRegMode() {
     } else {
         indFields.style.display = 'block';
         teamFields.style.display = 'none';
-        
-        // Reset squadra
+
+        // Reset campi squadra
         teamFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
         document.querySelectorAll('.member-input').forEach(i => { i.required = false; });
 
@@ -64,6 +66,7 @@ function toggleRegMode() {
         document.getElementById('birthdate').required = true;
     }
 }
+
 function addMemberField() {
     const container = document.getElementById('membersContainer');
     const count = container.querySelectorAll('.member-input').length;
@@ -85,6 +88,14 @@ function handleBirthdateChange() {
     updateClassSpecsAndBelts(new Date(dateVal).getFullYear());
 }
 
+// Gestore specifico per la modifica manuale del sesso durante l'editing o l'inserimento
+function handleGenderChange() {
+    const spec = document.getElementById('specialty').value;
+    if (spec === "Kumite") {
+        handleSpecialtyChange(); // Ricalcola i pesi se cambia il sesso
+    }
+}
+
 function handleTeamYearChange() {
     const year = parseInt(document.getElementById('team_year').value);
     if (year) updateClassSpecsAndBelts(year);
@@ -95,7 +106,6 @@ function updateClassSpecsAndBelts(year) {
     const spSel = document.getElementById('specialty');
     const beltSel = document.getElementById('belt');
 
-    // 1. Calcolo della Classe
     let classe = "";
     if (year >= 2017 && year <= 2018) classe = "U10";
     else if (year >= 2015 && year <= 2016) classe = "U12";
@@ -108,42 +118,29 @@ function updateClassSpecsAndBelts(year) {
 
     clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     
-    // 2. SELEZIONE CINTURE IN BASE ALLA CLASSE
     let belts = [];
-
     switch (classe) {
         case "U10":
         case "U12":
-            // Cinture per i più piccoli
             belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone"];
             break;
-        
         case "Esordienti":
-                // Cinture per agonisti giovani
             belts = ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"];
             break;
-
+        case "Cadetti":
+        case "Juniores":
         case "Seniores":
         case "Master":
-        case "Esordienti":
-            // Cinture per adulti (tutte o solo alte)
             belts = ["Bianca/Gialla/Arancio", "Verde/Blu", "Marrone/Nera"];
             break;
-
         default:
-            // Default per Fuori Quota o altre classi
             belts = ["Bianca/Gialla/Arancio", "Verde/Blu", "Marrone/Nera"];
     }
-
-    // Inserimento delle cinture nel menu a tendina
     beltSel.innerHTML = belts.map(b => `<option value="${b}">${b}</option>`).join('');
 
-    // 3. SELEZIONE SPECIALITÀ
-    let specs = [];
+    let specs = ["Kata", "Kumite", "ParaKarate"];
     if (classe === "U10" || classe === "U12") {
-        specs = ["Kata", "Kumite", "ParaKarate"];
-    } else {
-        specs = ["ParaKarate"];
+        specs.push("Combinata");
     }
 
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
@@ -157,9 +154,7 @@ function handleSpecialtyChange() {
     const classe = document.getElementById('classe').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     
-    // Recupero Sesso Corretto (Fix v6.0)
     let gender = isTeam ? document.getElementById('team_gender').value : document.getElementById('gender').value;
-
     const wInput = document.getElementById('weight_category');
     wInput.innerHTML = '';
     wInput.disabled = true;
@@ -167,13 +162,15 @@ function handleSpecialtyChange() {
     if (spec === "Kumite") {
         wInput.disabled = false;
         let weights = [];
-        if (classe === "U14") {
+        if (classe === "Esordienti") {
             weights = (gender === "Maschio") ? ["-40", "-45", "-50", "-55", "55+"] : ["-42", "-47", "-52", "52+"];
         } else if (classe === "U12") {
             weights = ["-32", "-37", "-42","-47", "47+"];
         } else if (classe === "U10") {
             weights = ["-22", "-27", "-32","-37", "37+"];
-        } else { weights = ["Open"]; }
+        } else { 
+            weights = ["Open"]; 
+        }
         weights.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
     } else if (spec === "ParaKarate") {
         wInput.disabled = false;
@@ -191,7 +188,19 @@ async function fetchAthletes() {
     if (list) {
         list.innerHTML = "";
         athletes?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
-            list.innerHTML += `<tr><td><strong>${a.last_name} ${a.first_name}</strong></td><td>${a.classe}</td><td>${a.gender}</td><td>${a.specialty}</td><td>${a.belt}</td><td>${a.weight_category}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteAthlete('${a.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            // AGGIORNATO: Inserito il pulsante Modifica (Giallo con matita) accanto al cestino
+            list.innerHTML += `<tr>
+                <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                <td>${a.classe}</td>
+                <td>${a.gender}</td>
+                <td>${a.specialty}</td>
+                <td>${a.belt}</td>
+                <td>${a.weight_category}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editAthlete('${a.id}')" title="Modifica"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteAthlete('${a.id}')" title="Elimina"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
         });
     }
     updateGlobalCounters(eventId);
@@ -210,14 +219,53 @@ async function fetchTeams() {
     }
 }
 
+// NUOVA FUNZIONE: Carica i dati dell'atleta nel modulo per la modifica
+async function editAthlete(id) {
+    const { data: a, error } = await sb.from('atleti').select('*').eq('id', id).single();
+    if (error) return alert("Errore nel recupero dati dell'atleta: " + error.message);
+
+    // 1. Forza la modalità individuale nel form
+    const radioInd = document.querySelector('input[name="regType"][value="individual"]');
+    if (radioInd) radioInd.checked = true;
+    toggleRegMode();
+
+    // 2. Compila i campi base
+    document.getElementById('first_name').value = a.first_name;
+    document.getElementById('last_name').value = a.last_name;
+    document.getElementById('birthdate').value = a.birthdate;
+    document.getElementById('gender').value = a.gender;
+
+    // 3. Esegui il calcolo a cascata di Classe, Specialità e Cinture
+    const birthYear = new Date(a.birthdate).getFullYear();
+    updateClassSpecsAndBelts(birthYear);
+
+    // 4. Seleziona i valori precisi salvati precedentemente
+    document.getElementById('specialty').value = a.specialty;
+    handleSpecialtyChange(); // Rigenera i pesi esatti in base alla specialità e al sesso appena inserito
+    
+    document.getElementById('belt').value = a.belt;
+    if (document.getElementById('weight_category')) {
+        document.getElementById('weight_category').value = a.weight_category;
+    }
+
+    // 5. Attiva lo stato di editing e trasforma graficamente il pulsante di invio
+    editingAthleteId = id;
+    const submitBtn = document.querySelector('#athleteForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerText = "Salva Modifiche Atleta";
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-warning'); // Colore giallo per segnalare la modifica
+    }
+
+    // 6. Porta la pagina fluidamente in cima sul modulo
+    document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
+}
+
 async function updateGlobalCounters(eventId) {
-    // 1. Prendi TUTTI gli iscritti per controllare i limiti globali
     const { data: allA } = await sb.from('atleti').select('specialty').eq('event_id', eventId);
     const { data: allT } = await sb.from('teams').select('specialty').eq('event_id', eventId);
     const globalTotal = [...(allA || []), ...(allT || [])];
 
-    // 2. Prendi solo quelli della MIA SOCIETÀ per i box in basso
-    const socA = (allA || []).filter(() => true); // In un'app reale filtreremmo qui, ma usiamo la query successiva per sicurezza
     const { data: myA } = await sb.from('atleti').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
     const { data: myT } = await sb.from('teams').select('specialty').eq('event_id', eventId).eq('society_id', window.currentSocietyId);
     const myTotal = [...(myA || []), ...(myT || [])];
@@ -238,7 +286,6 @@ async function updateGlobalCounters(eventId) {
         else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) sCount.Kids++;
     });
 
-    // AGGIORNAMENTO BOX (Iscritti della Società)
     if(document.getElementById('kumiteAthleteCountDisplay')) document.getElementById('kumiteAthleteCountDisplay').innerText = sCount.Kumite;
     if(document.getElementById('kataAthleteCountDisplay')) document.getElementById('kataAthleteCountDisplay').innerText = sCount.Kata;
     if(document.getElementById('ParaKarateAthleteCountDisplay')) document.getElementById('ParaKarateAthleteCountDisplay').innerText = sCount.Para;
@@ -255,23 +302,19 @@ async function addAthlete(e) {
     const spec = document.getElementById('specialty').value;
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
-    // CONTROLLO FASCIA ETÀ (2013 - 2018)
-    let birthYear;
-    if (isTeam) {
-        birthYear = parseInt(document.getElementById('team_year').value);
-    } else {
-        birthYear = new Date(document.getElementById('birthdate').value).getFullYear();
-    }
+    let birthYear = isTeam ? parseInt(document.getElementById('team_year').value) : new Date(document.getElementById('birthdate').value).getFullYear();
 
     if (birthYear < 1960 || birthYear > 2018) {
         return alert("ATTENZIONE: Iscrizione riservata ai nati tra il 1960 e il 2018.");
     }
 
-    const globalCounts = await updateGlobalCounters(eventId);
-    const currentSum = globalCounts.Kata + globalCounts.Kumite;
-
-    if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
-        return alert(`Posti esauriti! Limite di ${LIMITI.KataKumiteSum} raggiunto.`);
+    // Se NON siamo in modalità modifica, controlliamo i tetti dei limiti globali (In modifica non aumentiamo i posti totali)
+    if (!editingAthleteId) {
+        const globalCounts = await updateGlobalCounters(eventId);
+        const currentSum = globalCounts.Kata + globalCounts.Kumite;
+        if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
+            return alert(`Posti esauriti! Limite di ${LIMITI.KataKumiteSum} raggiunto.`);
+        }
     }
 
     const commonData = {
@@ -297,32 +340,38 @@ async function addAthlete(e) {
         if (error) alert(error.message);
         else { alert("Squadra registrata!"); completeReset(); }
     } else {
-        // RECUPERO SESSO DAL SELECT (Fix v6.0)
         const sessoSelezionato = document.getElementById('gender').value;
-
-        const { error } = await sb.from('atleti').insert([{
+        const athleteData = {
             ...commonData, 
             first_name: document.getElementById('first_name').value, 
             last_name: document.getElementById('last_name').value, 
             birthdate: document.getElementById('birthdate').value, 
             gender: sessoSelezionato
-        }]);
-        if (error) alert(error.message);
-        else { alert("Atleta registrato!"); completeReset(); }
+        };
+
+        // AGGIORNATO: Controllo dello stato di editing (Update vs Insert)
+        if (editingAthleteId) {
+            const { error } = await sb.from('atleti').update([athleteData]).eq('id', editingAthleteId);
+            if (error) alert("Errore durante l'aggiornamento: " + error.message);
+            else { 
+                alert("Dati atleta aggiornati con successo!"); 
+                completeReset(); 
+            }
+        } else {
+            const { error } = await sb.from('atleti').insert([athleteData]);
+            if (error) alert(error.message);
+            else { alert("Atleta registrato!"); completeReset(); }
+        }
     }
 }
 
-// FUNZIONE DI RESET COMPLETO (Potenziata)
 function completeReset() {
-    // 1. Reset standard del form (svuota input testo e radio)
     const form = document.getElementById('athleteForm');
     form.reset();
 
-    // 2. Svuota il contenitore dei membri della squadra (i campi dinamici 1, 2, 3...)
     const container = document.getElementById('membersContainer');
     if (container) container.innerHTML = "";
 
-    // 3. Reset manuale dei menu a tendina dinamici
     document.getElementById('classe').innerHTML = '<option value="">-- Seleziona Anno --</option>';
     document.getElementById('specialty').innerHTML = '<option value="">-- Specialità --</option>';
     document.getElementById('belt').innerHTML = '<option value="">-- Cintura --</option>';
@@ -331,25 +380,31 @@ function completeReset() {
     wInput.innerHTML = '<option value="-">-</option>';
     wInput.disabled = true;
 
-    // 4. Ricarica le tabelle degli iscritti
+    // AGGIORNATO: Ripristina lo stato iniziale del pulsante di invio e pulisce l'ID
+    editingAthleteId = null;
+    const submitBtn = document.querySelector('#athleteForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerText = "Invia Iscrizione";
+        submitBtn.classList.remove('btn-warning');
+        submitBtn.classList.add('btn-primary');
+    }
+
     fetchAthletes();
     fetchTeams();
-
-    // 5. Ripristina la visualizzazione corretta (Individuale di default)
     toggleRegMode();
     
-    console.log("Modulo pulito con successo.");
+    console.log("Modulo pulito con successo e stato di editing resettato.");
 }
 
 async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
 async function deleteTeam(id) { if (confirm("Eliminare?")) { await sb.from('teams').delete().eq('id', id); fetchTeams(); } }
-
 async function logout() { await sb.auth.signOut(); window.location.href = "login.html"; }
 
 document.addEventListener('DOMContentLoaded', () => {
     initPage();
     document.getElementById('athleteForm').addEventListener('submit', addAthlete);
     document.getElementById('birthdate').addEventListener('change', handleBirthdateChange);
+    document.getElementById('gender').addEventListener('change', handleGenderChange); // Aggiunto per ricalcolare pesi se cambia sesso a mano
     document.getElementById('team_year').addEventListener('change', handleTeamYearChange);
     document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
@@ -360,48 +415,29 @@ async function exportToExcel() {
     if (!window.currentSocietyId || !eventId) {
         return alert("Errore: sessione non valida o società non identificata.");
     }
-
     try {
-        // 1. Recupero dati freschi dal Database (Atleti e Team)
-        const { data: athletes, error: errA } = await sb.from('atleti')
-            .select('*')
-            .eq('society_id', window.currentSocietyId)
-            .eq('event_id', eventId);
-
-        const { data: teams, error: errT } = await sb.from('teams')
-            .select('*')
-            .eq('society_id', window.currentSocietyId)
-            .eq('event_id', eventId);
-
+        const { data: athletes, error: errA } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
+        const { data: teams, error: errT } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
         if (errA || errT) throw new Error("Errore nel recupero dati");
-
         if ((!athletes || athletes.length === 0) && (!teams || teams.length === 0)) {
             return alert("Nessun dato presente da esportare.");
         }
 
-        // 2. Costruzione del CSV
         let csv = ["TIPO;NOME/TEAM;MEMBRI;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
-
-        // Aggiunta Atleti Individuali
         athletes.forEach(a => {
             csv.push(`"Individuale";"${a.last_name} ${a.first_name}";"-";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`);
         });
-
-        // Aggiunta Team
         teams.forEach(t => {
             const membri = t.members ? t.members.join(' - ') : "-";
             csv.push(`"Team";"${t.team_name}";"${membri}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`);
         });
 
-        // 3. Generazione File e Download
         const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
         const nomeEvento = sessionStorage.getItem('selectedEventName') || "Evento";
-        
         link.href = URL.createObjectURL(blob);
         link.download = `Iscritti_${nomeEvento}.csv`;
         link.click();
-
     } catch (error) {
         console.error(error);
         alert("Si è verificato un errore durante l'esportazione.");
