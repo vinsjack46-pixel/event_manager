@@ -142,7 +142,6 @@ async function saveSportConfigToDB(e) {
 
         const payload = {
             richiede_peso: requiresWeight,
-            richiega_peso: requiresWeight,
             regole: baseRegole,
             etichetta_livello: labelLivello
         };
