@@ -1,7 +1,7 @@
 const sb = window.supabaseClient;
 let allAthletes = [], allTeams = [];
+let isCreatingNewSport = false;
 
-// Controlla se l'utente ha i permessi di amministratore
 async function checkAdminAccess() {
     const { data: { user }, error } = await sb.auth.getUser();
     const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"]; 
@@ -14,28 +14,78 @@ async function checkAdminAccess() {
     return true;
 }
 
-// Avvia tutto il pannello di controllo
 async function initAdmin() {
     console.log("Verifica autorizzazione in corso...");
     const isAuthorized = await checkAdminAccess();
     if (!isAuthorized) return; 
 
-    // Carica configurazione iniziale dello sport nel modulo
-    await loadSportConfigFromDB();
+    // Carica l'elenco degli sport nei menu a tendina
+    await refreshSportDropdowns();
 
     await loadFilterEvents();
     await fetchGlobalData();
     
-    // Assegnazione degli ascoltatori degli eventi ai form
     document.getElementById('eventForm').addEventListener('submit', createEvent);
     document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
     document.getElementById('filterEvent').addEventListener('change', filterAll);
     document.getElementById('globalSearch').addEventListener('input', filterAll);
 }
 
-// LEGGE LE REGOLE ATTUALI DAL DB E RIEMPIE I CAMPI INTERFACCIA
+// Carica tutti gli sport registrati nella tabella configurazioni_sport
+async function refreshSportDropdowns() {
+    try {
+        const { data: sports, error } = await sb.from('configurazioni_sport').select('sport_id');
+        if (error) throw error;
+
+        const configSelect = document.getElementById('configSportId');
+        const eventSelect = document.getElementById('eventSportId');
+        
+        configSelect.innerHTML = "";
+        eventSelect.innerHTML = '<option value="">-- Seleziona Sport --</option>';
+
+        sports?.forEach(s => {
+            const opt = `<option value="${s.sport_id}">${s.sport_id.toUpperCase()}</option>`;
+            configSelect.innerHTML += opt;
+            eventSelect.innerHTML += opt;
+        });
+
+        if (!isCreatingNewSport) {
+            await loadSportConfigFromDB();
+        }
+    } catch (err) {
+        console.error("Errore nel caricamento degli elenchi sport:", err);
+    }
+}
+
+// Mostra o nasconde l'input testuale per aggiungere un nuovo sport
+function toggleNewSportInput() {
+    const select = document.getElementById('configSportId');
+    const input = document.getElementById('newSportId');
+    const metaFields = document.getElementById('sportMetaFields');
+    const btn = document.getElementById('toggleNewSportBtn');
+
+    if (!isCreatingNewSport) {
+        select.style.display = "none";
+        input.style.display = "block";
+        metaFields.style.display = "block";
+        input.value = "";
+        btn.innerText = "×";
+        isCreatingNewSport = true;
+    } else {
+        select.style.display = "block";
+        input.style.display = "none";
+        metaFields.style.display = "none";
+        btn.innerText = "+";
+        isCreatingNewSport = false;
+        loadSportConfigFromDB();
+    }
+}
+
 async function loadSportConfigFromDB() {
+    if (isCreatingNewSport) return;
     const sportId = document.getElementById('configSportId').value;
+    if (!sportId) return;
+
     try {
         const { data: config, error } = await sb
             .from('configurazioni_sport')
@@ -43,12 +93,8 @@ async function loadSportConfigFromDB() {
             .eq('sport_id', sportId)
             .single();
 
-        if (error || !config) {
-            console.log("Nessuna configurazione trovata. Uso valori predefiniti.");
-            return;
-        }
+        if (error || !config) return;
 
-        // Estrae le informazioni e popola gli input dell'admin.html
         const regole = config.regole || {};
         const limiti = regole.limiti || {};
 
@@ -58,52 +104,96 @@ async function loadSportConfigFromDB() {
         document.getElementById('configRichiedePeso').value = config.richiede_peso === false ? "false" : "true";
 
     } catch (err) {
-        console.error("Errore nel caricamento delle regole sport:", err);
+        console.error(err);
     }
 }
 
-// LEGGE I CAMPI INTERFACCIA, IMPACCHETTA IN JSON E SALVA SU SUPABASE
 async function saveSportConfigToDB(e) {
     e.preventDefault();
-    const sportId = document.getElementById('configSportId').value;
+    
+    let sportId = "";
     const requiresWeight = document.getElementById('configRichiedePeso').value === "true";
+    const labelLivello = document.getElementById('configEtichetta').value || "Cintura";
     
     const limitKataKumite = parseInt(document.getElementById('limitKataKumite').value);
     const limitKids = parseInt(document.getElementById('limitKids').value);
     const limitPara = parseInt(document.getElementById('limitPara').value);
 
+    if (isCreatingNewSport) {
+        sportId = document.getElementById('newSportId').value.trim().toLowerCase();
+        if (!sportId) return alert("Inserisci un ID valido per il nuovo sport!");
+    } else {
+        sportId = document.getElementById('configSportId').value;
+    }
+
     try {
-        // Prima scarichiamo la riga per non sovrascrivere le classi d'età e i pesi esistenti
-        const { data: currentConfig } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
-        
-        let baseRegole = currentConfig ? currentConfig.regole : {};
-        
-        // Aggiorniamo o inseriamo solo la sezione dei limiti lasciando intatto il resto
+        let baseRegole = { classi_eta: [], pesi: { Default: ["Open"] } };
+
+        if (!isCreatingNewSport) {
+            const { data: currentConfig } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+            if (currentConfig && currentConfig.regole) baseRegole = currentConfig.regole;
+        }
+
         baseRegole.limiti = {
             KataKumiteSum: limitKataKumite,
             KIDS: limitKids,
             ParaKarate: limitPara
         };
 
-        // Aggiorna il record sul database Supabase
-        const { error } = await sb
-            .from('configurazioni_sport')
-            .update({
-                richiede_peso: requiresWeight,
-                richiega_peso: requiresWeight, // Doppia chiave di compatibilità salvataggio
-                regole: baseRegole
-            })
-            .eq('sport_id', sportId);
+        const payload = {
+            richiede_peso: requiresWeight,
+            richiega_peso: requiresWeight,
+            regole: baseRegole,
+            etichetta_livello: labelLivello
+        };
 
-        if (error) throw error;
-        alert("Configurazione limiti modificata con successo sul database!");
+        let resultError = null;
+
+        if (isCreatingNewSport) {
+            // Genera una nuova riga su configurazioni_sport
+            const { error } = await sb.from('configurazioni_sport').insert([{ sport_id: sportId, ...payload }]);
+            resultError = error;
+        } else {
+            // Aggiorna quella esistente
+            const { error } = await sb.from('configurazioni_sport').update(payload).eq('sport_id', sportId);
+            resultError = error;
+        }
+
+        if (resultError) throw resultError;
+
+        alert(isCreatingNewSport ? "Nuovo sport creato con successo!" : "Limiti sport aggiornati!");
+        
+        if (isCreatingNewSport) {
+            toggleNewSportInput(); // Ritorna alla modalità selezione
+        }
+        await refreshSportDropdowns();
 
     } catch (err) {
-        alert("Errore durante il salvataggio: " + err.message);
+        alert("Errore durante il salvataggio dello sport: " + err.message);
     }
 }
 
-// Carica l'elenco globale degli iscritti
+async function createEvent(e) {
+    e.preventDefault();
+    const sId = document.getElementById('eventSportId').value;
+    if (!sId) return alert("Seleziona uno sport da associare a questo evento!");
+
+    const { error } = await sb.from('eventi').insert([{ 
+        nome: document.getElementById('eventName').value, 
+        data_evento: document.getElementById('eventDate').value, 
+        luogo: document.getElementById('eventLocation').value,
+        sport_id: sId // Salva l'id dello sport associato all'evento
+    }]);
+
+    if (!error) { 
+        document.getElementById('eventForm').reset(); 
+        loadFilterEvents(); 
+        alert("Evento associato allo sport '" + sId.toUpperCase() + "' creato con successo!");
+    } else {
+        alert("Errore creazione evento: " + error.message);
+    }
+}
+
 async function fetchGlobalData() {
     const { data: atleti } = await sb.from('atleti').select('*, societa(nome), eventi(nome)');
     const { data: teams } = await sb.from('teams').select('*, societa(nome), eventi(nome)');
@@ -112,7 +202,6 @@ async function fetchGlobalData() {
     renderTables(allAthletes, allTeams);
 }
 
-// Mostra a schermo i dati nelle tabelle
 function renderTables(atleti, teams) {
     const listInd = document.getElementById('adminAthleteList');
     const listTeam = document.getElementById('adminTeamList');
@@ -173,25 +262,10 @@ async function loadFilterEvents() {
     eventi?.forEach(e => {
         if(select) select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
         if(scroll) scroll.innerHTML += `<div class="p-2 border-bottom d-flex justify-content-between align-items-center bg-white">
-            <small><strong>${e.nome}</strong><br>${e.data_evento}</small>
+            <small><strong>${e.nome}</strong> (${e.sport_id ? e.sport_id.toUpperCase() : 'KARATE'})<br>${e.data_evento}</small>
             <button onclick="deleteEvent('${e.id}')" class="btn btn-sm text-danger p-0"><i class="fas fa-times"></i></button>
         </div>`;
     });
-}
-
-async function createEvent(e) {
-    e.preventDefault();
-    const { error } = await sb.from('eventi').insert([{ 
-        nome: document.getElementById('eventName').value, 
-        data_evento: document.getElementById('eventDate').value, 
-        luogo: document.getElementById('eventLocation').value 
-    }]);
-    if(!error) { 
-        document.getElementById('eventForm').reset(); 
-        loadFilterEvents(); 
-    } else {
-        alert("Errore creazione evento: " + error.message);
-    }
 }
 
 async function deleteEvent(id) {
@@ -215,7 +289,7 @@ function exportAllToCSV() {
     const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Export_Gare_v5.csv`;
+    link.download = `Export_Gare_v6.csv`;
     link.click();
 }
 
