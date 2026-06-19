@@ -1,8 +1,9 @@
 const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
-// STATO GLOBALE DI EDITING
+// STATI GLOBALI DI EDITING
 let editingAthleteId = null; 
+let editingTeamId = null; // NUOVO: Stato di editing per le squadre
 
 const LIMITI = { 
     "KataKumiteSum": 300, 
@@ -36,6 +37,7 @@ async function initPage() {
 }
 
 function toggleRegMode() {
+    // Se stiamo modificando qualcosa, impediamo il cambio manuale radio per evitare di perdere lo stato
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
     const indFields = document.getElementById('individualFields');
     const teamFields = document.getElementById('teamFields');
@@ -44,7 +46,6 @@ function toggleRegMode() {
         indFields.style.display = 'none';
         teamFields.style.display = 'block';
         
-        // Reset campi individuali
         indFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
         document.getElementById('team_name').required = true;
         document.getElementById('team_year').required = true;
@@ -57,7 +58,6 @@ function toggleRegMode() {
         indFields.style.display = 'block';
         teamFields.style.display = 'none';
 
-        // Reset campi squadra
         teamFields.querySelectorAll('input, select').forEach(i => { i.required = false; i.value = ""; });
         document.querySelectorAll('.member-input').forEach(i => { i.required = false; });
 
@@ -67,7 +67,7 @@ function toggleRegMode() {
     }
 }
 
-function addMemberField() {
+function addMemberField(value = "") {
     const container = document.getElementById('membersContainer');
     const count = container.querySelectorAll('.member-input').length;
     if (count >= 6) return alert("Massimo 6 componenti.");
@@ -76,7 +76,7 @@ function addMemberField() {
     div.innerHTML = `
         <div class="input-group input-group-sm">
             <span class="input-group-text">${count + 1}</span>
-            <input type="text" class="form-control member-input" placeholder="Nome Cognome" required>
+            <input type="text" class="form-control member-input" placeholder="Nome Cognome" value="${value}" required>
             ${count >= 3 ? '<button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button>' : ''}
         </div>`;
     container.appendChild(div);
@@ -88,11 +88,10 @@ function handleBirthdateChange() {
     updateClassSpecsAndBelts(new Date(dateVal).getFullYear());
 }
 
-// Gestore specifico per la modifica manuale del sesso durante l'editing o l'inserimento
 function handleGenderChange() {
     const spec = document.getElementById('specialty').value;
     if (spec === "Kumite") {
-        handleSpecialtyChange(); // Ricalcola i pesi se cambia il sesso
+        handleSpecialtyChange(); 
     }
 }
 
@@ -188,7 +187,6 @@ async function fetchAthletes() {
     if (list) {
         list.innerHTML = "";
         athletes?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
-            // AGGIORNATO: Inserito il pulsante Modifica (Giallo con matita) accanto al cestino
             list.innerHTML += `<tr>
                 <td><strong>${a.last_name} ${a.first_name}</strong></td>
                 <td>${a.classe}</td>
@@ -214,50 +212,108 @@ async function fetchTeams() {
     if (list) {
         list.innerHTML = "";
         teams?.forEach(t => {
-            list.innerHTML += `<tr><td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td><td>${t.classe}</td><td>${t.gender}</td><td>${t.specialty}</td><td>${t.belt || '-'}</td><td>${t.weight_category || '-'}</td><td class="text-end"><button class="btn btn-sm btn-outline-danger border-0" onclick="deleteTeam('${t.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            // AGGIORNATO: Aggiunto anche qui il pulsante modifica per la squadra (giallo con matita)
+            list.innerHTML += `<tr>
+                <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
+                <td>${t.classe}</td>
+                <td>${t.gender}</td>
+                <td>${t.specialty}</td>
+                <td>${t.belt || '-'}</td>
+                <td>${t.weight_category || '-'}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editTeam('${t.id}')" title="Modifica"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger border-0" onclick="deleteTeam('${t.id}')" title="Elimina"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>`;
         });
     }
 }
 
-// NUOVA FUNZIONE: Carica i dati dell'atleta nel modulo per la modifica
 async function editAthlete(id) {
+    // Se stiamo modificando una squadra, resettiamo prima per pulire lo stato delle squadre
+    if (editingTeamId) completeReset();
+
     const { data: a, error } = await sb.from('atleti').select('*').eq('id', id).single();
     if (error) return alert("Errore nel recupero dati dell'atleta: " + error.message);
 
-    // 1. Forza la modalità individuale nel form
     const radioInd = document.querySelector('input[name="regType"][value="individual"]');
     if (radioInd) radioInd.checked = true;
     toggleRegMode();
 
-    // 2. Compila i campi base
     document.getElementById('first_name').value = a.first_name;
     document.getElementById('last_name').value = a.last_name;
     document.getElementById('birthdate').value = a.birthdate;
     document.getElementById('gender').value = a.gender;
 
-    // 3. Esegui il calcolo a cascata di Classe, Specialità e Cinture
     const birthYear = new Date(a.birthdate).getFullYear();
     updateClassSpecsAndBelts(birthYear);
 
-    // 4. Seleziona i valori precisi salvati precedentemente
     document.getElementById('specialty').value = a.specialty;
-    handleSpecialtyChange(); // Rigenera i pesi esatti in base alla specialità e al sesso appena inserito
+    handleSpecialtyChange(); 
     
     document.getElementById('belt').value = a.belt;
     if (document.getElementById('weight_category')) {
         document.getElementById('weight_category').value = a.weight_category;
     }
 
-    // 5. Attiva lo stato di editing e trasforma graficamente il pulsante di invio
     editingAthleteId = id;
     const submitBtn = document.querySelector('#athleteForm button[type="submit"]');
     if (submitBtn) {
         submitBtn.innerText = "Salva Modifiche Atleta";
         submitBtn.classList.remove('btn-primary');
-        submitBtn.classList.add('btn-warning'); // Colore giallo per segnalare la modifica
+        submitBtn.classList.add('btn-warning');
     }
 
-    // 6. Porta la pagina fluidamente in cima sul modulo
+    document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
+}
+
+// NUOVA FUNZIONE: Carica i dati della squadra nel modulo per la modifica
+async function editTeam(id) {
+    // Se stiamo modificando un atleta individuale, puliamo prima il modulo
+    if (editingAthleteId) completeReset();
+
+    const { data: t, error } = await sb.from('teams').select('*').eq('id', id).single();
+    if (error) return alert("Errore nel recupero dati della squadra: " + error.message);
+
+    // 1. Forza la modalità squadra (Team) nel form e aggiorna i campi visibili
+    const radioTeam = document.querySelector('input[name="regType"][value="team"]');
+    if (radioTeam) radioTeam.checked = true;
+    toggleRegMode();
+
+    // 2. Compila i campi della squadra
+    document.getElementById('team_name').value = t.team_name;
+    document.getElementById('team_year').value = t.team_year;
+    document.getElementById('team_gender').value = t.gender;
+
+    // 3. Esegui il calcolo a cascata di Classe, Specialità e Cinture basandoti sull'anno della squadra
+    updateClassSpecsAndBelts(t.team_year);
+
+    // 4. Riporta la specialità, la cintura e l'eventuale peso salvati
+    document.getElementById('specialty').value = t.specialty;
+    handleSpecialtyChange(); // Rigenera le tendine specifiche
+    
+    if(t.belt) document.getElementById('belt').value = t.belt;
+    if(t.weight_category && document.getElementById('weight_category')) {
+        document.getElementById('weight_category').value = t.weight_category;
+    }
+
+    // 5. Rigenera i campi dei componenti (svuota il container e inserisci quelli salvati nel DB)
+    const container = document.getElementById('membersContainer');
+    container.innerHTML = "";
+    t.members.forEach(member => {
+        addMemberField(member);
+    });
+
+    // 6. Imposta lo stato globale su editing team e cambia grafica al tasto d'invio
+    editingTeamId = id;
+    const submitBtn = document.querySelector('#athleteForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerText = "Salva Modifiche Squadra";
+        submitBtn.classList.remove('btn-primary');
+        submitBtn.classList.add('btn-warning');
+    }
+
+    // 7. Sposta l'utente fluidamente sul modulo
     document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -308,8 +364,8 @@ async function addAthlete(e) {
         return alert("ATTENZIONE: Iscrizione riservata ai nati tra il 1960 e il 2018.");
     }
 
-    // Se NON siamo in modalità modifica, controlliamo i tetti dei limiti globali (In modifica non aumentiamo i posti totali)
-    if (!editingAthleteId) {
+    // Se NON siamo in modifica, effettuiamo il controllo dei tetti dei posti totali
+    if (!editingAthleteId && !editingTeamId) {
         const globalCounts = await updateGlobalCounters(eventId);
         const currentSum = globalCounts.Kata + globalCounts.Kumite;
         if ((spec === "Kumite" || spec === "Kata") && currentSum >= LIMITI.KataKumiteSum) {
@@ -330,15 +386,27 @@ async function addAthlete(e) {
         const members = Array.from(document.querySelectorAll('.member-input')).map(i => i.value.trim()).filter(v => v !== "");
         if (members.length < 3) return alert("Inserisci almeno 3 componenti.");
         
-        const { error } = await sb.from('teams').insert([{
+        const teamData = {
             ...commonData, 
             team_name: document.getElementById('team_name').value, 
             gender: document.getElementById('team_gender').value, 
             members: members,
             team_year: birthYear 
-        }]);
-        if (error) alert(error.message);
-        else { alert("Squadra registrata!"); completeReset(); }
+        };
+
+        // AGGIORNATO: Logica di Update o Insert per le Squadre
+        if (editingTeamId) {
+            const { error } = await sb.from('teams').update([teamData]).eq('id', editingTeamId);
+            if (error) alert("Errore durante l'aggiornamento della squadra: " + error.message);
+            else { 
+                alert("Dati della squadra aggiornati con successo!"); 
+                completeReset(); 
+            }
+        } else {
+            const { error } = await sb.from('teams').insert([teamData]);
+            if (error) alert(error.message);
+            else { alert("Squadra registrata!"); completeReset(); }
+        }
     } else {
         const sessoSelezionato = document.getElementById('gender').value;
         const athleteData = {
@@ -349,7 +417,6 @@ async function addAthlete(e) {
             gender: sessoSelezionato
         };
 
-        // AGGIORNATO: Controllo dello stato di editing (Update vs Insert)
         if (editingAthleteId) {
             const { error } = await sb.from('atleti').update([athleteData]).eq('id', editingAthleteId);
             if (error) alert("Errore durante l'aggiornamento: " + error.message);
@@ -380,8 +447,9 @@ function completeReset() {
     wInput.innerHTML = '<option value="-">-</option>';
     wInput.disabled = true;
 
-    // AGGIORNATO: Ripristina lo stato iniziale del pulsante di invio e pulisce l'ID
+    // AGGIORNATO: Resetta entrambi gli stati di editing e ripristina il pulsante blu primario
     editingAthleteId = null;
+    editingTeamId = null;
     const submitBtn = document.querySelector('#athleteForm button[type="submit"]');
     if (submitBtn) {
         submitBtn.innerText = "Invia Iscrizione";
@@ -393,7 +461,7 @@ function completeReset() {
     fetchTeams();
     toggleRegMode();
     
-    console.log("Modulo pulito con successo e stato di editing resettato.");
+    console.log("Modulo pulito e stati resettati.");
 }
 
 async function deleteAthlete(id) { if (confirm("Eliminare?")) { await sb.from('atleti').delete().eq('id', id); fetchAthletes(); } }
@@ -404,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initPage();
     document.getElementById('athleteForm').addEventListener('submit', addAthlete);
     document.getElementById('birthdate').addEventListener('change', handleBirthdateChange);
-    document.getElementById('gender').addEventListener('change', handleGenderChange); // Aggiunto per ricalcolare pesi se cambia sesso a mano
+    document.getElementById('gender').addEventListener('change', handleGenderChange); 
     document.getElementById('team_year').addEventListener('change', handleTeamYearChange);
     document.getElementById('specialty').addEventListener('change', handleSpecialtyChange);
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
