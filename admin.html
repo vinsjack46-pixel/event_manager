@@ -56,7 +56,7 @@
         }
 
         .event-scroll-list {
-            max-height: 180px;
+            max-height: 200px;
             overflow-y: auto;
         }
 
@@ -73,7 +73,13 @@
         }
 
         .table-success-light { background-color: #f8fff9 !important; }
-        .badge-count { font-size: 0.75rem; padding: 5px 10px; border-radius: 10px; }
+
+        .badge-count {
+            font-size: 0.75rem;
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+
         .event-scroll-list::-webkit-scrollbar { width: 5px; }
         .event-scroll-list::-webkit-scrollbar-thumb { background: #ccc; border-radius: 10px; }
     </style>
@@ -82,7 +88,7 @@
 
 <nav class="admin-nav">
     <div class="d-flex align-items-center">
-        <h5 class="m-0 fw-bold"><i class="fas fa-shield-halved text-warning me-2"></i>Admin v6.0</h5>
+        <h5 class="m-0 fw-bold"><i class="fas fa-shield-halved text-warning me-2"></i>Admin v5.5</h5>
     </div>
     <div class="d-flex align-items-center gap-3">
         <span class="badge bg-dark border border-secondary" id="totalCounter">Caricamento...</span>
@@ -99,63 +105,49 @@
             
             <div class="admin-card mb-4">
                 <div class="card-title-custom bg-light border-bottom">
-                    <h4><i class="fas fa-cog me-2 text-primary"></i>1. Configura/Crea Sport</h4>
+                    <h4><i class="fas fa-cog me-2 text-primary"></i>Configuratore Limiti</h4>
                 </div>
                 <div class="p-3">
                     <form id="sportConfigForm">
                         <div class="mb-2">
-                            <label class="form-label">Seleziona o Scrivi ID Sport</label>
-                            <div class="input-group">
-                                <select id="configSportId" class="form-select" onchange="loadSportConfigFromDB()">
-                                    </select>
-                                <input type="text" id="newSportId" class="form-control" placeholder="Nuovo ID (es: judo)" style="display:none;">
-                                <button type="button" id="toggleNewSportBtn" class="btn btn-outline-secondary btn-sm" onclick="toggleNewSportInput()">+</button>
-                            </div>
-                        </div>
-                        <div id="sportMetaFields" style="display:none;">
-                            <div class="mb-2">
-                                <label class="form-label">Etichetta Livello (Cintura/Grado)</label>
-                                <input type="text" id="configEtichetta" class="form-control" value="Cintura">
-                            </div>
+                            <label class="form-label">Seleziona Sport</label>
+                            <select id="configSportId" class="form-select" onchange="loadSportConfigFromDB()">
+                                <option value="karate">Karate</option>
+                            </select>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label">Limite Kata/Kumite (o primarie)</label>
+                            <label class="form-label">Limite Iscritti Kata/Kumite</label>
                             <input type="number" id="limitKataKumite" class="form-control" value="300" required>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label">Limite KIDS</label>
+                            <label class="form-label">Limite Iscritti KIDS</label>
                             <input type="number" id="limitKids" class="form-control" value="250" required>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label">Limite Para-Karate / Special</label>
+                            <label class="form-label">Limite Iscritti Para-Karate</label>
                             <input type="number" id="limitPara" class="form-control" value="50" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Richiede Peso?</label>
                             <select id="configRichiedePeso" class="form-select">
-                                <option value="true">Sì</option>
-                                <option value="false">No</option>
+                                <option value="true">Sì (Abilita Peso)</option>
+                                <option value="false">No (Disabilita Peso)</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">SALVA / CREA SPORT</button>
+                        <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">SALVA LIMITI DATABASE</button>
                     </form>
                 </div>
             </div>
 
             <div class="admin-card mb-4">
                 <div class="card-title-custom">
-                    <h4><i class="fas fa-plus-circle me-2 text-success"></i>2. Nuovo Evento</h4>
+                    <h4><i class="fas fa-plus-circle me-2 text-success"></i>Nuovo Evento</h4>
                 </div>
                 <div class="p-3">
                     <form id="eventForm">
                         <div class="mb-2">
                             <label class="form-label">Nome Gara</label>
-                            <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Open" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label">Associa Sport a questo Evento</label>
-                            <select id="eventSportId" class="form-select" required>
-                                </select>
+                            <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Karate" required>
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Data</label>
@@ -179,6 +171,7 @@
         </div>
 
         <div class="col-lg-9">
+            
             <div class="admin-card p-3 mb-4">
                 <div class="row g-3">
                     <div class="col-md-4">
@@ -244,6 +237,7 @@
                     </table>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
