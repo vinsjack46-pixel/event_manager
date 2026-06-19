@@ -1,11 +1,11 @@
 const sb = window.supabaseClient;
 window.currentSocietyId = null;
 
-// STATI GLOBALI DI EDITING (Consolidamento 5.9)
+// STATI GLOBALI DI EDITING
 let editingAthleteId = null; 
 let editingTeamId = null; 
 
-// ARCHITETTURA 6.0: Configurazione di Fallback nativa (Karate) se la query fallisce
+// Configurazione di Fallback nativa (Karate)
 let currentSportConfig = {
     richiede_peso: true,
     etichetta_livello: "Cintura",
@@ -30,26 +30,23 @@ let currentSportConfig = {
     }
 };
 
-// Funzione Helper ausiliaria per estrarre l'anno da qualsiasi formato di data (Bugfix 6.1 Ultra-Robust)
+// Funzione Helper per estrarre l'anno da qualsiasi formato di data
 function estraiAnnoDaData(dateVal) {
     if (!dateVal) return null;
     dateVal = dateVal.trim();
     
-    // Formato standard HTML: YYYY-MM-DD o fallback DD-MM-YYYY
     if (dateVal.includes('-')) {
         const parts = dateVal.split('-');
         if (parts[0].length === 4) return parseInt(parts[0]);
         if (parts[2].length === 4) return parseInt(parts[2]);
     }
     
-    // Formato testuale alternativo: DD/MM/YYYY o YYYY/MM/DD
     if (dateVal.includes('/')) {
         const parts = dateVal.split('/');
         if (parts[2].length === 4) return parseInt(parts[2]);
         if (parts[0].length === 4) return parseInt(parts[0]);
     }
     
-    // Fallback tramite costruttore nativo JS
     const year = new Date(dateVal).getFullYear();
     return isNaN(year) ? null : year;
 }
@@ -76,14 +73,13 @@ async function initPage() {
         
         if (config && !configErr) {
             currentSportConfig = config;
-            console.log(`Configurazione caricata per lo sport: ${config.nome_sport}`);
         }
     } catch (err) {
         console.error("Errore nel recupero delle configurazioni, uso il fallback Karate:", err);
     }
 
     adattaInterfacciaAlloSport();
-    setupBirthdateListeners(); // Aggancia i listener in modo dinamico e sicuro
+    setupBirthdateListeners(); 
 
     const { data: { user } } = await sb.auth.getUser();
     if (user) {
@@ -158,7 +154,6 @@ function addMemberField(value = "") {
     container.appendChild(div);
 }
 
-// BUGFIX CENTRALIZZATO: Gestione lettura campo data con tolleranza ID multipli
 function handleBirthdateChange() {
     const dateInput = document.getElementById('birthdate') || document.getElementById('birth_date') || document.getElementById('data_nascita');
     if (!dateInput) return;
@@ -174,7 +169,6 @@ function handleTeamYearChange() {
     if (year) updateClassSpecsAndBelts(year);
 }
 
-// BUGFIX CENTRALIZZATO: Adattamento dinamico sia per input di testo che per select HTML
 function updateClassSpecsAndBelts(year) {
     const clSel = document.getElementById('classe');
     const spSel = document.getElementById('specialty');
@@ -187,7 +181,6 @@ function updateClassSpecsAndBelts(year) {
 
     let classe = classeTrovata ? classeTrovata.nome : "Fuori Quota";
     
-    // Se l'elemento nel file HTML è un campo di testo, usa .value. Se è un select, usa .innerHTML
     if (clSel.tagName === 'SELECT') {
         clSel.innerHTML = `<option value="${classe}">${classe}</option>`;
     } else {
@@ -533,7 +526,6 @@ function completeReset() {
     adattaInterfacciaAlloSport();
 }
 
-// Aggancia i listener su qualunque ID di data possibile (Sia in caricamento che a runtime)
 function setupBirthdateListeners() {
     ['birthdate', 'birth_date', 'data_nascita'].forEach(id => {
         const el = document.getElementById(id);
