@@ -33,14 +33,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
-        .btn-back-light {
-            color: #ccc;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: 0.3s;
-        }
-        .btn-back-light:hover { color: var(--admin-accent); }
-
         .admin-card {
             background: white;
             border-radius: 12px;
@@ -64,7 +56,7 @@
         }
 
         .event-scroll-list {
-            max-height: 400px;
+            max-height: 200px;
             overflow-y: auto;
         }
 
@@ -96,7 +88,7 @@
 
 <nav class="admin-nav">
     <div class="d-flex align-items-center">
-        <h5 class="m-0 fw-bold"><i class="fas fa-shield-halved text-warning me-2"></i>Admin v5.0</h5>
+        <h5 class="m-0 fw-bold"><i class="fas fa-shield-halved text-warning me-2"></i>Admin v5.5</h5>
     </div>
     <div class="d-flex align-items-center gap-3">
         <span class="badge bg-dark border border-secondary" id="totalCounter">Caricamento...</span>
@@ -106,115 +98,152 @@
     </div>
 </nav>
 
-    <div class="container-fluid p-4">
-        <div class="row">
+<div class="container-fluid p-4">
+    <div class="row">
+        
+        <div class="col-lg-3">
             
-            <div class="col-lg-3">
-                <div class="admin-card mb-4">
-                    <div class="card-title-custom">
-                        <h4><i class="fas fa-plus-circle me-2 text-success"></i>Nuovo Evento</h4>
-                    </div>
-                    <div class="p-3">
-                        <form id="eventForm">
-                            <div class="mb-2">
-                                <label class="form-label">Nome Gara</label>
-                                <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Karate" required>
-                            </div>
-                            <div class="mb-2">
-                                <label class="form-label">Data</label>
-                                <input type="date" id="eventDate" class="form-control" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Luogo</label>
-                                <input type="text" id="eventLocation" class="form-control" placeholder="Città">
-                            </div>
-                            <button type="submit" class="btn btn-success w-100 btn-sm fw-bold">CREA EVENTO</button>
-                        </form>
-                    </div>
+            <div class="admin-card mb-4">
+                <div class="card-title-custom bg-light border-bottom">
+                    <h4><i class="fas fa-cog me-2 text-primary"></i>Configuratore Limiti</h4>
                 </div>
-
-                <div class="admin-card">
-                    <div class="card-title-custom">
-                        <h4><i class="fas fa-list me-2 text-muted"></i>Lista Eventi</h4>
-                    </div>
-                    <div class="event-scroll-list" id="eventList"></div>
-                </div>
-            </div>
-
-            <div class="col-lg-9">
-                
-                <div class="admin-card p-3 mb-4">
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <select id="filterEvent" class="form-select shadow-sm">
-                                <option value="">Tutti gli Eventi</option>
+                <div class="p-3">
+                    <form id="sportConfigForm">
+                        <div class="mb-2">
+                            <label class="form-label">Seleziona Sport</label>
+                            <select id="configSportId" class="form-select" onchange="loadSportConfigFromDB()">
+                                <option value="karate">Karate</option>
                             </select>
                         </div>
-                        <div class="col-md-8">
-                            <div class="d-flex gap-2">
-                                <div class="input-group shadow-sm">
-                                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
-                                    <input type="text" id="globalSearch" class="form-control border-start-0" placeholder="Cerca atleta, società o team...">
-                                </div>
-                                <button onclick="exportAllToCSV()" class="btn btn-success shadow-sm d-flex align-items-center">
-                                    <i class="fas fa-file-excel me-2"></i> Esporta
-                                </button>
+                        <div class="mb-2">
+                            <label class="form-label">Limite Iscritti Kata/Kumite</label>
+                            <input type="number" id="limitKataKumite" class="form-control" value="300" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Limite Iscritti KIDS</label>
+                            <input type="number" id="limitKids" class="form-control" value="250" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Limite Iscritti Para-Karate</label>
+                            <input type="number" id="limitPara" class="form-control" value="50" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Richiede Peso?</label>
+                            <select id="configRichiedePeso" class="form-select">
+                                <option value="true">Sì (Abilita Peso)</option>
+                                <option value="false">No (Disabilita Peso)</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100 btn-sm fw-bold">SALVA LIMITI DATABASE</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="admin-card mb-4">
+                <div class="card-title-custom">
+                    <h4><i class="fas fa-plus-circle me-2 text-success"></i>Nuovo Evento</h4>
+                </div>
+                <div class="p-3">
+                    <form id="eventForm">
+                        <div class="mb-2">
+                            <label class="form-label">Nome Gara</label>
+                            <input type="text" id="eventName" class="form-control" placeholder="Es. Trofeo Karate" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label">Data</label>
+                            <input type="date" id="eventDate" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Luogo</label>
+                            <input type="text" id="eventLocation" class="form-control" placeholder="Città">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 btn-sm fw-bold">CREA EVENTO</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <div class="card-title-custom">
+                    <h4><i class="fas fa-list me-2 text-muted"></i>Lista Eventi</h4>
+                </div>
+                <div class="event-scroll-list" id="eventList"></div>
+            </div>
+        </div>
+
+        <div class="col-lg-9">
+            
+            <div class="admin-card p-3 mb-4">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <select id="filterEvent" class="form-select shadow-sm">
+                            <option value="">Tutti gli Eventi</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="d-flex gap-2">
+                            <div class="input-group shadow-sm">
+                                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                                <input type="text" id="globalSearch" class="form-control border-start-0" placeholder="Cerca atleta, società o team...">
                             </div>
+                            <button onclick="exportAllToCSV()" class="btn btn-success shadow-sm d-flex align-items-center">
+                                <i class="fas fa-file-excel me-2"></i> Esporta
+                            </button>
                         </div>
                     </div>
                 </div>
-
-                <div class="admin-card mb-4">
-                    <div class="card-title-custom d-flex justify-content-between align-items-center">
-                        <h4><i class="fas fa-user me-2 text-primary"></i>ATLETI INDIVIDUALI</h4>
-                        <span class="badge bg-primary badge-count" id="countInd">0</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle m-0">
-                            <thead>
-                                <tr>
-                                    <th>Atleta</th>
-                                    <th>Società</th>
-                                    <th>Classe / Spec.</th>
-                                    <th>Cintura</th>
-                                    <th>Sesso</th>
-                                    <th>Peso</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminAthleteList"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="admin-card">
-                    <div class="card-title-custom d-flex justify-content-between align-items-center">
-                        <h4><i class="fas fa-users me-2 text-success"></i>SQUADRE / TEAM</h4>
-                        <span class="badge bg-success badge-count" id="countTeam">0</span>
-                    </div>
-                    <div class="table-responsive">
-                        <table class="table table-hover align-middle m-0">
-                            <thead>
-                                <tr>
-                                    <th>Nome Team / Membri</th>
-                                    <th>Società</th>
-                                    <th>Classe / Spec.</th>
-                                    <th>Sesso</th>
-                                    <th>Cintura/Peso</th>
-                                    <th class="text-end">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody id="adminTeamList"></tbody>
-                        </table>
-                    </div>
-                </div>
-
             </div>
+
+            <div class="admin-card mb-4">
+                <div class="card-title-custom d-flex justify-content-between align-items-center">
+                    <h4><i class="fas fa-user me-2 text-primary"></i>ATLETI INDIVIDUALI</h4>
+                    <span class="badge bg-primary badge-count" id="countInd">0</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle m-0">
+                        <thead>
+                            <tr>
+                                <th>Atleta</th>
+                                <th>Società</th>
+                                <th>Classe / Spec.</th>
+                                <th>Cintura</th>
+                                <th>Sesso</th>
+                                <th>Peso</th>
+                                <th class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminAthleteList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="admin-card">
+                <div class="card-title-custom d-flex justify-content-between align-items-center">
+                    <h4><i class="fas fa-users me-2 text-success"></i>SQUADRE / TEAM</h4>
+                    <span class="badge bg-success badge-count" id="countTeam">0</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle m-0">
+                        <thead>
+                            <tr>
+                                <th>Nome Team / Membri</th>
+                                <th>Società</th>
+                                <th>Classe / Spec.</th>
+                                <th>Sesso</th>
+                                <th>Cintura/Peso</th>
+                                <th class="text-end">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="adminTeamList"></tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="script.js"></script>
-    <script src="admin-logic.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="script.js"></script>
+<script src="admin-logic.js"></script>
 </body>
 </html>
