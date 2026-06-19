@@ -1,41 +1,109 @@
 const sb = window.supabaseClient;
 let allAthletes = [], allTeams = [];
 
-// --- PROTEZIONE VERSION 5.0 ---
-// Questa funzione decide chi può restare in questa pagina
+// Controlla se l'utente ha i permessi di amministratore
 async function checkAdminAccess() {
     const { data: { user }, error } = await sb.auth.getUser();
-
-    // MODIFICA QUI: Metti la tua email tra le virgolette
     const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"]; 
 
     if (error || !user || !authorizedAdmins.includes(user.email)) {
         alert("Accesso negato: Non sei autorizzato a vedere questa pagina.");
-        window.location.href = "login.html"; // Spedisce l'utente al login
+        window.location.href = "login.html";
         return false;
     }
     return true;
 }
 
-// Funzione che avvia tutto il pannello
+// Avvia tutto il pannello di controllo
 async function initAdmin() {
     console.log("Verifica autorizzazione in corso...");
-    
-    // Controlliamo se l'utente è un admin prima di mostrare i dati
     const isAuthorized = await checkAdminAccess();
     if (!isAuthorized) return; 
 
-    // Se arriviamo qui, l'utente è autorizzato
+    // Carica configurazione iniziale dello sport nel modulo
+    await loadSportConfigFromDB();
+
     await loadFilterEvents();
     await fetchGlobalData();
     
-    // Listener per i moduli
+    // Assegnazione degli ascoltatori degli eventi ai form
     document.getElementById('eventForm').addEventListener('submit', createEvent);
+    document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
     document.getElementById('filterEvent').addEventListener('change', filterAll);
     document.getElementById('globalSearch').addEventListener('input', filterAll);
 }
 
-// Carica i dati dal database
+// LEGGE LE REGOLE ATTUALI DAL DB E RIEMPIE I CAMPI INTERFACCIA
+async function loadSportConfigFromDB() {
+    const sportId = document.getElementById('configSportId').value;
+    try {
+        const { data: config, error } = await sb
+            .from('configurazioni_sport')
+            .select('*')
+            .eq('sport_id', sportId)
+            .single();
+
+        if (error || !config) {
+            console.log("Nessuna configurazione trovata. Uso valori predefiniti.");
+            return;
+        }
+
+        // Estrae le informazioni e popola gli input dell'admin.html
+        const regole = config.regole || {};
+        const limiti = regole.limiti || {};
+
+        document.getElementById('limitKataKumite').value = limiti.KataKumiteSum || 300;
+        document.getElementById('limitKids').value = limiti.KIDS || 250;
+        document.getElementById('limitPara').value = limiti.ParaKarate || 50;
+        document.getElementById('configRichiedePeso').value = config.richiede_peso === false ? "false" : "true";
+
+    } catch (err) {
+        console.error("Errore nel caricamento delle regole sport:", err);
+    }
+}
+
+// LEGGE I CAMPI INTERFACCIA, IMPACCHETTA IN JSON E SALVA SU SUPABASE
+async function saveSportConfigToDB(e) {
+    e.preventDefault();
+    const sportId = document.getElementById('configSportId').value;
+    const requiresWeight = document.getElementById('configRichiedePeso').value === "true";
+    
+    const limitKataKumite = parseInt(document.getElementById('limitKataKumite').value);
+    const limitKids = parseInt(document.getElementById('limitKids').value);
+    const limitPara = parseInt(document.getElementById('limitPara').value);
+
+    try {
+        // Prima scarichiamo la riga per non sovrascrivere le classi d'età e i pesi esistenti
+        const { data: currentConfig } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+        
+        let baseRegole = currentConfig ? currentConfig.regole : {};
+        
+        // Aggiorniamo o inseriamo solo la sezione dei limiti lasciando intatto il resto
+        baseRegole.limiti = {
+            KataKumiteSum: limitKataKumite,
+            KIDS: limitKids,
+            ParaKarate: limitPara
+        };
+
+        // Aggiorna il record sul database Supabase
+        const { error } = await sb
+            .from('configurazioni_sport')
+            .update({
+                richiede_peso: requiresWeight,
+                richiega_peso: requiresWeight, // Doppia chiave di compatibilità salvataggio
+                regole: baseRegole
+            })
+            .eq('sport_id', sportId);
+
+        if (error) throw error;
+        alert("Configurazione limiti modificata con successo sul database!");
+
+    } catch (err) {
+        alert("Errore durante il salvataggio: " + err.message);
+    }
+}
+
+// Carica l'elenco globale degli iscritti
 async function fetchGlobalData() {
     const { data: atleti } = await sb.from('atleti').select('*, societa(nome), eventi(nome)');
     const { data: teams } = await sb.from('teams').select('*, societa(nome), eventi(nome)');
@@ -44,7 +112,7 @@ async function fetchGlobalData() {
     renderTables(allAthletes, allTeams);
 }
 
-// Disegna le tabelle sullo schermo
+// Mostra a schermo i dati nelle tabelle
 function renderTables(atleti, teams) {
     const listInd = document.getElementById('adminAthleteList');
     const listTeam = document.getElementById('adminTeamList');
@@ -79,7 +147,6 @@ function renderTables(atleti, teams) {
     document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
 }
 
-// Filtro di ricerca e filtro evento
 function filterAll() {
     const term = document.getElementById('globalSearch').value.toLowerCase();
     const evId = document.getElementById('filterEvent').value;
@@ -88,7 +155,6 @@ function filterAll() {
     renderTables(fA, fT);
 }
 
-// Cancella un iscritto
 async function deleteRecord(table, id) {
     if(confirm("Sei sicuro di voler eliminare questo record?")) { 
         await sb.from(table).delete().eq('id', id); 
@@ -96,7 +162,6 @@ async function deleteRecord(table, id) {
     }
 }
 
-// Gestione Eventi (Lista a sinistra)
 async function loadFilterEvents() {
     const { data: eventi } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
     const select = document.getElementById('filterEvent');
@@ -114,7 +179,6 @@ async function loadFilterEvents() {
     });
 }
 
-// Crea un nuovo evento
 async function createEvent(e) {
     e.preventDefault();
     const { error } = await sb.from('eventi').insert([{ 
@@ -138,13 +202,11 @@ async function deleteEvent(id) {
     }
 }
 
-// Funzione Logout
 async function handleLogout() {
     await sb.auth.signOut();
     window.location.href = 'login.html';
 }
 
-// Esporta i dati in CSV (Excel)
 function exportAllToCSV() {
     let csv = ["TIPO;NOME/TEAM;MEMBRI;EVENTO;SOCIETA;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
     allAthletes.forEach(a => csv.push(`"Individuale";"${a.first_name} ${a.last_name}";"-";"${a.eventi?.nome}";"${a.societa?.nome}";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`));
@@ -157,5 +219,4 @@ function exportAllToCSV() {
     link.click();
 }
 
-// Avvio automatico al caricamento della pagina
 document.addEventListener('DOMContentLoaded', initAdmin);
