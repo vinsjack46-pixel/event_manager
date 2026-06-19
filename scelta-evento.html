@@ -154,7 +154,6 @@
         const sb = window.supabaseClient;
 
         async function init() {
-            // Verifica se l'utente è loggato
             const { data: { user } } = await sb.auth.getUser();
             if (!user) {
                 window.location.href = 'login.html';
@@ -164,11 +163,11 @@
         }
 
         async function caricaEventi() {
-            // AGGIORNATO V6.0: Chiediamo esplicitamente a Supabase anche il campo 'sport_id'
+            // CORRETTO: Usiamo l'alias "data:data_evento" per mappare la tua colonna reale
             const { data: eventi, error } = await sb
                 .from('eventi')
-                .select('id, nome, data, luogo, sport_id') 
-                .order('data', { ascending: true });
+                .select('id, nome, data:data_evento, luogo, sport_id') 
+                .order('data_evento', { ascending: true });
 
             const container = document.getElementById('eventsContainer');
             if (error) {
@@ -179,18 +178,18 @@
             if (eventi && eventi.length > 0) {
                 container.innerHTML = "";
                 eventi.forEach(e => {
+                    // Grazie all'alias, JavaScript legge 'e.data' senza problemi!
                     const dataFormattata = new Date(e.data).toLocaleDateString('it-IT', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric'
                     });
 
-                    // Passiamo l'id, il nome dell'evento e anche lo sport_id alla funzione di selezione
                     container.innerHTML += `
                         <div class="event-item" onclick="selezionaEvento('${e.id}', '${e.nome.replace(/'/g, "\\'")}', '${e.sport_id || 'karate'}')">
                             <div class="event-info">
                                 <h5>${e.nome}</h5>
-                                <small><i class="far fa-calendar-alt me-1"></i> ${dataFormattata} • <i class=\"fas fa-map-marker-alt me-1\"></i> ${e.luogo || 'Sede da definire'}</small>
+                                <small><i class="far fa-calendar-alt me-1"></i> ${dataFormattata} • <i class="fas fa-map-marker-alt me-1"></i> ${e.luogo || 'Sede da definire'}</small>
                             </div>
                             <div class="btn-select">
                                 <i class="fas fa-chevron-right"></i>
@@ -207,11 +206,10 @@
             }
         }
 
-        // AGGIORNATO V6.0: Memorizza nel sessionStorage anche lo sport associato all'evento
         function selezionaEvento(id, nome, sportId) {
             sessionStorage.setItem('selectedEventId', id);
             sessionStorage.setItem('selectedEventName', nome);
-            sessionStorage.setItem('selectedSportId', sportId); // NUOVO: Salva lo sport dell'evento
+            sessionStorage.setItem('selectedSportId', sportId); 
             window.location.href = 'index.html';
         }
 
