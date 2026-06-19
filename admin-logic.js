@@ -19,9 +19,7 @@ async function initAdmin() {
     const isAuthorized = await checkAdminAccess();
     if (!isAuthorized) return; 
 
-    // Carica l'elenco degli sport nei menu a tendina
     await refreshSportDropdowns();
-
     await loadFilterEvents();
     await fetchGlobalData();
     
@@ -31,7 +29,6 @@ async function initAdmin() {
     document.getElementById('globalSearch').addEventListener('input', filterAll);
 }
 
-// Carica tutti gli sport registrati nella tabella configurazioni_sport
 async function refreshSportDropdowns() {
     try {
         const { data: sports, error } = await sb.from('configurazioni_sport').select('sport_id');
@@ -57,7 +54,6 @@ async function refreshSportDropdowns() {
     }
 }
 
-// Mostra o nasconde l'input testuale per aggiungere un nuovo sport
 function toggleNewSportInput() {
     const select = document.getElementById('configSportId');
     const input = document.getElementById('newSportId');
@@ -140,20 +136,25 @@ async function saveSportConfigToDB(e) {
             ParaKarate: limitPara
         };
 
+        // Identifica il valore predefinito speculare per evitare errori di vincolo NOT NULL
+        const sportValueFormatted = sportId.toUpperCase();
+
         const payload = {
             richiede_peso: requiresWeight,
+            richiega_peso: requiresWeight,
             regole: baseRegole,
-            etichetta_livello: labelLivello
+            etichetta_livello: labelLivello,
+            // Assegna in modo sicuro sia a 'nome' che a 'nome_sport' (qualunque sia presente sulla tabella)
+            nome: sportValueFormatted,
+            nome_sport: sportValueFormatted
         };
 
         let resultError = null;
 
         if (isCreatingNewSport) {
-            // Genera una nuova riga su configurazioni_sport
             const { error } = await sb.from('configurazioni_sport').insert([{ sport_id: sportId, ...payload }]);
             resultError = error;
         } else {
-            // Aggiorna quella esistente
             const { error } = await sb.from('configurazioni_sport').update(payload).eq('sport_id', sportId);
             resultError = error;
         }
@@ -163,7 +164,7 @@ async function saveSportConfigToDB(e) {
         alert(isCreatingNewSport ? "Nuovo sport creato con successo!" : "Limiti sport aggiornati!");
         
         if (isCreatingNewSport) {
-            toggleNewSportInput(); // Ritorna alla modalità selezione
+            toggleNewSportInput();
         }
         await refreshSportDropdowns();
 
@@ -181,7 +182,7 @@ async function createEvent(e) {
         nome: document.getElementById('eventName').value, 
         data_evento: document.getElementById('eventDate').value, 
         luogo: document.getElementById('eventLocation').value,
-        sport_id: sId // Salva l'id dello sport associato all'evento
+        sport_id: sId 
     }]);
 
     if (!error) { 
