@@ -84,7 +84,10 @@
     <div class="d-flex align-items-center">
         <h5 class="m-0 fw-bold"><i class="fas fa-shield-halved text-warning me-2"></i>Admin v6.1</h5>
     </div>
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
+        <button onclick="history.back()" class="btn btn-sm btn-outline-light me-2" title="Torna alla pagina precedente">
+            <i class="fas fa-arrow-left me-1"></i> Indietro
+        </button>
         <span class="badge bg-dark border border-secondary" id="totalCounter">Caricamento...</span>
         <button onclick="handleLogout()" class="btn btn-sm btn-outline-danger" title="Esci">
             <i class="fas fa-sign-out-alt"></i>
@@ -94,7 +97,7 @@
 
 <div class="container-fluid p-4">
     <div class="row">
-        
+    
         <div class="col-lg-3">
             
             <div class="admin-card mb-4">
@@ -106,8 +109,7 @@
                         <div class="mb-2">
                             <label class="form-label">Seleziona o Scrivi ID Sport</label>
                             <div class="input-group">
-                                <select id="configSportId" class="form-select" onchange="loadSportConfigFromDB()">
-                                    </select>
+                                <select id="configSportId" class="form-select" onchange="loadSportConfigFromDB()"></select>
                                 <input type="text" id="newSportId" class="form-control" placeholder="Nuovo ID (es: judo)" style="display:none;">
                                 <button type="button" id="toggleNewSportBtn" class="btn btn-outline-secondary btn-sm" onclick="toggleNewSportInput()">+</button>
                             </div>
@@ -154,8 +156,7 @@
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Associa Sport a questo Evento</label>
-                            <select id="eventSportId" class="form-select" required>
-                                </select>
+                            <select id="eventSportId" class="form-select" required></select>
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Data</label>
@@ -170,12 +171,25 @@
                 </div>
             </div>
 
-            <div class="admin-card">
+            <div class="admin-card mb-4">
                 <div class="card-title-custom">
                     <h4><i class="fas fa-list me-2 text-muted"></i>Lista Eventi</h4>
                 </div>
                 <div class="event-scroll-list" id="eventList"></div>
             </div>
+
+            <div class="admin-card border border-danger shadow-sm">
+                <div class="card-title-custom bg-danger bg-opacity-10 text-danger border-bottom">
+                    <h4><i class="fas fa-user-shield me-2"></i>3. Area Super Admin</h4>
+                </div>
+                <div class="p-3">
+                    <p class="small text-muted mb-3">Modifica l'albero delle categorie a cascata e i regolamenti in formato JSON.</p>
+                    <button type="button" class="btn btn-danger btn-sm w-100 fw-bold" onclick="apriEditorModale()">
+                        <i class="fas fa-code me-2"></i>APRI EDITOR JSON
+                    </button>
+                </div>
+            </div>
+            
         </div>
 
         <div class="col-lg-9">
@@ -248,6 +262,33 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalEditor" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-code me-2 text-warning"></i>Gestore Regolamenti Sportivi (JSON)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Seleziona la Disciplina</label>
+                    <select id="selettoreSportJson" class="form-select" onchange="leggiJsonDaDb()"></select>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label fw-bold">Mappa delle Categorie (Formato JSON Nativo)</label>
+                    <textarea id="testoJson" class="form-control font-monospace" rows="13" style="font-size:0.85rem; background:#f8f9fa; color:#1a1a1a;"></textarea>
+                </div>
+                <small class="text-muted d-block mt-1">Nota di sicurezza: Verifica la formattazione prima di salvare per non compromettere l'effetto a cascata dei moduli pubblici.</small>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="formattaTestoJson()"><i class="fas fa-magic me-1"></i> CONVALIDA / FORMATTA</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="inviaJsonAggiustato()"><i class="fas fa-save me-1"></i> SALVA REGOLE NEL DB</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
 <script src="admin-logic.js"></script>
