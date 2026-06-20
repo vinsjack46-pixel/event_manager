@@ -2,106 +2,167 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iscrizioni Gare | Judo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap\" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary-color: #0a58ca; --bg-accent: #f0f4fc; }
-        body { font-family: 'Inter', sans-serif; background-color: #f8f9fa; color: #333; }
-        .theme-header { background: var(--primary-color); color: white; padding: 20px; border-radius: 12px; }
-        .registration-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; }
+        :root { 
+            --primary-color: #0a58ca; 
+            --bg-accent: #f0f4fc; 
+            --bg-gradient: linear-gradient(135deg, #0a58ca 0%, #1e90ff 100%);
+        }
+        body { font-family: 'Inter', sans-serif; background: #f4f7f9; margin: 0; padding-bottom: 50px; }
+        
+        .top-bar { 
+            background: white; 
+            padding: 10px 25px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+        }
+        .main-container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+        .registration-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; padding: 25px; }
         .form-label { font-weight: 600; font-size: 0.85rem; color: #495057; }
-        .table thead th { background: var(--bg-accent); font-size: 0.75rem; text-transform: uppercase; color: #495057; }
+        .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); margin-top: 30px; border: 1px solid #eef2f5; }
+        .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        .table thead th { background: var(--bg-accent); font-size: 0.75rem; text-transform: uppercase; color: #495057; border: none; }
+        
+        /* Stat Cards */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-box { background: white; padding: 15px 20px; border-radius: 10px; border: 1px solid #eef2f5; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.01); }
+        .stat-box span:first-child { font-size: 0.85rem; color: #6c757d; font-weight: 600; }
+        .stat-box span:last-child { font-size: 1.4rem; font-weight: 700; color: var(--primary-color); }
     </style>
 </head>
 <body>
-<div class="container py-5">
+
+<div class="top-bar d-flex justify-content-between align-items-center">
+    <div class="d-flex align-items-center gap-3">
+        <a href="scelta-evento.html" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Indietro</a>
+        <div>
+            <h5 class="m-0 fw-bold text-dark" id="displayNomeGara">Caricamento Gara...</h5>
+            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Judo</small>
+        </div>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <span class="badge bg-light text-dark border p-2" id="displaySocieta">Società: N.D.</span>
+        <button onclick="handleLogout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
+    </div>
+</div>
+
+<div class="main-container">
     
-    <div class="theme-header text-center mb-4 shadow-sm">
-        <h2 class="fw-bold m-0" id="nomeGaraTitolo">Caricamento Competizione...</h2>
-        <small class="text-white-50 text-uppercase fw-bold tracking-wide">Modulo d'Iscrizione Ufficiale - JUDO</small>
+    <div class="stats-grid">
+        <div class="stat-box"><span>Iscritti Totali</span><span id="totalAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Maschi</span><span id="maleAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Femmine</span><span id="femaleAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>In Squadra</span><span id="teamAthleteCountDisplay">0</span></div>
     </div>
 
-    <div class="row justify-content-center mb-5">
-        <div class="col-lg-8">
-            <div class="card registration-card p-4">
+    <div class="row">
+        <div class="col-lg-4 mb-4">
+            <div class="registration-card shadow-sm">
+                <h4 class="fw-bold text-dark mb-4"><i class="fas fa-user-plus text-primary me-2"></i>Nuova Iscrizione</h4>
                 <form id="registrationForm">
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Nome Atleta</label>
-                            <input type="text" id="regFirstName" class="form-control" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Cognome Atleta</label>
-                            <input type="text" id="regLastName" class="form-control" required>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cognome Atleta</label>
+                        <input type="text" id="regLastName" class="form-control" placeholder="es. Rossi" required>
                     </div>
-
-                    <div class="row g-3 mb-3">
-                        <div class="col-md-6">
+                    <div class="mb-3">
+                        <label class="form-label">Nome Atleta</label>
+                        <input type="text" id="regFirstName" class="form-control" placeholder="es. Mario" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
                             <label class="form-label">Sesso</label>
                             <select id="regGender" class="form-select" required>
-                                <option value="">-- Scegli Sesso --</option>
-                                <option value="M">Maschile (M)</option>
-                                <option value="F">Femminile (F)</option>
+                                <option value="M">Maschio (M)</option>
+                                <option value="F">Femmina (F)</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Classe d'Età</label>
-                            <select id="regClasse" class="form-select" required disabled>
-                                <option value="">-- Seleziona prima il sesso --</option>
-                            </select>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Anno Nascita</label>
+                            <input type="number" id="regBirthYear" class="form-control" placeholder="es. 2010" min="1930" max="2026" required>
                         </div>
                     </div>
-
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label">Categoria di Peso (FIJLKAM)</label>
-                            <select id="regWeightCategory" class="form-select" required disabled>
-                                <option value="">-- Seleziona la classe --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Grado (Cintura)</label>
-                            <select id="regBelt" class="form-select" required>
-                                <option value="Bianca">Bianca (6° Kyu)</option>
-                                <option value="Gialla">Gialla (5° Kyu)</option>
-                                <option value="Arancione">Arancione (4° Kyu)</option>
-                                <option value="Verde">Verde (3° Kyu)</option>
-                                <option value="Blu">Blu (2° Kyu)</option>
-                                <option value="Marrone">Marrone (1° Kyu)</option>
-                                <option value="Nera">Nera (1° Dan +)</option>
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label">Classe d'Età</label>
+                        <select id="regClasse" class="form-select" required>
+                            <option value="">-- Seleziona --</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Grado / Cintura</label>
+                        <select id="regBelt" class="form-select" required>
+                            <option value="Bianca">Bianca</option>
+                            <option value="Gialla">Gialla</option>
+                            <option value="Arancione">Arancione</option>
+                            <option value="Verde">Verde</option>
+                            <option value="Blu">Blu</option>
+                            <option value="Marrone">Marrone</option>
+                            <option value="Nera">Nera (Dan)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categoria Peso</label>
+                        <select id="regWeightCategory" class="form-select" required>
+                            <option value="">-- Seleziona Categoria --</option>
+                        </select>
                     </div>
 
                     <input type="hidden" id="regSpecialty" value="Shiai">
-
                     <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">REGISTRA ISCRIZIONE ATLETA</button>
                 </form>
             </div>
         </div>
-    </div>
 
-    <div class="row">
-        <div class="col-lg-12">
-            <h4 class="fw-bold text-dark mb-3"><i class="fas fa-list text-primary me-2"></i>Atleti Iscritti a questa competizione</h4>
-            <div class="table-responsive bg-white p-3 rounded-3 shadow-sm border">
-                <table class="table table-hover align-middle m-0">
-                    <thead>
-                        <tr>
-                            <th>Atleta</th>
-                            <th>Classe d'Età</th>
-                            <th>Sesso</th>
-                            <th>Grado / Kyu</th>
-                            <th>Categoria Peso</th>
-                        </tr>
-                    </thead>
-                    <tbody id="iscrittiGaraList">
-                        <tr><td colspan="5" class="text-center text-muted py-3">Nessun atleta iscritto.</td></tr>
-                    </tbody>
-                </table>
+        <div class="col-lg-8">
+            <div class="table-container m-0">
+                <div class="section-title"><i class="fas fa-user text-primary"></i> Atleti Iscritti Individuali</div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Atleta</th>
+                                <th>Classe d'Età</th>
+                                <th>Sesso</th>
+                                <th>Grado / Kyu</th>
+                                <th>Categoria Peso</th>
+                                <th class="text-end">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody id="athleteList">
+                            <tr><td colspan="6" class="text-center text-muted py-3">Nessun atleta iscritto.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+
+            <div class="table-container">
+                <div class="section-title text-success"><i class="fas fa-users"></i> Riepilogo Squadre / Team</div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Nome Squadra</th>
+                                <th>Classe</th>
+                                <th>Sesso</th>
+                                <th>Spec.</th>
+                                <th>Cintura</th>
+                                <th>Peso</th>
+                                <th class="text-end">Azione</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teamList">
+                            <tr><td colspan="7" class="text-center text-muted py-3">Nessuna squadra registrata.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
