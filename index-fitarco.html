@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Iscrizioni Gare | Tiro con l'Arco</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap\" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { 
@@ -35,6 +35,10 @@
         .stat-box { background: white; padding: 15px 20px; border-radius: 10px; border: 1px solid #eef2f5; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.01); }
         .stat-box span:first-child { font-size: 0.85rem; color: #6c757d; font-weight: 600; }
         .stat-box span:last-child { font-size: 1.4rem; font-weight: 700; color: var(--primary-color); }
+
+        /* Custom Nav Pills per lo Switch Iscrizioni */
+        .nav-pills .nav-link { color: #6c757d; border: 1px solid #dee2e6; margin: 0 5px; background-color: #f8f9fa; }
+        .nav-pills .nav-link.active { background-color: var(--primary-color); border-color: var(--primary-color); color: white; }
     </style>
 </head>
 <body>
@@ -43,12 +47,12 @@
     <div class="d-flex align-items-center gap-3">
         <a href="scelta-evento.html" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Indietro</a>
         <div>
-            <h5 class="m-0 fw-bold text-dark" id="displayNomeGara">Caricamento Gara...</h5>
+            <h5 class="m-0 fw-bold text-dark" id="nomeGara">Caricamento Gara...</h5>
             <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Fitarco</small>
         </div>
     </div>
     <div class="d-flex align-items-center gap-3">
-        <span class="badge bg-light text-dark border p-2" id="displaySocieta">Società: N.D.</span>
+        <span class="badge bg-light text-dark border p-2" id="nomeSocieta">Società: Caricamento...</span>
         <button onclick="handleLogout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
     </div>
 </div>
@@ -65,47 +69,102 @@
     <div class="row">
         <div class="col-lg-4 mb-4">
             <div class="registration-card shadow-sm">
-                <h4 class="fw-bold text-dark mb-4"><i class="fas fa-bullseye text-danger me-2"></i>Nuova Iscrizione</h4>
-                <form id="registrationForm">
-                    <div class="mb-3">
-                        <label class="form-label">Cognome Arciere</label>
-                        <input type="text" id="regLastName" class="form-control" placeholder="es. Neri" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Nome Arciere</label>
-                        <input type="text" id="regFirstName" class="form-control" placeholder="es. Luca" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-6 mb-3">
-                            <label class="form-label">Sesso</label>
-                            <select id="regGender" class="form-select" required>
-                                <option value="M">Maschio (M)</option>
-                                <option value="F">Femmina (F)</option>
-                            </select>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <label class="form-label">Anno Nascita</label>
-                            <input type="number" id="regBirthYear" class="form-control" placeholder="es. 1995" min="1930" max="2026" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Divisione / Specialità</label>
-                        <select id="regSpecialty" class="form-select" required>
-                            <option value="">-- Seleziona Divisione --</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Classe d'Età</label>
-                        <select id="regClasse" class="form-select" required>
-                            <option value="">-- Seleziona Classe --</option>
-                        </select>
+                
+                <ul class="nav nav-pills mb-4 justify-content-center" id="formSelector" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active fw-bold btn-sm" id="indiv-tab" data-bs-toggle="tab" data-bs-target="#panelIndividuale" type="button" role="tab"><i class="fas fa-bullseye me-1"></i> Arciere</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link fw-bold btn-sm" id="team-tab" data-bs-toggle="tab" data-bs-target="#panelSquadra" type="button" role="tab"><i class="fas fa-users me-1"></i> Squadra</button>
+                    </li>
+                </ul>
+
+                <div class="tab-content">
+                    <div class="tab-pane fade show active" id="panelIndividuale" role="tabpanel">
+                        <h5 class="fw-bold text-dark mb-3"><i class="fas fa-user-plus text-danger me-2"></i>Nuova Iscrizione</h5>
+                        <form id="registrationForm">
+                            <div class="mb-3">
+                                <label class="form-label">Cognome Arciere</label>
+                                <input type="text" id="regLastName" class="form-control" placeholder="es. Neri" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Nome Arciere</label>
+                                <input type="text" id="regFirstName" class="form-control" placeholder="es. Luca" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Sesso</label>
+                                    <select id="regGender" class="form-select" required>
+                                        <option value="M">Maschio (M)</option>
+                                        <option value="F">Femmina (F)</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Anno Nascita</label>
+                                    <input type="number" id="regBirthYear" class="form-control" placeholder="es. 1995" min="1930" max="2026" required>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Divisione / Specialità</label>
+                                <select id="regSpecialty" class="form-select" required>
+                                    <option value="">-- Seleziona Divisione --</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Classe d'Età</label>
+                                <select id="regClasse" class="form-select" required>
+                                    <option value="">-- Seleziona Classe --</option>
+                                </select>
+                            </div>
+
+                            <input type="hidden" id="regWeightCategory" value="Standard Fitarco">
+                            <input type="hidden" id="regBelt" value="Atleta Nazionale">
+                            <button type="submit" class="btn btn-danger w-100 fw-bold py-2 shadow-sm">REGISTRA ARCIERE</button>
+                        </form>
                     </div>
 
-                    <input type="hidden" id="regWeightCategory" value="Standard Fitarco">
-                    <input type="hidden" id="regBelt" value="Atleta Nazionale">
+                    <div class="tab-pane fade" id="panelSquadra" role="tabpanel">
+                        <h5 class="fw-bold text-success mb-3"><i class="fas fa-users text-success me-2"></i>Nuova Squadra Fitarco</h5>
+                        <form id="teamForm">
+                            <div class="mb-3">
+                                <label class="form-label">Nome Squadra / Club</label>
+                                <input type="text" id="teamName" class="form-control" placeholder="es. Arcieri del Sole Team A" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Componenti (Separati da virgola)</label>
+                                <textarea id="teamMembers" class="form-control" rows="2" placeholder="es. Guido Neri, Gianni Rossi, Fabio Verdi" required></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Sesso</label>
+                                    <select id="teamGender" class="form-select" required>
+                                        <option value="M">Maschile (M)</option>
+                                        <option value="F">Femminile (F)</option>
+                                        <option value="Misto">Misto (X)</option>
+                                    </select>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="form-label">Classe d'Età</label>
+                                    <select id="teamClasse" class="form-select" required>
+                                        <option value="">-- Seleziona --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Divisione Arco</label>
+                                <select id="teamSpecialty" class="form-select" required>
+                                    <option value="Arco Olimpico (Ricurvo)">Arco Olimpico</option>
+                                    <option value="Arco Compound">Arco Compound</option>
+                                    <option value="Arco Nudo">Arco Nudo</option>
+                                </select>
+                            </div>
+                            <input type="hidden" id="teamWeightCategory" value="Standard Fitarco">
+                            <input type="hidden" id="teamBelt" value="Team Nazionale">
+                            <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">REGISTRA SQUADRA</button>
+                        </form>
+                    </div>
+                </div>
 
-                    <button type="submit" class="btn btn-danger w-100 fw-bold py-2 shadow-sm">REGISTRA ISCRIZIONE ARCIERE</button>
-                </form>
             </div>
         </div>
 
@@ -157,6 +216,7 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
 <script src="script2.js"></script>
