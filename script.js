@@ -87,7 +87,54 @@ async function logout() {
 }
 
 // =========================================================================
-// 4. INIZIALIZZAZIONE AVANZATA E CARICAMENTO GARA/SOCIETÀ (initPage)
+// 4. CARICAMENTO EVENTI DINAMICI (scelta-evento.html)
+// =========================================================================
+async function caricaEventiScelta() {
+    const listaContenitore = document.getElementById('eventListContainer') || document.getElementById('listaGare');
+    if (!listaContenitore) return; 
+
+    try {
+        const { data: eventi, error } = await sb.from('eventi').select('*').eq('attivo', true).order('data_evento', { ascending: false });
+        if (error) throw error;
+
+        if (!eventi || eventi.length === 0) {
+            listaContenitore.innerHTML = '<div class="alert alert-info text-center py-4">Nessuna competizione in programma.</div>';
+            return;
+        }
+
+        listaContenitore.innerHTML = "";
+        eventi.forEach(e => {
+            const sportId = e.sport_id ? e.sport_id.toLowerCase() : 'karate';
+            let destinazioneHtml = 'index-karate.html'; 
+            if (sportId === 'judo') destinazioneHtml = 'index-judo.html';
+            if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
+
+            listaContenitore.innerHTML += `
+                <div class="event-item" style="cursor:pointer;" onclick="selezionaGaraEInvia('${e.id}', '${destinazioneHtml}', '${sportId}', '${e.nome.replace(/'/g, "\\'")}')">
+                    <div class="p-3 border rounded mb-2 bg-white shadow-sm d-flex justify-content-between align-items-center">
+                        <div>
+                            <h5 class="mb-1">${e.nome}</h5>
+                            <small class="text-muted">${e.data_evento} • ${e.luogo || 'Sede da definire'}</small>
+                            <span class="badge bg-secondary text-uppercase ms-2">${sportId}</span>
+                        </div>
+                        <i class="fas fa-chevron-right text-muted"></i>
+                    </div>
+                </div>`;
+        });
+    } catch (err) {
+        listaContenitore.innerHTML = '<div class="alert alert-danger text-center">Errore nel caricamento delle competizioni.</div>';
+    }
+}
+
+window.selezionaGaraEInvia = function(idGara, paginaTarget, sportId, nomeGara) {
+    sessionStorage.setItem('selectedEventId', idGara);
+    sessionStorage.setItem('selectedSportId', sportId);
+    sessionStorage.setItem('selectedEventName', nomeGara);
+    window.location.href = paginaTarget;
+};
+
+// =========================================================================
+// 5. INIZIALIZZAZIONE AVANZATA DASHBOARD DI GARA (initPage)
 // =========================================================================
 async function initPage() {
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -105,7 +152,7 @@ async function initPage() {
         return;
     }
 
-    // Caricamento visivo dei dati della gara corrente
+    // Caricamento visivo dei dati della gara corrente nelle etichette HTML
     if(document.getElementById('selectedEventId')) document.getElementById('selectedEventId').value = eventId;
     if(document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = eventName || "Gara Selezionata";
     if(document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = eventName || "";
@@ -123,10 +170,8 @@ async function initPage() {
         }
         
         currentSportConfig = config;
-        console.log(`Regole caricate con successo da Supabase per lo sport [${sportId.toUpperCase()}]:`, currentSportConfig);
     } catch (err) {
         console.error("ERRORE CRITICO DATABASE:", err);
-        alert("ATTENZIONE: Impossibile caricare le regole da Supabase! Il sistema è bloccato. Controlla la tabella 'configurazioni_sport'. Errore: " + err.message);
         return;
     }
 
@@ -141,7 +186,6 @@ async function initPage() {
             if (!socErr && soc) {
                 window.currentSocietyId = soc.id;
                 
-                // Popolamento di tutti i potenziali container del nome società
                 if(document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
                 if(document.getElementById('nomeSocietaIscritta')) document.getElementById('nomeSocietaIscritta').innerText = soc.nome;
                 if(document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
@@ -149,8 +193,6 @@ async function initPage() {
                 // Scarica le liste legate alla società e all'evento
                 await fetchAthletes();
                 await fetchTeams();
-            } else {
-                console.warn("Profilo societario non associato all'account.");
             }
         }
     } catch (authErr) {
@@ -159,7 +201,7 @@ async function initPage() {
 }
 
 // =========================================================================
-// 5. DINAMICHE DI INTERFACCIA E REGOLE SPORTIVE CASCATA
+// 6. DINAMICHE DI INTERFACCIA E REGOLE SPORTIVE CASCATA
 // =========================================================================
 function adattaInterfacciaAlloSport() {
     if (!currentSportConfig) return;
@@ -172,7 +214,7 @@ function adattaInterfacciaAlloSport() {
 
     const weightBox = document.getElementById('weight_category')?.closest('.col-md-4') || document.getElementById('weight_category')?.parentElement;
     if (weightBox) {
-        const richiedePeso = currentSportConfig.richiega_peso || currentSportConfig.richiede_peso;
+        const richiedePeso = currentSportConfig.richiega_peso || currentSportConfig.richede_peso;
         weightBox.style.display = richiedePeso ? 'block' : 'none';
     }
 }
@@ -327,7 +369,7 @@ function handleSpecialtyChange() {
 }
 
 // =========================================================================
-// 6. RICHIESTE DATI, TABELLE E CONTEGGI (READ)
+// 7. RICHIESTE DATI, TABELLE E CONTEGGI (READ)
 // =========================================================================
 async function fetchAthletes() {
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -359,7 +401,6 @@ async function fetchTeams() {
     const eventId = sessionStorage.getItem('selectedEventId');
     if (!window.currentSocietyId) return;
     
-    // Tabella corretta su Supabase impostata su 'teams'
     const { data: teams } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', eventId);
     const list = document.getElementById('teamList');
     if (list) {
@@ -411,7 +452,6 @@ async function updateGlobalCounters(eventId) {
     if(document.getElementById('ParaKarateAthleteCountDisplay')) document.getElementById('ParaKarateAthleteCountDisplay').innerText = sCount.Para;
     if(document.getElementById('KIDSAthleteCountDisplay')) document.getElementById('KIDSAthleteCountDisplay').innerText = sCount.Kids;
     
-    // Supporto per i display generali alternativi
     if(document.getElementById('totaleAtleti')) document.getElementById('totaleAtleti').innerText = myTotal.length;
     if(document.getElementById('totalAthleteCountDisplay')) document.getElementById('totalAthleteCountDisplay').innerText = myTotal.length;
     
@@ -419,7 +459,7 @@ async function updateGlobalCounters(eventId) {
 }
 
 // =========================================================================
-// 7. OPERAZIONI DI SALVATAGGIO ED EDITING (WRITE/CUD)
+// 8. OPERAZIONI DI SALVATAGGIO ED EDITING (WRITE/CUD)
 // =========================================================================
 async function addAthlete(e) {
     e.preventDefault();
@@ -436,7 +476,6 @@ async function addAthlete(e) {
 
     if (!birthYear) return alert("Inserisci una data di nascita valida.");
 
-    // Controllo rigido dei tetti massimi di iscrizione previsti nel JSON
     if (!editingAthleteId && !editingTeamId) {
         const globalCounts = await updateGlobalCounters(eventId);
         const currentSum = globalCounts.Kata + globalCounts.Kumite;
@@ -476,11 +515,11 @@ async function addAthlete(e) {
         if (editingTeamId) {
             const { error } = await sb.from('teams').update([teamData]).eq('id', editingTeamId);
             if (error) alert("Errore: " + error.message);
-            else { alert("Squadra modificata su database!"); completeReset(); }
+            else { alert("Squadra modificata!"); completeReset(); }
         } else {
             const { error } = await sb.from('teams').insert([teamData]);
             if (error) alert(error.message);
-            else { alert("Squadra registrata su database!"); completeReset(); }
+            else { alert("Squadra registrata!"); completeReset(); }
         }
     } else {
         const athleteData = {
@@ -494,11 +533,11 @@ async function addAthlete(e) {
         if (editingAthleteId) {
             const { error } = await sb.from('atleti').update([athleteData]).eq('id', editingAthleteId);
             if (error) alert("Errore: " + error.message);
-            else { alert("Atleta modificato su database!"); completeReset(); }
+            else { alert("Atleta modificato!"); completeReset(); }
         } else {
             const { error } = await sb.from('atleti').insert([athleteData]);
             if (error) alert(error.message);
-            else { alert("Atleta registrato su database!"); completeReset(); }
+            else { alert("Atleta registrato!"); completeReset(); }
         }
     }
 }
@@ -507,7 +546,7 @@ async function editAthlete(id) {
     if (editingTeamId) completeReset();
 
     const { data: a, error } = await sb.from('atleti').select('*').eq('id', id).single();
-    if (error) return alert("Errore nel recupero dati dell'atleta: " + error.message);
+    if (error) return alert("Errore nel recupero dati: " + error.message);
 
     const radioInd = document.querySelector('input[name="regType"][value="individual"]');
     if (radioInd) radioInd.checked = true;
@@ -532,17 +571,14 @@ async function editAthlete(id) {
         submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
         submitBtn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3";
     }
-
-    if (document.getElementById('athleteForm')) {
-        document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
-    }
+    if (document.getElementById('athleteForm')) document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function editTeam(id) {
     if (editingAthleteId) completeReset();
 
     const { data: t, error } = await sb.from('teams').select('*').eq('id', id).single();
-    if (error) return alert("Errore nel recupero dati della squadra: " + error.message);
+    if (error) return alert("Errore nel recupero dati: " + error.message);
 
     const radioTeam = document.querySelector('input[name="regType"][value="team"]');
     if (radioTeam) radioTeam.checked = true;
@@ -571,21 +607,18 @@ async function editTeam(id) {
         submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
         submitBtn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3";
     }
-
-    if (document.getElementById('athleteForm')) {
-        document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
-    }
+    if (document.getElementById('athleteForm')) document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 async function deleteAthlete(id) { 
-    if (confirm("Eliminare l'atleta selezionato dal database?")) { 
+    if (confirm("Eliminare l'atleta selezionato?")) { 
         await sb.from('atleti').delete().eq('id', id); 
         fetchAthletes();
     } 
 }
 
 async function deleteTeam(id) { 
-    if (confirm("Eliminare la squadra selezionata dal database?")) { 
+    if (confirm("Eliminare la squadra selezionata?")) { 
         await sb.from('teams').delete().eq('id', id); 
         fetchTeams();
     } 
@@ -637,7 +670,7 @@ function setupBirthdateListeners() {
 }
 
 // =========================================================================
-// 8. ESPORTAZIONE DATI IN FORMATO CSV/EXCEL
+// 9. EXPORT CSV
 // =========================================================================
 async function exportToExcel() {
     const eventId = sessionStorage.getItem('selectedEventId');
@@ -662,18 +695,34 @@ async function exportToExcel() {
         link.click();
     } catch (error) { alert("Errore durante l'esportazione."); }
 }
-
-// Esposizione globale per i pulsanti HTML inline (es: onclick="exportToExcel()")
 window.exportToExcel = exportToExcel;
 
 // =========================================================================
-// 9. DISPATCHER E REGISTRAZIONE EVENTI DOM
+// 10. DISPATCHER E REGISTRAZIONE EVENTI DOM (CORRETTO)
 // =========================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    // Inizializza la pagina corrente (caricamento sport, regole, gara e società)
-    initPage();
+document.addEventListener('DOMContentLoaded', async () => {
+    const pathname = window.location.pathname.toLowerCase();
 
-    // Listeners del Form di Registrazione / Login (Ereditati da script.js)
+    // FILTRO CENTRALIZZATO PAGINE: Evita i loop infiniti di caricamento
+    if (pathname.includes('scelta-evento.html') || document.getElementById('eventListContainer') || document.getElementById('listaGare')) {
+        await caricaEventiScelta();
+        return; // Interrompe qui l'esecuzione per questa pagina
+    } 
+    
+    if (pathname.includes('login.html') || pathname.includes('registrazione.html')) {
+        // Pagine di autenticazione: non fare nulla
+    } else if (pathname === '/' || pathname.endsWith('/')) {
+        try {
+            const { data: { session } } = await sb.auth.getSession();
+            window.location.href = session ? 'scelta-evento.html' : 'login.html';
+            return;
+        } catch (e) { window.location.href = 'login.html'; return; }
+    } else {
+        // Dashboard d'iscrizione attiva (Karate, Judo, Fitarco)
+        await initPage();
+    }
+
+    // Gestione Form Login
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -682,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Gestione Form Registrazione
     const regForm = document.getElementById('registrazioneForm');
     if (regForm) {
         regForm.addEventListener('submit', (e) => {
@@ -690,19 +740,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const emailConfirm = document.getElementById('emailConfirm').value;
             const password = document.getElementById('password').value;
             const passwordConfirm = document.getElementById('passwordConfirm').value;
-            const nomeSocieta = document.getElementById('nomeSocieta').value;
-            const cfs = document.getElementById('cfs').value; 
-            const cell = document.getElementById('cell').value;
-
+            
             if (email !== emailConfirm) return alert("Le email inserite non corrispondono!");
             if (password !== passwordConfirm) return alert("Le password inserite non corrispondono!");
             if (password.length < 6) return alert("La password deve essere di almeno 6 caratteri.");
 
-            signUp(email, password, nomeSocieta, cfs, cell);
+            signUp(email, password, document.getElementById('nomeSocieta').value, document.getElementById('cfs').value, document.getElementById('cell').value);
         });
     }
 
-    // Listeners dei moduli di Iscrizione Atleti / Squadre (Ereditati da script2.js)
+    // Assegnazione dei moduli e selettori dinamici delle Dashboard
     if(document.getElementById('athleteForm')) document.getElementById('athleteForm').addEventListener('submit', addAthlete);
     if(document.getElementById('gender')) document.getElementById('gender').addEventListener('change', handleSpecialtyChange); 
     if(document.getElementById('team_gender')) document.getElementById('team_gender').addEventListener('change', handleSpecialtyChange); 
