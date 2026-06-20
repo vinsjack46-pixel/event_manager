@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON MODIFICA)
+// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON ADATTAMENTO JSON CINTURE)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -43,11 +43,8 @@ async function initKarateDashboard() {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', 'karate').single();
         if (config) {
             currentSportConfig = config.regole;
-            const beltSel = document.getElementById('belt');
-            if (beltSel) {
-                beltSel.innerHTML = '<option value="">-- Cintura --</option>';
-                currentSportConfig.cinture?.forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
-            }
+            // NOTA: Il popolamento iniziale statico di #belt è stato rimosso 
+            // perché ora le cinture dipendono dalla classe d'età calcolata dall'anno.
         }
     } catch(e) { console.error(e); }
 
@@ -110,6 +107,18 @@ function updateSpecs(year) {
     const spSel = document.getElementById('specialty');
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
+    
+    // --- MODIFICA 1: Popolamento dinamico delle cinture accorpate basato sulla classe d'età ---
+    const beltSel = document.getElementById('belt');
+    if (beltSel) {
+        beltSel.innerHTML = '<option value="">-- Cintura --</option>';
+        if (classe && classe.cinture) {
+            classe.cinture.forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
+        } else {
+            // Fallback generico di sicurezza se fuori quota
+            ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"].forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
+        }
+    }
     
     handleSpecialtyChange();
 }
@@ -209,7 +218,20 @@ window.editAthlete = async function(id) {
     document.getElementById('specialty').value = a.specialty;
     handleSpecialtyChange();
 
-    document.getElementById('belt').value = a.belt;
+    // --- MODIFICA 2: Selezione intelligente della cintura accorpata (Tolleranza singola/accorpata) ---
+    const beltSel = document.getElementById('belt');
+    if (beltSel) {
+        beltSel.value = a.belt; // Prova la corrispondenza esatta (es: "Bianca/Gialla")
+        
+        // Se non la trova (perché sul db c'era scritto solo "Bianca" o "Gialla"), cerca l'opzione che la contiene
+        if (!beltSel.value && a.belt) {
+            const opzioneValida = Array.from(beltSel.options).find(opt => 
+                opt.value.toLowerCase().includes(a.belt.toLowerCase())
+            );
+            if (opzioneValida) beltSel.value = opzioneValida.value;
+        }
+    }
+    
     document.getElementById('weight_category').value = a.weight_category;
 
     editingAthleteId = id;
@@ -233,7 +255,18 @@ window.editTeam = async function(id) {
     document.getElementById('specialty').value = t.specialty;
     handleSpecialtyChange();
 
-    document.getElementById('belt').value = t.belt;
+    // --- MODIFICA 3: Selezione intelligente della cintura accorpata per i Team ---
+    const beltSel = document.getElementById('belt');
+    if (beltSel) {
+        beltSel.value = t.belt;
+        if (!beltSel.value && t.belt) {
+            const opzioneValida = Array.from(beltSel.options).find(opt => 
+                opt.value.toLowerCase().includes(t.belt.toLowerCase())
+            );
+            if (opzioneValida) beltSel.value = opzioneValida.value;
+        }
+    }
+    
     document.getElementById('weight_category').value = t.weight_category;
 
     const cont = document.getElementById('membersContainer');
