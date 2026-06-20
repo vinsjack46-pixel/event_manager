@@ -78,27 +78,51 @@ async function initDashboardSemplice() {
     const nomeGara = sessionStorage.getItem('selectedEventName');
     const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
 
-    console.log("Dati Sessione -> ID Gara:", idGaraCorrente, "| Nome:", nomeGara, "| Sport:", sportId);
-
     if (!idGaraCorrente) {
         console.warn("Nessuna gara in sessione, torno alla selezione eventi.");
         return window.location.href = "scelta-evento.html";
     }
 
-    // 1. CARICAMENTO NOME EVENTO
-    const titleEl = document.getElementById('nomeGaraTitolo');
-    const displayEl = document.getElementById('eventNameDisplay');
-    
-    if (titleEl) titleEl.innerText = nomeGara;
-    if (displayEl) displayEl.innerText = nomeGara;
+    // 1. FORZATURA E SOSTITUZIONE NOME GARA IN TUTTI I POSSIBILI ID
+    // Cerca tutti i possibili elementi in cui potresti aver scritto "Caricamento gara..."
+    const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
+    targetGaraIDs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = nomeGara;
+    });
 
-    // (Il resto del codice rimane silente per ora, lo testeremo al prossimo passaggio)
+    // 2. RECUPERO UTENTE E SOCIETÀ LOGGATA
+    try {
+        const { data: { user }, error: authErr } = await sb.auth.getUser();
+        if (authErr || !user) {
+            console.warn("Nessun utente loggato rilevato.");
+            return;
+        }
+
+        const { data: soc, error: socErr } = await sb.from('societa').select('*').eq('user_id', user.id).single();
+        if (socErr || !soc) {
+            console.error("Società non trovata:", socErr);
+            return;
+        }
+
+        idSocietaCorrente = soc.id;
+        console.log("Società caricata nel motore:", soc.nome);
+
+        // Aggiorna tutti i possibili ID in cui mostri il nome della Società in alto
+        const targetSocietaIDs = ['societyNameDisplay', 'nomeSocietaHeader', 'nomeSocieta', 'societyName'];
+        targetSocietaIDs.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.innerText = soc.nome;
+        });
+
+    } catch (err) {
+        console.error("Errore nel blocco Società:", err);
+    }
 }
 
 // --- DISPATCHER AUTOMATICO DELLE PAGINE ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
-    console.log("Script.js ha rilevato il percorso:", path);
     
     if (path.includes("login") || path.includes("registrazione")) {
         document.getElementById('loginForm')?.addEventListener('submit', (e) => { e.preventDefault(); signIn(document.getElementById('email').value, document.getElementById('password').value); });
@@ -106,7 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
-        // Avvia la dashboard forzatamente se siamo in una di queste due pagine
         initDashboardSemplice();
     }
 });
