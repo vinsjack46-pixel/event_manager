@@ -4,7 +4,8 @@
 if (typeof window.sb === 'undefined') {
     window.sb = window.supabaseClient;
 }
-var sb = window.supabaseClient;
+// CORRETTO: Ora usa l'istanza condivisa su window.sb creata da script.js
+var sb = window.sb;
 
 window.currentSocietyId = null;
 
@@ -234,8 +235,9 @@ function handleSpecialtyChange() {
     wInput.innerHTML = '';
     wInput.disabled = true;
 
-    // Se lo sport a livello globale non prevede categorie di peso
-    if (!currentSportConfig.richiede_peso && !currentSportConfig.richiega_peso) {
+    // CORRETTO: Verifica unificata di tutti i refusi delle colonne peso del DB
+    const richiedePesoGlobal = currentSportConfig.richiega_peso || currentSportConfig.richede_peso || currentSportConfig.richiede_peso;
+    if (!richiedePesoGlobal) {
         wInput.innerHTML = '<option value="-">-</option>';
         return;
     }
@@ -470,7 +472,8 @@ async function addAthlete(e) {
         };
 
         if (editingTeamId) {
-            const { error } = await sb.from('teams').update([teamData]).eq('id', editingTeamId);
+            // CORRETTO: rimosse le parentesi quadre dell'array dentro .update()
+            const { error } = await sb.from('teams').update(teamData).eq('id', editingTeamId);
             if (error) alert("Errore: " + error.message);
             else { alert("Squadra modificata su database!"); completeReset(); }
         } else {
@@ -488,7 +491,8 @@ async function addAthlete(e) {
         };
 
         if (editingAthleteId) {
-            const { error } = await sb.from('atleti').update([athleteData]).eq('id', editingAthleteId);
+            // CORRETTO: rimosse le parentesi quadre dell'array dentro .update()
+            const { error } = await sb.from('atleti').update(athleteData).eq('id', editingAthleteId);
             if (error) alert("Errore: " + error.message);
             else { alert("Atleta modificato su database!"); completeReset(); }
         } else {
