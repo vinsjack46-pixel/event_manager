@@ -6,6 +6,17 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adminEventForm').addEventListener('submit', inviaNuovaGara);
     caricaElencoGare();
 });
+async function verificaSuperAdmin() {
+    const { data: { user } } = await sb.auth.getUser();
+    
+    // Inserisci qui la tua email reale di Supabase
+    const emailSuperAdmin = "tuaimail@master.it"; 
+    
+    if (!user || user.email !== emailSuperAdmin) {
+        alert("ACCESSO NEGATO: Questa sezione richiede un livello di autorizzazione Super Admin.");
+        window.location.href = "scelta-evento.html"; // Kicca l'utente non autorizzato
+    }
+}
 
 async function caricaElencoGare() {
     const { data, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
