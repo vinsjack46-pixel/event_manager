@@ -1,4 +1,11 @@
-const sb = window.supabaseClient;
+// =========================================================================
+// INIZIALIZZAZIONE SICURA: Condivide l'istanza Supabase creata da script.js
+// =========================================================================
+if (typeof window.sb === 'undefined') {
+    window.sb = window.supabaseClient;
+}
+var sb = window.supabaseClient;
+
 let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
 let istanzaModale = null; // Memorizza l'oggetto della modale a comparsa
@@ -29,10 +36,10 @@ async function initAdmin() {
     await loadFilterEvents();
     await fetchGlobalData();
     
-    document.getElementById('eventForm').addEventListener('submit', createEvent);
-    document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
-    document.getElementById('filterEvent').addEventListener('change', filterAll);
-    document.getElementById('globalSearch').addEventListener('input', filterAll);
+    if (document.getElementById('eventForm')) document.getElementById('eventForm').addEventListener('submit', createEvent);
+    if (document.getElementById('sportConfigForm')) document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
+    if (document.getElementById('filterEvent')) document.getElementById('filterEvent').addEventListener('change', filterAll);
+    if (document.getElementById('globalSearch')) document.getElementById('globalSearch').addEventListener('input', filterAll);
 }
 
 async function refreshSportDropdowns() {
@@ -44,14 +51,14 @@ async function refreshSportDropdowns() {
         const eventSelect = document.getElementById('eventSportId');
         const selettoreJson = document.getElementById('selettoreSportJson');
         
-        configSelect.innerHTML = "";
-        eventSelect.innerHTML = '<option value="">-- Seleziona Sport --</option>';
+        if (configSelect) configSelect.innerHTML = "";
+        if (eventSelect) eventSelect.innerHTML = '<option value="">-- Seleziona Sport --</option>';
         if (selettoreJson) selettoreJson.innerHTML = "";
 
         sports?.forEach(s => {
             const opt = `<option value="${s.sport_id}">${s.sport_id.toUpperCase()}</option>`;
-            configSelect.innerHTML += opt;
-            eventSelect.innerHTML += opt;
+            if (configSelect) configSelect.innerHTML += opt;
+            if (eventSelect) eventSelect.innerHTML += opt;
             if (selettoreJson) selettoreJson.innerHTML += opt;
         });
 
@@ -70,17 +77,16 @@ function toggleNewSportInput() {
     const btn = document.getElementById('toggleNewSportBtn');
 
     if (!isCreatingNewSport) {
-        select.style.display = "none";
-        input.style.display = "block";
-        metaFields.style.display = "block";
-        input.value = "";
-        btn.innerText = "×";
+        if (select) select.style.display = "none";
+        if (input) { input.style.display = "block"; input.value = ""; }
+        if (metaFields) metaFields.style.display = "block";
+        if (btn) btn.innerText = "×";
         isCreatingNewSport = true;
     } else {
-        select.style.display = "block";
-        input.style.display = "none";
-        metaFields.style.display = "none";
-        btn.innerText = "+";
+        if (select) select.style.display = "block";
+        if (input) input.style.display = "none";
+        if (metaFields) metaFields.style.display = "none";
+        if (btn) btn.innerText = "+";
         isCreatingNewSport = false;
         loadSportConfigFromDB();
     }
@@ -88,7 +94,9 @@ function toggleNewSportInput() {
 
 async function loadSportConfigFromDB() {
     if (isCreatingNewSport) return;
-    const sportId = document.getElementById('configSportId').value;
+    const selectEl = document.getElementById('configSportId');
+    if (!selectEl) return;
+    const sportId = selectEl.value;
     if (!sportId) return;
 
     try {
@@ -101,10 +109,11 @@ async function loadSportConfigFromDB() {
 
         const regole = config.regole || {};
         const limiti = regole.limiti || {};
-        document.getElementById('limitKataKumite').value = limiti.KataKumiteSum || 300;
-        document.getElementById('limitKids').value = limiti.KIDS || 250;
-        document.getElementById('limitPara').value = limiti.ParaKarate || 50;
-        document.getElementById('configRichiedePeso').value = config.richiede_peso === false ? "false" : "true";
+        
+        if (document.getElementById('limitKataKumite')) document.getElementById('limitKataKumite').value = limiti.KataKumiteSum || 300;
+        if (document.getElementById('limitKids')) document.getElementById('limitKids').value = limiti.KIDS || 250;
+        if (document.getElementById('limitPara')) document.getElementById('limitPara').value = limiti.ParaKarate || 50;
+        if (document.getElementById('configRichiedePeso')) document.getElementById('configRichiedePeso').value = config.richiede_peso === false ? "false" : "true";
 
     } catch (err) {
         console.error(err);
@@ -115,18 +124,18 @@ async function saveSportConfigToDB(e) {
     e.preventDefault();
     
     let sportId = "";
-    const requiresWeight = document.getElementById('configRichiedePeso').value === "true";
-    const labelLivello = document.getElementById('configEtichetta').value || "Cintura";
+    const requiresWeight = document.getElementById('configRichiedePeso')?.value === "true";
+    const labelLivello = document.getElementById('configEtichetta')?.value || "Cintura";
     
-    const limitKataKumite = parseInt(document.getElementById('limitKataKumite').value);
-    const limitKids = parseInt(document.getElementById('limitKids').value);
-    const limitPara = parseInt(document.getElementById('limitPara').value);
+    const limitKataKumite = parseInt(document.getElementById('limitKataKumite')?.value || 300);
+    const limitKids = parseInt(document.getElementById('limitKids')?.value || 250);
+    const limitPara = parseInt(document.getElementById('limitPara')?.value || 50);
 
     if (isCreatingNewSport) {
-        sportId = document.getElementById('newSportId').value.trim().toLowerCase();
+        sportId = document.getElementById('newSportId')?.value.trim().toLowerCase() || "";
         if (!sportId) return alert("Inserisci un ID valido per il nuovo sport!");
     } else {
-        sportId = document.getElementById('configSportId').value;
+        sportId = document.getElementById('configSportId')?.value || "";
     }
 
     try {
@@ -225,16 +234,16 @@ function renderTables(atleti, teams) {
             <td class="text-end"><button onclick="deleteRecord('teams','${t.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     });
-    document.getElementById('countInd').innerText = atleti.length;
-    document.getElementById('countTeam').innerText = teams.length;
-    document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
+    if (document.getElementById('countInd')) document.getElementById('countInd').innerText = atleti.length;
+    if (document.getElementById('countTeam')) document.getElementById('countTeam').innerText = teams.length;
+    if (document.getElementById('totalCounter')) document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
 }
 
 function filterAll() {
-    const term = document.getElementById('globalSearch').value.toLowerCase();
-    const evId = document.getElementById('filterEvent').value;
-    const fA = allAthletes.filter(a => (a.first_name+a.last_name+a.societa?.nome).toLowerCase().includes(term) && (!evId || a.event_id == evId));
-    const fT = allTeams.filter(t => (t.team_name+t.societa?.nome).toLowerCase().includes(term) && (!evId || t.event_id == evId));
+    const term = document.getElementById('globalSearch')?.value.toLowerCase() || "";
+    const evId = document.getElementById('filterEvent')?.value || "";
+    const fA = allAthletes.filter(a => (a.first_name+a.last_name+(a.societa?.nome||"")).toLowerCase().includes(term) && (!evId || a.event_id == evId));
+    const fT = allTeams.filter(t => (t.team_name+(t.societa?.nome||"")).toLowerCase().includes(term) && (!evId || t.event_id == evId));
     renderTables(fA, fT);
 }
 
@@ -276,8 +285,8 @@ async function handleLogout() {
 
 function exportAllToCSV() {
     let csv = ["TIPO;NOME/TEAM;MEMBRI;EVENTO;SOCIETA;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
-    allAthletes.forEach(a => csv.push(`"Individuale";"${a.first_name} ${a.last_name}";"-";"${a.eventi?.nome}";"${a.societa?.nome}";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`));
-    allTeams.forEach(t => csv.push(`"Team";"${t.team_name}";"${t.members?.join(' - ')}";"${t.eventi?.nome}";"${t.societa?.nome}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`));
+    allAthletes.forEach(a => csv.push(`"Individuale";"${a.first_name} ${a.last_name}";"-";"${a.eventi?.nome || ''}";"${a.societa?.nome || ''}";"${a.classe}";"${a.specialty}";"${a.belt}";"${a.gender}";"${a.weight_category}"`));
+    allTeams.forEach(t => csv.push(`"Team";"${t.team_name}";"${t.members?.join(' - ') || ''}";"${t.eventi?.nome || ''}";"${t.societa?.nome || ''}";"${t.classe}";"${t.specialty}";"${t.belt || '-'}";"${t.gender}";"${t.weight_category || '-'}"`));
     
     const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -286,9 +295,6 @@ function exportAllToCSV() {
     link.click();
 }
 
-// ==========================================================
-// BLOCCO AVANZATO: AZIONI DI MODIFICA DEI REGOLAMENTI JSON
-// ==========================================================
 function apriEditorModale() {
     if (!istanzaModale) return;
     istanzaModale.show();
@@ -296,7 +302,9 @@ function apriEditorModale() {
 }
 
 async function leggiJsonDaDb() {
-    const spId = document.getElementById('selettoreSportJson').value;
+    const selectEl = document.getElementById('selettoreSportJson');
+    if (!selectEl) return;
+    const spId = selectEl.value;
     if (!spId) return;
     try {
         const { data, error } = await sb.from('configurazioni_sport').select('regole').eq('sport_id', spId).single();
@@ -323,7 +331,9 @@ function formattaTestoJson() {
 }
 
 async function inviaJsonAggiustato() {
-    const spId = document.getElementById('selettoreSportJson').value;
+    const selectEl = document.getElementById('selettoreSportJson');
+    if (!selectEl) return;
+    const spId = selectEl.value;
     if (!spId) return;
     try {
         const jsonDefinitivo = JSON.parse(document.getElementById('testoJson').value);
