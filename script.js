@@ -9,6 +9,7 @@ const sb = createClient(supabaseUrl, supabaseKey);
 window.sb = sb;
 
 let idGaraCorrente = null;
+let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
 
 // --- AUTH ---
@@ -76,28 +77,44 @@ async function initDashboardSemplice() {
 
     if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
 
-    const titleEl = document.getElementById('nomeGaraTitolo');
-    if (titleEl) titleEl.innerText = nomeGara;
+    // Mostra il nome dell'evento nei vari elementi grafici se presenti
+    if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = nomeGara;
+    if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = nomeGara;
 
-    // Recupero Regole
+    // Recupero dell'utente autenticato per identificare la Società
+    try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) {
+            const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
+            if (soc) {
+                idSocietaCorrente = soc.id;
+                if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
+                if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
+            }
+        }
+    } catch (e) {
+        console.error("Errore recupero società:", e);
+    }
+
+    // Recupero Regole Sportive specifiche
     const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
     if (config) {
         configurazioneSportCorrente = config.regole;
         if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
             const sel = document.getElementById('regSpecialty');
-            sel.innerHTML = '<option value="">-- Seleziona --</option>';
+            sel.innerHTML = '<option value="">-- Seleziona Div/Spec --</option>';
             config.regole.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
         }
     }
 
-    // Listener Cascate
+    // Listener per le selezioni a cascata (Fitarco e Judo)
     const selGender = document.getElementById('regGender');
     const selClasse = document.getElementById('regClasse');
     const selSpecialty = document.getElementById('regSpecialty');
 
     if (sportId === 'judo' && selGender && selClasse) {
         selGender.addEventListener('change', () => {
-            selClasse.innerHTML = '<option value="">-- Scegli --</option>';
+            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
             configurazioneSportCorrente?.classi?.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
         });
@@ -106,7 +123,7 @@ async function initDashboardSemplice() {
             selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
             const list = configurazioneSportCorrente?.pesi?.[selGender.value]?.[selClasse.value];
             if (list) {
-                list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p}</option>`);
+                list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
                 selPeso.disabled = false;
             } else {
                 selPeso.innerHTML = '<option value="Open">Open</option>';
@@ -117,7 +134,7 @@ async function initDashboardSemplice() {
 
     if (sportId === 'fitarco' && selSpecialty && selClasse) {
         selSpecialty.addEventListener('change', () => {
-            selClasse.innerHTML = '<option value="">-- Scegli --</option>';
+            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
             configurazioneSportCorrente?.classi?.[selSpecialty.value]?.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
         });
@@ -128,39 +145,43 @@ async function initDashboardSemplice() {
 
 async function salvaIscrizione(e) {
     e.preventDefault();
-    const { data: { user } } = await sb.auth.getUser();
-    let socId = null;
-    if (user) {
-        const { data: soc } = await sb.from('societa').select('id').eq('user_id', user.id).single();
-        if (soc) socId = soc.id;
-    }
+    if (!idSocietaCorrente) return alert("Errore: Impossibile identificare la società sportiva.");
 
     const payload = {
         event_id: idGaraCorrente,
-        society_id: socId,
+        society_id: idSocietaCorrente,
         first_name: document.getElementById('regFirstName').value.trim(),
         last_name: document.getElementById('regLastName').value.trim(),
         gender: document.getElementById('regGender').value,
         classe: document.getElementById('regClasse').value,
-        specialty: document.getElementById('regSpecialty')?.value || 'Indiv.',
+        specialty: document.getElementById('regSpecialty')?.value || 'Individuale',
         belt: document.getElementById('regBelt')?.value || 'Base',
         weight_category: document.getElementById('regWeightCategory')?.value || 'Open'
     };
     
-    await sb.from('atleti').insert([payload]);
-    document.getElementById('registrationForm').reset();
-    alert("Iscrizione registrata!");
-    popolaTabellaIscritti(sessionStorage.getItem('selectedSportId'));
+    const { error } = await sb.from('atleti').insert([payload]);
+    if (error) {
+        alert("Errore durante l'inserimento: " + error.message);
+    } else {
+        document.getElementById('registrationForm').reset();
+        alert("Iscrizione completata con successo!");
+        popolaTabellaIscritti(sessionStorage.getItem('selectedSportId'));
+    }
 }
 
 async function popolaTabellaIscritti(sportId) {
     const tbody = document.getElementById('iscrittiGaraList');
     if (!tbody) return;
-    const { data } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).order('created_at', { ascending: false });
+    
+    const { data, error } = await sb.from('atleti')
+        .select('*')
+        .eq('event_id', idGaraCorrente)
+        .eq('society_id', idSocietaCorrente)
+        .order('created_at', { ascending: false });
     
     tbody.innerHTML = "";
-    if (!data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Nessun iscritto.</td></tr>`;
+    if (error || !data || !data.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
         return;
     }
 
@@ -173,7 +194,7 @@ async function popolaTabellaIscritti(sportId) {
     });
 }
 
-// --- DISPATCHER ---
+// --- DISPATCHER AUTOMATICO DELLE PAGINE ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
     
