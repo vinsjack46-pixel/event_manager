@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON ADATTAMENTO JSON CINTURE)
+// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON ADATTAMENTO CINTURE E EVIDENZIAZIONE RIGA)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -43,8 +43,6 @@ async function initKarateDashboard() {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', 'karate').single();
         if (config) {
             currentSportConfig = config.regole;
-            // NOTA: Il popolamento iniziale statico di #belt è stato rimosso 
-            // perché ora le cinture dipendono dalla classe d'età calcolata dall'anno.
         }
     } catch(e) { console.error(e); }
 
@@ -108,14 +106,13 @@ function updateSpecs(year) {
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     
-    // --- MODIFICA 1: Popolamento dinamico delle cinture accorpate basato sulla classe d'età ---
+    // Popolamento dinamico delle cinture accorpate basato sulla classe d'età
     const beltSel = document.getElementById('belt');
     if (beltSel) {
         beltSel.innerHTML = '<option value="">-- Cintura --</option>';
         if (classe && classe.cinture) {
             classe.cinture.forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
         } else {
-            // Fallback generico di sicurezza se fuori quota
             ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"].forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
         }
     }
@@ -159,7 +156,8 @@ async function fetchAthletes() {
 
     data?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
         if(a.specialty==="Kumite") counts.kumite++; else if(a.specialty==="Kata") counts.kata++; else if(a.specialty==="ParaKarate") counts.para++; else counts.kids++;
-        tbody.innerHTML += `<tr>
+        // Aggiunto l'id sulla riga tr (row-athlete-ID) per poter cambiare colore
+        tbody.innerHTML += `<tr id="row-athlete-${a.id}">
             <td><strong>${a.last_name} ${a.first_name}</strong></td>
             <td>${a.classe}</td>
             <td>${a.gender}</td>
@@ -185,7 +183,8 @@ async function fetchTeams() {
     if (!tbody) return;
     tbody.innerHTML = "";
     data?.forEach(t => {
-        tbody.innerHTML += `<tr>
+        // Aggiunto l'id sulla riga tr (row-team-ID) per poter cambiare colore
+        tbody.innerHTML += `<tr id="row-team-${t.id}">
             <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
             <td>${t.classe}</td>
             <td>${t.gender}</td>
@@ -202,9 +201,16 @@ async function fetchTeams() {
 
 // COMPILAZIONE DEL FORM IN MODALITÀ MODIFICA (REAL TIME)
 window.editAthlete = async function(id) {
+    // Rimuove eventuali colorazioni precedenti prima di applicare la nuova
+    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
+    
     editingTeamId = null;
     const { data: a } = await sb.from('atleti').select('*').eq('id', id).single();
     if (!a) return;
+
+    // Cambia il colore dello sfondo della riga selezionata in giallo chiaro
+    const riga = document.getElementById(`row-athlete-${id}`);
+    if (riga) riga.style.backgroundColor = '#fff3cd';
 
     document.querySelector('input[name="regType"][value="individual"]').checked = true;
     toggleRegMode();
@@ -218,12 +224,10 @@ window.editAthlete = async function(id) {
     document.getElementById('specialty').value = a.specialty;
     handleSpecialtyChange();
 
-    // --- MODIFICA 2: Selezione intelligente della cintura accorpata (Tolleranza singola/accorpata) ---
+    // Selezione intelligente della cintura accorpata (Tolleranza singola/accorpata)
     const beltSel = document.getElementById('belt');
     if (beltSel) {
-        beltSel.value = a.belt; // Prova la corrispondenza esatta (es: "Bianca/Gialla")
-        
-        // Se non la trova (perché sul db c'era scritto solo "Bianca" o "Gialla"), cerca l'opzione che la contiene
+        beltSel.value = a.belt;
         if (!beltSel.value && a.belt) {
             const opzioneValida = Array.from(beltSel.options).find(opt => 
                 opt.value.toLowerCase().includes(a.belt.toLowerCase())
@@ -240,9 +244,16 @@ window.editAthlete = async function(id) {
 };
 
 window.editTeam = async function(id) {
+    // Rimuove eventuali colorazioni precedenti prima di applicare la nuova
+    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
+
     editingAthleteId = null;
     const { data: t } = await sb.from('teams').select('*').eq('id', id).single();
     if (!t) return;
+
+    // Cambia il colore dello sfondo della riga selezionata in giallo chiaro
+    const riga = document.getElementById(`row-team-${id}`);
+    if (riga) riga.style.backgroundColor = '#fff3cd';
 
     document.querySelector('input[name="regType"][value="team"]').checked = true;
     toggleRegMode();
@@ -255,7 +266,7 @@ window.editTeam = async function(id) {
     document.getElementById('specialty').value = t.specialty;
     handleSpecialtyChange();
 
-    // --- MODIFICA 3: Selezione intelligente della cintura accorpata per i Team ---
+    // Selezione intelligente della cintura accorpata per i Team
     const beltSel = document.getElementById('belt');
     if (beltSel) {
         beltSel.value = t.belt;
@@ -317,9 +328,11 @@ async function addEntity(e) {
         }
     }
     
-    // Ripristino stato iniziale del form
+    // Ripristino stato iniziale del form e azzeramento dei colori delle righe
     editingAthleteId = null;
     editingTeamId = null;
+    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
+
     const btn = document.querySelector('#athleteForm button[type="submit"]');
     if(btn) btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
 
