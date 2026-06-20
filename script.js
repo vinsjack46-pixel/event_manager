@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO
+// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (COMPLETO E CORRETTO)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -83,44 +83,156 @@ async function initDashboardSemplice() {
         return window.location.href = "scelta-evento.html";
     }
 
-    // 1. FORZATURA E SOSTITUZIONE NOME GARA IN TUTTI I POSSIBILI ID
-    // Cerca tutti i possibili elementi in cui potresti aver scritto "Caricamento gara..."
+    // 1. Scrittura del nome della Gara
     const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
     targetGaraIDs.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = nomeGara;
     });
 
-    // 2. RECUPERO UTENTE E SOCIETÀ LOGGATA
+    // 2. Recupero utente loggato e Società
     try {
-        const { data: { user }, error: authErr } = await sb.auth.getUser();
-        if (authErr || !user) {
-            console.warn("Nessun utente loggato rilevato.");
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) {
+            const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
+            if (soc) {
+                idSocietaCorrente = soc.id;
+                const targetSocietaIDs = ['societyNameDisplay', 'nomeSocietaHeader', 'nomeSocieta', 'societyName'];
+                targetSocietaIDs.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = soc.nome;
+                });
+            }
+        } else {
+            window.location.href = "login.html";
             return;
         }
+    } catch (e) {
+        console.error("Errore nel caricamento del profilo società:", e);
+    }
 
-        const { data: soc, error: socErr } = await sb.from('societa').select('*').eq('user_id', user.id).single();
-        if (socErr || !soc) {
-            console.error("Società non trovata:", socErr);
-            return;
+    // 3. Lettura configurazione sportiva e regole
+    try {
+        const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+        if (config) {
+            configurazioneSportCorrente = config;
+            
+            if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
+                const sel = document.getElementById('regSpecialty');
+                sel.innerHTML = '<option value="">-- Seleziona Divisione --</option>';
+                config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+            }
+            
+            const labelsGrado = document.querySelectorAll('label[for="regBelt"], label[for="belt"]');
+            labelsGrado.forEach(lbl => lbl.innerText = config.etichetta_livello || 'Cintura');
         }
+    } catch (e) {
+        console.error("Errore nel caricamento delle configurazioni sport:", e);
+    }
 
-        idSocietaCorrente = soc.id;
-        console.log("Società caricata nel motore:", soc.nome);
+    setupCascateSemplici(sportId);
+    popolaTabellaIscritti();
+}
 
-        // Aggiorna tutti i possibili ID in cui mostri il nome della Società in alto
-        const targetSocietaIDs = ['societyNameDisplay', 'nomeSocietaHeader', 'nomeSocieta', 'societyName'];
-        targetSocietaIDs.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.innerText = soc.nome;
+// --- GESTIONE MENU A CASCATA ---
+function setupCascateSemplici(sportId) {
+    const selGender = document.getElementById('regGender');
+    const selClasse = document.getElementById('regClasse');
+    const selSpecialty = document.getElementById('regSpecialty');
+    const selPeso = document.getElementById('regWeightCategory');
+
+    if (sportId === 'judo' && selGender && selClasse) {
+        selGender.addEventListener('change', () => {
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
+            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
+            const classi = configurazioneSportCorrente.regole.classi || [];
+            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
+            selClasse.disabled = false;
+            if(selPeso) { selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>'; selPeso.disabled = true; }
         });
+        selClasse.addEventListener('change', () => {
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
+            selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
+            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
+            if (list) {
+                list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
+                selPeso.disabled = false;
+            } else {
+                selPeso.innerHTML = '<option value="Open">Open</option>';
+                selPeso.disabled = false;
+            }
+        });
+    }
 
-    } catch (err) {
-        console.error("Errore nel blocco Società:", err);
+    if (sportId === 'fitarco' && selSpecialty && selClasse) {
+        selSpecialty.addEventListener('change', () => {
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
+            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
+            const classi = configurazioneSportCorrente.regole.classi?.[selSpecialty.value] || [];
+            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
+            selClasse.disabled = false;
+        });
     }
 }
 
-// --- DISPATCHER AUTOMATICO DELLE PAGINE ---
+// --- SALVATAGGIO ISCRITTI ---
+async function salvaIscrizione(e) {
+    e.preventDefault();
+    if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
+
+    const payload = {
+        event_id: idGaraCorrente,
+        society_id: idSocietaCorrente,
+        first_name: document.getElementById('regFirstName').value.trim(),
+        last_name: document.getElementById('regLastName').value.trim(),
+        gender: document.getElementById('regGender').value,
+        classe: document.getElementById('regClasse').value,
+        specialty: document.getElementById('regSpecialty')?.value || 'Individuale',
+        belt: document.getElementById('regBelt')?.value || 'Base',
+        weight_category: document.getElementById('regWeightCategory')?.value || 'Open'
+    };
+    
+    const { error } = await sb.from('atleti').insert([payload]);
+    if (error) {
+        alert("Errore nell'inserimento: " + error.message);
+    } else {
+        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
+        if (form) form.reset();
+        alert("Atleta registrato correttamente!");
+        popolaTabellaIscritti();
+    }
+}
+
+// --- POPOLAMENTO TABELLA ---
+async function popolaTabellaIscritti() {
+    const tbody = document.getElementById('iscrittiGaraList');
+    if (!tbody) return;
+    
+    const { data, error } = await sb.from('atleti')
+        .select('*')
+        .eq('event_id', idGaraCorrente)
+        .eq('society_id', idSocietaCorrente)
+        .order('created_at', { ascending: false });
+    
+    tbody.innerHTML = "";
+    if (error || !data || !data.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
+        return;
+    }
+
+    data.forEach(a => {
+        tbody.innerHTML += `<tr>
+            <td><strong>${a.last_name} ${a.first_name}</strong></td>
+            <td>${a.classe}</td>
+            <td>${a.gender}</td>
+            <td>${a.specialty || '-'}</td>
+            <td>${a.belt || '-'}</td>
+            <td>${a.weight_category || '-'}</td>
+        </tr>`;
+    });
+}
+
+// --- DISPATCHER AUTOMATICO ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
     
@@ -130,6 +242,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
+        // Aggancia l'evento di submit al form dinamicamente, qualunque sia l'ID usato
+        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
+        if (form) form.addEventListener('submit', salvaIscrizione);
+        
         initDashboardSemplice();
     }
 });
