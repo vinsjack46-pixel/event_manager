@@ -1,34 +1,34 @@
 // ==========================================
 // CONFIGURAZIONI GLOBALI (Evita conflitti)
 // ==========================================
-// Usiamo window per evitare l'errore "already been declared" se già presente in script.js
 if (typeof window.currentSportConfig === 'undefined') {
     window.currentSportConfig = null;
 }
 
 // ==========================================
-// INIZIALIZZATORE UNICO (DOMContentLoaded)
+// INIZIALIZZATORE CON CONTROLLO DI TIMING
 // ==========================================
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Script2 inizializzato. Avvio caricamento...");
-    await initPage();
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("Script2 pronto. Verifico la presenza di Supabase...");
+    
+    // Funzione ricorsiva che controlla ogni 100ms se script.js ha inizializzato Supabase
+    const checkSupabase = setInterval(async () => {
+        const sb = window.supabaseClient || window.sb || window.supabase;
+        
+        if (sb) {
+            clearInterval(checkSupabase); // Supabase è pronto! Fermiamo il timer
+            console.log("Supabase rilevato con successo! Avvio initPage...");
+            await initPage(sb);
+        } else {
+            console.log("In attesa che script.js inizializzi Supabase...");
+        }
+    }, 100); // Controlla ogni 100 millisecondi
 });
 
 // ==========================================
 // FUNZIONE PRINCIPALE: INIZIALIZZAZIONE PAGINA
 // ==========================================
-async function initPage() {
-    // RECUPERO E CONTROLLO SICURO DEL CLIENT SUPABASE
-    // Controlla tutte le possibili variabili in cui script.js potrebbe aver salvato Supabase
-    const sb = window.supabaseClient || window.sb || (window.supabase ? window.supabase : null);
-    
-    if (!sb) {
-        console.error("ERRORE CRITICO: Supabase non è stato inizializzato da script.js!");
-        const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
-        if (displaySoc) displaySoc.innerText = "Errore di connessione al database.";
-        return; 
-    }
-
+async function initPage(sb) {
     // 1. RECUPERO E STAMPA IMMEDIATA DELL'EVENTO
     const eventId = sessionStorage.getItem('selectedEventId');
     const eventName = sessionStorage.getItem('selectedEventName');
@@ -90,25 +90,24 @@ async function initPage() {
         if (authErr || !user) {
             console.warn("Nessun utente autenticato trovato.");
             gestisciSocietaNonTrovata("Sessione scaduta. Effettua nuovamente il login.");
-            return;
-        }
-
-        const { data: soc, error: socErr } = await sb
-            .from('societa')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-
-        if (socErr || !soc) {
-            console.error("Società non trovata nel database per questo utente:", socErr);
-            gestisciSocietaNonTrovata("Profilo società non configurato.");
-            window.currentSocietyId = null;
         } else {
-            window.currentSocietyId = soc.id;
-            
-            const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
-            if (displaySoc) {
-                displaySoc.innerText = soc.nome;
+            const { data: soc, error: socErr } = await sb
+                .from('societa')
+                .select('*')
+                .eq('user_id', user.id)
+                .single();
+
+            if (socErr || !soc) {
+                console.error("Società non trovata nel database per questo utente:", socErr);
+                gestisciSocietaNonTrovata("Profilo società non configurato.");
+                window.currentSocietyId = null;
+            } else {
+                window.currentSocietyId = soc.id;
+                
+                const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
+                if (displaySoc) {
+                    displaySoc.innerText = soc.nome;
+                }
             }
         }
 
@@ -117,7 +116,7 @@ async function initPage() {
         gestisciSocietaNonTrovata("Errore caricamento dati societari.");
     }
 
-    // 4. CARICAMENTO DELLE TABELLE DEI PARTECIPANTI (Passiamo il client 'sb' per sicurezza)
+    // 4. CARICAMENTO DELLE TABELLE DEI PARTECIPANTI
     await fetchAthletes(sb);
     await fetchTeams(sb);
 }
