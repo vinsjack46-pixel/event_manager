@@ -10,7 +10,7 @@ async function verificaSuperAdmin() {
     const { data: { user } } = await sb.auth.getUser();
     
     // Inserisci qui la tua email reale di Supabase
-    const emailSuperAdmin = "tuaimail@master.it"; 
+    const emailSuperAdmin = "vinsjack46@gmail.com"; 
     
     if (!user || user.email !== emailSuperAdmin) {
         alert("ACCESSO NEGATO: Questa sezione richiede un livello di autorizzazione Super Admin.");
