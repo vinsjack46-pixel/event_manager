@@ -1,16 +1,16 @@
 // ==========================================
-// CONFIGURAZIONI GLOBALI
+// CONFIGURAZIONI GLOBALI (Evita conflitti)
 // ==========================================
-let currentSportConfig = null;
-
-// Sincronizzazione sicura con il client Supabase inizializzato in script.js
-const sb = window.supabaseClient || window.sb;
+// Usiamo window per evitare l'errore "already been declared" se già presente in script.js
+if (typeof window.currentSportConfig === 'undefined') {
+    window.currentSportConfig = null;
+}
 
 // ==========================================
 // INIZIALIZZATORE UNICO (DOMContentLoaded)
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Script2 inizializzato. Avvio caricamento controllato di evento e società...");
+    console.log("Script2 inizializzato. Avvio caricamento...");
     await initPage();
 });
 
@@ -18,6 +18,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 // FUNZIONE PRINCIPALE: INIZIALIZZAZIONE PAGINA
 // ==========================================
 async function initPage() {
+    // RECUPERO E CONTROLLO SICURO DEL CLIENT SUPABASE
+    // Controlla tutte le possibili variabili in cui script.js potrebbe aver salvato Supabase
+    const sb = window.supabaseClient || window.sb || (window.supabase ? window.supabase : null);
+    
+    if (!sb) {
+        console.error("ERRORE CRITICO: Supabase non è stato inizializzato da script.js!");
+        const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
+        if (displaySoc) displaySoc.innerText = "Errore di connessione al database.";
+        return; 
+    }
+
     // 1. RECUPERO E STAMPA IMMEDIATA DELL'EVENTO
     const eventId = sessionStorage.getItem('selectedEventId');
     const eventName = sessionStorage.getItem('selectedEventName');
@@ -28,7 +39,7 @@ async function initPage() {
         return;
     }
 
-    // Aggiorna i campi del nome della gara nell'interfaccia
+    // Aggiorna l'interfaccia con il nome della gara
     const idsToUpdate = ['eventNameDisplay', 'nomeGara', 'nomeGaraTitolo'];
     idsToUpdate.forEach(id => {
         const el = document.getElementById(id);
@@ -39,7 +50,7 @@ async function initPage() {
         document.getElementById('selectedEventId').value = eventId;
     }
 
-    // 2. GESTIONE E IDENTIFICAZIONE DELLO SPORT (Fitarco / Judo / Karate)
+    // 2. GESTIONE E IDENTIFICAZIONE DELLO SPORT
     let sportId = null;
     const pathname = window.location.pathname.toLowerCase();
     
@@ -59,7 +70,7 @@ async function initPage() {
             .single();
         
         if (!configErr && config) {
-            currentSportConfig = config.regole;
+            window.currentSportConfig = config.regole;
             if (typeof adattaInterfacciaAlloSport === 'function') {
                 adattaInterfacciaAlloSport();
             }
@@ -74,18 +85,14 @@ async function initPage() {
 
     // 3. RECUPERO E INTEGRAZIONE DELLA SOCIETÀ SPORTIVA
     try {
-        // Recupera l'utente correntemente autenticato su Supabase Auth
         const { data: { user }, error: authErr } = await sb.auth.getUser();
         
         if (authErr || !user) {
             console.warn("Nessun utente autenticato trovato.");
-            gestisciSocietaNonTrovata("Sessione non attiva. Effettua il login.");
+            gestisciSocietaNonTrovata("Sessione scaduta. Effettua nuovamente il login.");
             return;
         }
 
-        console.log("Utente autenticato rilevato. ID Auth:", user.id);
-
-        // Cerca la riga corrispondente nella tabella 'societa' usando lo user_id
         const { data: soc, error: socErr } = await sb
             .from('societa')
             .select('*')
@@ -94,14 +101,11 @@ async function initPage() {
 
         if (socErr || !soc) {
             console.error("Società non trovata nel database per questo utente:", socErr);
-            gestisciSocietaNonTrovata("Profilo società incompleto o non configurato.");
+            gestisciSocietaNonTrovata("Profilo società non configurato.");
             window.currentSocietyId = null;
         } else {
-            // Associa l'ID della società a livello globale per l'invio dei moduli successivi
             window.currentSocietyId = soc.id;
-            console.log("Società agganciata correttamente:", soc.nome, "(ID:", soc.id, ")");
             
-            // Stampa il nome della società sugli elementi HTML predisposti
             const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
             if (displaySoc) {
                 displaySoc.innerText = soc.nome;
@@ -109,16 +113,15 @@ async function initPage() {
         }
 
     } catch (err) {
-        console.error("Errore critico durante il recupero della società:", err);
-        gestisciSocietaNonTrovata("Errore di connessione ai dati societari.");
+        console.error("Errore nel blocco società:", err);
+        gestisciSocietaNonTrovata("Errore caricamento dati societari.");
     }
 
-    // 4. CARICAMENTO DELLE TABELLE DEI PARTECIPANTI
-    await fetchAthletes();
-    await fetchTeams();
+    // 4. CARICAMENTO DELLE TABELLE DEI PARTECIPANTI (Passiamo il client 'sb' per sicurezza)
+    await fetchAthletes(sb);
+    await fetchTeams(sb);
 }
 
-// Funzione di supporto in caso di problemi con la società
 function gestisciSocietaNonTrovata(messaggio) {
     const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
     if (displaySoc) {
@@ -129,7 +132,7 @@ function gestisciSocietaNonTrovata(messaggio) {
 // ==========================================
 // FUNZIONI DI RECUPERO TABELLE ATLETI E SQUADRE
 // ==========================================
-async function fetchAthletes() {
+async function fetchAthletes(sb) {
     const eventId = sessionStorage.getItem('selectedEventId');
     const tbody = document.getElementById('athleteList') || document.getElementById('iscrittiGaraList');
     if (!tbody) return;
@@ -165,7 +168,7 @@ async function fetchAthletes() {
     }
 }
 
-async function fetchTeams() {
+async function fetchTeams(sb) {
     const tbody = document.getElementById('teamList');
     if (!tbody) return; 
     
