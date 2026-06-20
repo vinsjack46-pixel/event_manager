@@ -12,7 +12,7 @@ let idGaraCorrente = null;
 let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
 
-// --- AUTH ---
+// --- AUTENTICAZIONE ---
 async function signIn(email, password) {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) alert('Credenziali non valide.');
@@ -69,7 +69,7 @@ window.selezionaGara = function(id, htmlDest, sportId, nome) {
     window.location.href = htmlDest;
 };
 
-// --- LOGICA DASHBOARD (Judo/Fitarco) ---
+// --- INTERFACCIA ED EVENTI JUDO / FITARCO ---
 async function initDashboardSemplice() {
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
@@ -77,11 +77,10 @@ async function initDashboardSemplice() {
 
     if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
 
-    // Mostra il nome dell'evento nei vari elementi grafici se presenti
     if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = nomeGara;
     if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = nomeGara;
 
-    // Recupero dell'utente autenticato per identificare la Società
+    // RISOLUZIONE DEL PROBLEMA: Recupero esplicito del contesto utente e società
     try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) {
@@ -91,37 +90,52 @@ async function initDashboardSemplice() {
                 if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
                 if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
             }
+        } else {
+            window.location.href = "login.html";
+            return;
         }
     } catch (e) {
-        console.error("Errore recupero società:", e);
+        console.error("Errore nel caricamento del profilo società:", e);
     }
 
-    // Recupero Regole Sportive specifiche
+    // Lettura delle regole dello sport specifico dal database
     const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
     if (config) {
-        configurazioneSportCorrente = config.regole;
+        configurazioneSportCorrente = config;
+        
         if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
             const sel = document.getElementById('regSpecialty');
-            sel.innerHTML = '<option value="">-- Seleziona Div/Spec --</option>';
-            config.regole.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+            sel.innerHTML = '<option value="">-- Seleziona Divisione --</option>';
+            config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
         }
+        
+        const labelsGrado = document.querySelectorAll('label[for="regBelt"], label[for="belt"]');
+        labelsGrado.forEach(lbl => lbl.innerText = config.etichetta_livello || 'Cintura');
     }
 
-    // Listener per le selezioni a cascata (Fitarco e Judo)
+    setupCascateSemplici(sportId);
+    popolaTabellaIscritti(sportId);
+}
+
+function setupCascateSemplici(sportId) {
     const selGender = document.getElementById('regGender');
     const selClasse = document.getElementById('regClasse');
     const selSpecialty = document.getElementById('regSpecialty');
+    const selPeso = document.getElementById('regWeightCategory');
 
     if (sportId === 'judo' && selGender && selClasse) {
         selGender.addEventListener('change', () => {
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
             selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
-            configurazioneSportCorrente?.classi?.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
+            const classi = configurazioneSportCorrente.regole.classi || [];
+            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
+            if(selPeso) { selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>'; selPeso.disabled = true; }
         });
         selClasse.addEventListener('change', () => {
-            const selPeso = document.getElementById('regWeightCategory');
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
             selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
-            const list = configurazioneSportCorrente?.pesi?.[selGender.value]?.[selClasse.value];
+            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
             if (list) {
                 list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
                 selPeso.disabled = false;
@@ -134,18 +148,18 @@ async function initDashboardSemplice() {
 
     if (sportId === 'fitarco' && selSpecialty && selClasse) {
         selSpecialty.addEventListener('change', () => {
+            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
             selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
-            configurazioneSportCorrente?.classi?.[selSpecialty.value]?.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
+            const classi = configurazioneSportCorrente.regole.classi?.[selSpecialty.value] || [];
+            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
         });
     }
-
-    popolaTabellaIscritti(sportId);
 }
 
 async function salvaIscrizione(e) {
     e.preventDefault();
-    if (!idSocietaCorrente) return alert("Errore: Impossibile identificare la società sportiva.");
+    if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
 
     const payload = {
         event_id: idGaraCorrente,
@@ -161,10 +175,10 @@ async function salvaIscrizione(e) {
     
     const { error } = await sb.from('atleti').insert([payload]);
     if (error) {
-        alert("Errore durante l'inserimento: " + error.message);
+        alert("Errore nell'inserimento: " + error.message);
     } else {
         document.getElementById('registrationForm').reset();
-        alert("Iscrizione completata con successo!");
+        alert("Atleta registrato correttamente!");
         popolaTabellaIscritti(sessionStorage.getItem('selectedSportId'));
     }
 }
@@ -186,18 +200,20 @@ async function popolaTabellaIscritti(sportId) {
     }
 
     data.forEach(a => {
-        if (sportId === 'judo') {
-            tbody.innerHTML += `<tr><td><strong>${a.last_name} ${a.first_name}</strong></td><td>${a.classe}</td><td>${a.gender}</td><td>${a.belt}</td><td>${a.weight_category}</td></tr>`;
-        } else {
-            tbody.innerHTML += `<tr><td><strong>${a.last_name} ${a.first_name}</strong></td><td>${a.specialty}</td><td>${a.classe}</td><td>${a.gender}</td><td>${a.weight_category}</td></tr>`;
-        }
+        tbody.innerHTML += `<tr>
+            <td><strong>${a.last_name} ${a.first_name}</strong></td>
+            <td>${a.classe}</td>
+            <td>${a.gender}</td>
+            <td>${a.specialty || '-'}</td>
+            <td>${a.belt || '-'}</td>
+            <td>${a.weight_category || '-'}</td>
+        </tr>`;
     });
 }
 
-// --- DISPATCHER AUTOMATICO DELLE PAGINE ---
+// --- INITIALIZER ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
-    
     if (path.includes("login") || path.includes("registrazione")) {
         document.getElementById('loginForm')?.addEventListener('submit', (e) => { e.preventDefault(); signIn(document.getElementById('email').value, document.getElementById('password').value); });
         document.getElementById('registrazioneForm')?.addEventListener('submit', (e) => { e.preventDefault(); signUp(document.getElementById('email').value, document.getElementById('password').value, document.getElementById('nomeSocieta').value, document.getElementById('cfs').value, document.getElementById('cell').value); });
