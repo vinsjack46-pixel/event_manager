@@ -88,7 +88,6 @@ async function caricaEventiScelta() {
     if (!listaContenitore) return; 
 
     try {
-        // Legge tutti gli eventi dal database ordinandoli per data
         const { data: eventi, error } = await sb
             .from('eventi')
             .select('*')
@@ -110,7 +109,6 @@ async function caricaEventiScelta() {
             if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
             if (sportId === 'karate') destinazioneHtml = 'index-karate.html';
 
-            // Normalizzazione data per il rendering dell'interfaccia grafico di scelta-evento
             let visualizzaData = e.data_evento;
             if (e.data_evento && e.data_evento.includes('-')) {
                 const parti = e.data_evento.split('-');
@@ -247,8 +245,6 @@ async function salvaIscrizione(e) {
         document.getElementById('registrationForm').reset();
         
         if (document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
-        
-        // Disabilita la categoria peso dopo il reset SOLO nel Judo (in Fitarco è un campo fisso text readonly)
         if (sportIdentificato === 'judo' && document.getElementById('regWeightCategory')) {
             document.getElementById('regWeightCategory').disabled = true;
         }
@@ -275,7 +271,6 @@ async function popolaTabellaIscritti() {
         tbody.innerHTML = "";
         data.forEach(a => {
             if (sport === 'judo') {
-                // Ordine colonne HTML Judo: Atleta | Classe d'Età | Sesso | Grado / Kyu | Categoria Peso
                 tbody.innerHTML += `<tr>
                     <td><strong>${a.last_name} ${a.first_name}</strong></td>
                     <td>${a.classe || '-'}</td>
@@ -284,7 +279,6 @@ async function popolaTabellaIscritti() {
                     <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
                 </tr>`;
             } else if (sport === 'fitarco') {
-                // Ordine colonne HTML Fitarco: Arciere | Divisione | Classe | Sesso | Nota Categoria
                 tbody.innerHTML += `<tr>
                     <td><strong>${a.last_name} ${a.first_name}</strong></td>
                     <td>${a.specialty || '-'}</td>
@@ -293,7 +287,6 @@ async function popolaTabellaIscritti() {
                     <td><span class="badge bg-secondary">${a.weight_category || 'Standard Fitarco'}</span></td>
                 </tr>`;
             } else {
-                // Fallback generico per altri sport individuali
                 tbody.innerHTML += `<tr>
                     <td><strong>${a.last_name} ${a.first_name}</strong></td>
                     <td>${a.classe || '-'}</td>
@@ -310,6 +303,25 @@ async function popolaTabellaIscritti() {
 // 4. INIZIALIZZATORE UNICO AL CARICAMENTO DOM
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
+    
+    // -------------------------------------------------------------------------
+    // RILEVAMENTO PAGINA INIZIALE CORRETTO (Previene il loop e smista l'utente)
+    // -------------------------------------------------------------------------
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname === '/' || pathname === '/index.html' || pathname.endsWith('/')) {
+        try {
+            const { data: { session } } = await sb.auth.getSession();
+            if (session) {
+                window.location.href = 'scelta-evento.html';
+            } else {
+                window.location.href = 'login.html';
+            }
+        } catch (err) {
+            window.location.href = 'login.html';
+        }
+        return; // <--- BLOCCO DI SICUREZZA: Interrompe subito l'analisi del codice rimanente
+    }
+
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -329,13 +341,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Caricamento eventi (scelta-evento.html)
     if (document.getElementById('eventListContainer') || document.getElementById('listaGare')) {
         await caricaEventiScelta();
         return; 
     }
 
-    // Caricamento moduli d'iscrizione (index-judo.html e index-fitarco.html)
     const formIscrizione = document.getElementById('registrationForm') || document.getElementById('registerForm');
     if (formIscrizione) {
         if (!document.getElementById('registrationForm')) formIscrizione.id = 'registrationForm';
