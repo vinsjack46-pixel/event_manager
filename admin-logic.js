@@ -1,6 +1,7 @@
 const sb = window.supabaseClient;
 let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
+let istanzaModale = null; // Memorizza l'oggetto della modale a comparsa
 
 async function checkAdminAccess() {
     const { data: { user }, error } = await sb.auth.getUser();
@@ -17,8 +18,13 @@ async function checkAdminAccess() {
 async function initAdmin() {
     console.log("Verifica autorizzazione in corso...");
     const isAuthorized = await checkAdminAccess();
-    if (!isAuthorized) return; 
-
+    if (!isAuthorized) return;
+    
+    // Inizializza l'istanza dell'oggetto Modale se l'elemento esiste
+    if (document.getElementById('modalEditor')) {
+        istanzaModale = new bootstrap.Modal(document.getElementById('modalEditor'));
+    }
+    
     await refreshSportDropdowns();
     await loadFilterEvents();
     await fetchGlobalData();
@@ -36,14 +42,17 @@ async function refreshSportDropdowns() {
 
         const configSelect = document.getElementById('configSportId');
         const eventSelect = document.getElementById('eventSportId');
+        const selettoreJson = document.getElementById('selettoreSportJson');
         
         configSelect.innerHTML = "";
         eventSelect.innerHTML = '<option value="">-- Seleziona Sport --</option>';
+        if (selettoreJson) selettoreJson.innerHTML = "";
 
         sports?.forEach(s => {
             const opt = `<option value="${s.sport_id}">${s.sport_id.toUpperCase()}</option>`;
             configSelect.innerHTML += opt;
             eventSelect.innerHTML += opt;
+            if (selettoreJson) selettoreJson.innerHTML += opt;
         });
 
         if (!isCreatingNewSport) {
@@ -88,12 +97,10 @@ async function loadSportConfigFromDB() {
             .select('*')
             .eq('sport_id', sportId)
             .single();
-
         if (error || !config) return;
 
         const regole = config.regole || {};
         const limiti = regole.limiti || {};
-
         document.getElementById('limitKataKumite').value = limiti.KataKumiteSum || 300;
         document.getElementById('limitKids').value = limiti.KIDS || 250;
         document.getElementById('limitPara').value = limiti.ParaKarate || 50;
@@ -124,7 +131,6 @@ async function saveSportConfigToDB(e) {
 
     try {
         let baseRegole = { classi_eta: [], pesi: { Default: ["Open"] } };
-
         if (!isCreatingNewSport) {
             const { data: currentConfig } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
             if (currentConfig && currentConfig.regole) baseRegole = currentConfig.regole;
@@ -136,22 +142,19 @@ async function saveSportConfigToDB(e) {
             ParaKarate: limitPara
         };
 
-        // Identifica il valore predefinito speculare per evitare errori di vincolo NOT NULL
         const sportValueFormatted = sportId.toUpperCase();
-
         const payload = {
             richiede_peso: requiresWeight,
             regole: baseRegole,
             etichetta_livello: labelLivello,
-            // Assegna in modo sicuro sia a 'nome' che a 'nome_sport' (qualunque sia presente sulla tabella)
-            sport_id: sportValueFormatted,
+            sport_id: sportId,
             nome_sport: sportValueFormatted
         };
 
         let resultError = null;
 
         if (isCreatingNewSport) {
-            const { error } = await sb.from('configurazioni_sport').insert([{ sport_id: sportId, ...payload }]);
+            const { error } = await sb.from('configurazioni_sport').insert([payload]);
             resultError = error;
         } else {
             const { error } = await sb.from('configurazioni_sport').update(payload).eq('sport_id', sportId);
@@ -159,14 +162,11 @@ async function saveSportConfigToDB(e) {
         }
 
         if (resultError) throw resultError;
-
         alert(isCreatingNewSport ? "Nuovo sport creato con successo!" : "Limiti sport aggiornati!");
-        
         if (isCreatingNewSport) {
             toggleNewSportInput();
         }
         await refreshSportDropdowns();
-
     } catch (err) {
         alert("Errore durante il salvataggio dello sport: " + err.message);
     }
@@ -176,17 +176,15 @@ async function createEvent(e) {
     e.preventDefault();
     const sId = document.getElementById('eventSportId').value;
     if (!sId) return alert("Seleziona uno sport da associare a questo evento!");
-
     const { error } = await sb.from('eventi').insert([{ 
         nome: document.getElementById('eventName').value, 
         data_evento: document.getElementById('eventDate').value, 
         luogo: document.getElementById('eventLocation').value,
         sport_id: sId 
     }]);
-
     if (!error) { 
         document.getElementById('eventForm').reset(); 
-        loadFilterEvents(); 
+        loadFilterEvents();
         alert("Evento associato allo sport '" + sId.toUpperCase() + "' creato con successo!");
     } else {
         alert("Errore creazione evento: " + error.message);
@@ -207,7 +205,6 @@ function renderTables(atleti, teams) {
     if(!listInd || !listTeam) return;
 
     listInd.innerHTML = ""; listTeam.innerHTML = "";
-
     atleti.forEach(a => {
         listInd.innerHTML += `<tr>
             <td><strong>${a.last_name} ${a.first_name}</strong><br><small class="text-muted">${a.eventi?.nome || '-'}</small></td>
@@ -218,7 +215,6 @@ function renderTables(atleti, teams) {
             <td class="text-end"><button onclick="deleteRecord('atleti','${a.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     });
-
     teams.forEach(t => {
         listTeam.innerHTML += `<tr class="table-success-light">
             <td><div class="fw-bold text-success">${t.team_name}</div><small class="text-muted">${t.members?.join(" • ")}</small><br><small class="text-muted">${t.eventi?.nome || '-'}</small></td>
@@ -229,7 +225,6 @@ function renderTables(atleti, teams) {
             <td class="text-end"><button onclick="deleteRecord('teams','${t.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     });
-
     document.getElementById('countInd').innerText = atleti.length;
     document.getElementById('countTeam').innerText = teams.length;
     document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
@@ -245,7 +240,7 @@ function filterAll() {
 
 async function deleteRecord(table, id) {
     if(confirm("Sei sicuro di voler eliminare questo record?")) { 
-        await sb.from(table).delete().eq('id', id); 
+        await sb.from(table).delete().eq('id', id);
         fetchGlobalData(); 
     }
 }
@@ -257,7 +252,6 @@ async function loadFilterEvents() {
     
     if(select) select.innerHTML = '<option value="">Tutti gli Eventi</option>';
     if(scroll) scroll.innerHTML = "";
-
     eventi?.forEach(e => {
         if(select) select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
         if(scroll) scroll.innerHTML += `<div class="p-2 border-bottom d-flex justify-content-between align-items-center bg-white">
@@ -269,7 +263,7 @@ async function loadFilterEvents() {
 
 async function deleteEvent(id) {
     if(confirm("Eliminando l'evento cancellerai anche tutti gli iscritti associati. Procedere?")) { 
-        await sb.from('eventi').delete().eq('id', id); 
+        await sb.from('eventi').delete().eq('id', id);
         loadFilterEvents(); 
         fetchGlobalData(); 
     }
@@ -290,6 +284,58 @@ function exportAllToCSV() {
     link.href = URL.createObjectURL(blob);
     link.download = `Export_Gare_v6.csv`;
     link.click();
+}
+
+// ==========================================================
+// BLOCCO AVANZATO: AZIONI DI MODIFICA DEI REGOLAMENTI JSON
+// ==========================================================
+function apriEditorModale() {
+    if (!istanzaModale) return;
+    istanzaModale.show();
+    leggiJsonDaDb();
+}
+
+async function leggiJsonDaDb() {
+    const spId = document.getElementById('selettoreSportJson').value;
+    if (!spId) return;
+    try {
+        const { data, error } = await sb.from('configurazioni_sport').select('regole').eq('sport_id', spId).single();
+        if (error) throw error;
+        
+        if (data && data.regole) {
+            document.getElementById('testoJson').value = JSON.stringify(data.regole, null, 4);
+        } else {
+            document.getElementById('testoJson').value = "{\n  \"classi\": [],\n  \"pesi\": {}\n}";
+        }
+    } catch (err) {
+        console.error("Errore lettura JSON regolamento:", err);
+    }
+}
+
+function formattaTestoJson() {
+    try {
+        const parsed = JSON.parse(document.getElementById('testoJson').value);
+        document.getElementById('testoJson').value = JSON.stringify(parsed, null, 4);
+        alert("Sintassi JSON corretta e formattata con successo!");
+    } catch (err) {
+        alert("Errore di Sintassi JSON: Verifica virgole, virgolette e parentesi quadre/graffe.");
+    }
+}
+
+async function inviaJsonAggiustato() {
+    const spId = document.getElementById('selettoreSportJson').value;
+    if (!spId) return;
+    try {
+        const jsonDefinitivo = JSON.parse(document.getElementById('testoJson').value);
+        const { error } = await sb.from('configurazioni_sport').update({ regole: jsonDefinitivo }).eq('sport_id', spId);
+        if (error) throw error;
+        
+        alert("Regole a cascata aggiornate con successo nel database per: " + spId.toUpperCase());
+        if (istanzaModale) istanzaModale.hide();
+        await loadSportConfigFromDB();
+    } catch (err) {
+        alert("Impossibile salvare il JSON: " + err.message);
+    }
 }
 
 document.addEventListener('DOMContentLoaded', initAdmin);
