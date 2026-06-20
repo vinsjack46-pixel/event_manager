@@ -5,19 +5,9 @@ const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-// Inizializzazione sicura del client e della variabile globale sb
-if (!window.supabaseClient) {
-    window.supabaseClient = createClient(supabaseUrl, supabaseKey);
-}
-const supabaseClient = window.supabaseClient;
-
-// Se 'sb' è già stata dichiarata altrove come variabile globale, non usiamo 'const' per evitare il crash
-if (typeof sb === 'undefined') {
-    window.sb = window.supabaseClient;
-} else {
-    window.sb = window.supabaseClient;
-}
-var sb = window.supabaseClient; // Usando 'var' o l'oggetto window evitiamo l'errore "already been declared"
+const supabaseClient = createClient(supabaseUrl, supabaseKey);
+window.supabaseClient = supabaseClient;
+const sb = window.supabaseClient;
 
 // Stati globali per le pagine pubbliche e di iscrizione
 let idGaraCorrente = null;
@@ -92,7 +82,7 @@ function determinaSportDaPagina() {
 // ==========================================
 async function caricaEventiScelta() {
     const listaContenitore = document.getElementById('listaGare') || document.getElementById('eventListContainer');
-    if (!listaContenitore) return; 
+    if (!listaContenitore) return; // Se non siamo nella pagina di scelta evento, esce in sicurezza
 
     try {
         const { data: eventi, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
@@ -106,6 +96,7 @@ async function caricaEventiScelta() {
         listaContenitore.innerHTML = "";
         eventi.forEach(e => {
             const sportId = e.sport_id ? e.sport_id.toLowerCase() : 'karate';
+            // Imposta la pagina di destinazione corretta in base allo sport della gara
             let destinazioneHtml = 'index.html'; 
             if (sportId === 'judo') destinazioneHtml = 'index-judo.html';
             if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
@@ -132,6 +123,7 @@ async function caricaEventiScelta() {
     }
 }
 
+// Salva le informazioni nel browser e sposta l'utente sulla pagina dello sport corretto
 window.selezionaGaraEInvia = function(idGara, paginaTarget, sportId, nomeGara) {
     sessionStorage.setItem('selectedEventId', idGara);
     sessionStorage.setItem('selectedSportId', sportId);
@@ -184,7 +176,7 @@ function cascataJudoClassi() {
     selectClasse.disabled = false;
 }
 
-function fflushJudoPesi() {
+function cascataJudoPesi() {
     const sesso = document.getElementById('regGender').value;
     const classe = document.getElementById('regClasse').value;
     const selectPeso = document.getElementById('regWeightCategory');
@@ -271,6 +263,7 @@ async function popolaTabellaIscritti() {
 // 4. INIZIALIZZATORE UNICO AL CARICAMENTO DOM
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
+    // A. Intercettazione moduli Autenticazione (Login / Register)
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         loginForm.addEventListener('submit', (e) => {
@@ -290,13 +283,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Caricamento eventi (scelta-evento.html)
+    // B. Controllo se siamo nella schermata di Scelta Torneo
     if (document.getElementById('listaGare') || document.getElementById('eventListContainer')) {
         await caricaEventiScelta();
         return; 
     }
 
-    // Caricamento moduli d'iscrizione
+    // C. Controllo se siamo in una schermata di Iscrizione Atleti Pubblica
     const formIscrizione = document.getElementById('registrationForm') || document.getElementById('registerForm');
     if (formIscrizione) {
         if (!document.getElementById('registrationForm')) formIscrizione.id = 'registrationForm';
@@ -315,12 +308,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const selectGender = document.getElementById('regGender');
         const selectClasse = document.getElementById('regClasse');
+        const selectSpecialty = document.getElementById('regSpecialty');
 
         if (sportIdentificato === 'judo') {
             if (selectGender) selectGender.addEventListener('change', cascataJudoClassi);
-            if (selectClasse) selectClasse.addEventListener('change', fflushJudoPesi);
+            if (selectClasse) selectClasse.addEventListener('change', cascataJudoPesi);
         } else if (sportIdentificato === 'fitarco') {
-            const selectSpecialty = document.getElementById('regSpecialty');
             if (selectSpecialty) selectSpecialty.addEventListener('change', cascataFitarcoClassi);
         }
 
