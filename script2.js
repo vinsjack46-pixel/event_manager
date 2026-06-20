@@ -1,3 +1,6 @@
+// ==========================================
+// CONFIGURAZIONI GLOBALI
+// ==========================================
 let currentSportConfig = null;
 
 // Sincronizzazione sicura con il client Supabase inizializzato in script.js
