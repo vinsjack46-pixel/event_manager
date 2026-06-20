@@ -10,7 +10,7 @@ const sb = window.supabaseClient || window.sb;
 // INIZIALIZZATORE UNICO (DOMContentLoaded)
 // ==========================================
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("Script2 inizializzato. Avvio caricamento controllato dell'evento...");
+    console.log("Script2 inizializzato. Avvio caricamento controllato di evento e società...");
     await initPage();
 });
 
@@ -18,28 +18,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 // FUNZIONE PRINCIPALE: INIZIALIZZAZIONE PAGINA
 // ==========================================
 async function initPage() {
-    // 1. RECUPERO E STAMPA IMMEDIATA DELL'EVENTO (Senza badare alla società)
+    // 1. RECUPERO E STAMPA IMMEDIATA DELL'EVENTO
     const eventId = sessionStorage.getItem('selectedEventId');
     const eventName = sessionStorage.getItem('selectedEventName');
     
-    console.log("ID Evento rilevato:", eventId, "Nome Evento:", eventName);
-
     if (!eventId) {
         console.warn("Nessun Event ID trovato in sessione! Ritorno alla selezione.");
         window.location.href = "scelta-evento.html";
         return;
     }
 
-    // Forza la scrittura del nome dell'evento su tutti i possibili ID usati nei tuoi HTML
+    // Aggiorna i campi del nome della gara nell'interfaccia
     const idsToUpdate = ['eventNameDisplay', 'nomeGara', 'nomeGaraTitolo'];
     idsToUpdate.forEach(id => {
         const el = document.getElementById(id);
-        if (el) {
-            el.innerText = eventName ? eventName : "Gara Selezionata";
-        }
+        if (el) el.innerText = eventName ? eventName : "Gara Selezionata";
     });
 
-    // Aggiorna l'eventuale campo nascosto del form se presente
     if (document.getElementById('selectedEventId')) {
         document.getElementById('selectedEventId').value = eventId;
     }
@@ -55,9 +50,7 @@ async function initPage() {
     
     sportId = sportId.toLowerCase();
     sessionStorage.setItem('selectedSportId', sportId);
-    console.log("Sport identificato per questa pagina:", sportId);
     
-    // Recupero regole dello sport dal DB (senza bloccare la pagina in caso di errore)
     try {
         const { data: config, error: configErr } = await sb
             .from('configurazioni_sport')
@@ -67,9 +60,6 @@ async function initPage() {
         
         if (!configErr && config) {
             currentSportConfig = config.regole;
-            console.log("Regole sport caricate con successo.");
-            
-            // Se hai funzioni per adattare i menu a tendina delle categorie, le eseguiamo qui
             if (typeof adattaInterfacciaAlloSport === 'function') {
                 adattaInterfacciaAlloSport();
             }
@@ -78,42 +68,69 @@ async function initPage() {
         console.warn("Impossibile caricare le regole sport dal DB, procedo con l'interfaccia standard.");
     }
 
-    // Avvia eventuali listener aggiuntivi sulla data di nascita (se usati nel tuo form)
     if (typeof setupBirthdateListeners === 'function') {
         setupBirthdateListeners(); 
     }
 
-    // 3. ISOLAMENTO BLOCCO SOCIETÀ & TABELLE (Contenuto in un try/catch atomico)
-    // Se fallisce questa parte, l'evento sopra resta comunque visibile e stampato a schermo!
+    // 3. RECUPERO E INTEGRAZIONE DELLA SOCIETÀ SPORTIVA
     try {
-        const { data: { user } } = await sb.auth.getUser();
-        if (user) {
-            const { data: soc, error: socErr } = await sb.from('societa').select('*').eq('user_id', user.id).single();
-            if (!socErr && soc) {
-                window.currentSocietyId = soc.id;
-                console.log("Società agganciata con ID:", soc.id);
-                
-                // Aggiorna il nome della società nell'interfaccia se il campo esiste
-                const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
-                if (displaySoc) displaySoc.innerText = soc.nome;
+        // Recupera l'utente correntemente autenticato su Supabase Auth
+        const { data: { user }, error: authErr } = await sb.auth.getUser();
+        
+        if (authErr || !user) {
+            console.warn("Nessun utente autenticato trovato.");
+            gestisciSocietaNonTrovata("Sessione non attiva. Effettua il login.");
+            return;
+        }
+
+        console.log("Utente autenticato rilevato. ID Auth:", user.id);
+
+        // Cerca la riga corrispondente nella tabella 'societa' usando lo user_id
+        const { data: soc, error: socErr } = await sb
+            .from('societa')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+
+        if (socErr || !soc) {
+            console.error("Società non trovata nel database per questo utente:", socErr);
+            gestisciSocietaNonTrovata("Profilo società incompleto o non configurato.");
+            window.currentSocietyId = null;
+        } else {
+            // Associa l'ID della società a livello globale per l'invio dei moduli successivi
+            window.currentSocietyId = soc.id;
+            console.log("Società agganciata correttamente:", soc.nome, "(ID:", soc.id, ")");
+            
+            // Stampa il nome della società sugli elementi HTML predisposti
+            const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
+            if (displaySoc) {
+                displaySoc.innerText = soc.nome;
             }
         }
-        
-        // Prova a caricare gli iscritti nelle tabelle
-        await fetchAthletes();
-        await fetchTeams();
 
     } catch (err) {
-        console.log("Nota: Accesso società saltato o non configurato. Tabelle vuote, ma evento attivo.");
+        console.error("Errore critico durante il recupero della società:", err);
+        gestisciSocietaNonTrovata("Errore di connessione ai dati societari.");
+    }
+
+    // 4. CARICAMENTO DELLE TABELLE DEI PARTECIPANTI
+    await fetchAthletes();
+    await fetchTeams();
+}
+
+// Funzione di supporto in caso di problemi con la società
+function gestisciSocietaNonTrovata(messaggio) {
+    const displaySoc = document.getElementById('societyNameDisplay') || document.getElementById('nomeSocietaIscritta');
+    if (displaySoc) {
+        displaySoc.innerHTML = `<span class="text-danger" style="font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> ${messaggio}</span>`;
     }
 }
 
 // ==========================================
-// FUNZIONI COMPLEMENTARI (Evitano errori 'is not defined')
+// FUNZIONI DI RECUPERO TABELLE ATLETI E SQUADRE
 // ==========================================
 async function fetchAthletes() {
     const eventId = sessionStorage.getItem('selectedEventId');
-    // Cerca i due possibili ID che hai usato nei vari HTML (athleteList o iscrittiGaraList)
     const tbody = document.getElementById('athleteList') || document.getElementById('iscrittiGaraList');
     if (!tbody) return;
 
@@ -141,7 +158,6 @@ async function fetchAthletes() {
                     <td>${a.specialty || a.divisione || '-'}</td>
                     <td>${a.belt || a.grado || '-'}</td>
                     <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
-                    <td class="text-end"><small class="text-muted">Registrato</small></td>
                 </tr>`;
         });
     } catch (err) {
@@ -151,7 +167,7 @@ async function fetchAthletes() {
 
 async function fetchTeams() {
     const tbody = document.getElementById('teamList');
-    if (!tbody) return; // Se la pagina non prevede squadre (es. Judo/Fitarco), esce senza errori
+    if (!tbody) return; 
     
     const eventId = sessionStorage.getItem('selectedEventId');
     try {
@@ -177,7 +193,6 @@ async function fetchTeams() {
                     <td>${t.specialty || '-'}</td>
                     <td>${t.belt || '-'}</td>
                     <td>${t.peso || '-'}</td>
-                    <td class="text-end"><small class="text-muted">Registrata</small></td>
                 </tr>`;
         });
     } catch (err) {
