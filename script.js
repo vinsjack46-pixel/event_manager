@@ -90,10 +90,10 @@ async function caricaEventiScelta() {
     try {
         // Legge tutti gli eventi dal database ordinandoli per data
         const { data: eventi, error } = await sb
-    .from('eventi')
-    .select('*')
-    .eq('attivo', true) // <--- AGGIUNGI QUESTO FILTRO
-    .order('data_evento', { ascending: false });
+            .from('eventi')
+            .select('*')
+            .eq('attivo', true)
+            .order('data_evento', { ascending: false });
         if (error) throw error;
 
         if (!eventi || eventi.length === 0) {
@@ -207,7 +207,7 @@ function fflushJudoPesi() {
     }
 }
 
-function cascataFitarcoClassi() {
+function fflushFitarcoClassi() {
     const divisione = document.getElementById('regSpecialty').value;
     const selectClasse = document.getElementById('regClasse');
     if (!selectClasse) return;
@@ -242,9 +242,17 @@ async function salvaIscrizione(e) {
         const { error } = await sb.from('atleti').insert([payload]);
         if (error) throw error;
         alert("Iscrizione registrata con successo!");
+        
+        const sportIdentificato = determinaSportDaPagina();
         document.getElementById('registrationForm').reset();
+        
         if (document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
-        if (document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
+        
+        // Disabilita la categoria peso dopo il reset SOLO nel Judo (in Fitarco è un campo fisso text readonly)
+        if (sportIdentificato === 'judo' && document.getElementById('regWeightCategory')) {
+            document.getElementById('regWeightCategory').disabled = true;
+        }
+        
         await popolaTabellaIscritti();
     } catch (err) { alert("Errore invio: " + err.message); }
 }
@@ -255,19 +263,45 @@ async function popolaTabellaIscritti() {
     try {
         const { data, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).order('created_at', { ascending: false });
         if (error) throw error;
+        
+        const sport = determinaSportDaPagina();
+        
         if (!data || data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Nessun atleta iscritto.</td></tr>`;
+            const msgVuoto = sport === 'fitarco' ? 'Nessun arciere registrato.' : 'Nessun atleta iscritto.';
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">${msgVuoto}</td></tr>`;
             return;
         }
+        
         tbody.innerHTML = "";
         data.forEach(a => {
-            tbody.innerHTML += `<tr>
-                <td><strong>${a.last_name} ${a.first_name}</strong></td>
-                <td>${a.classe}</td>
-                <td><span class="badge bg-light text-dark border">${a.gender}</span></td>
-                <td>${determinaSportDaPagina() === 'judo' ? (a.belt || '-') : (a.specialty || '-')}</td>
-                <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
-            </tr>`;
+            if (sport === 'judo') {
+                // Ordine colonne HTML Judo: Atleta | Classe d'Età | Sesso | Grado / Kyu | Categoria Peso
+                tbody.innerHTML += `<tr>
+                    <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                    <td>${a.classe || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${a.gender || '-'}</span></td>
+                    <td>${a.belt || '-'}</td>
+                    <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
+                </tr>`;
+            } else if (sport === 'fitarco') {
+                // Ordine colonne HTML Fitarco: Arciere | Divisione | Classe | Sesso | Nota Categoria
+                tbody.innerHTML += `<tr>
+                    <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                    <td>${a.specialty || '-'}</td>
+                    <td>${a.classe || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${a.gender || '-'}</span></td>
+                    <td><span class="badge bg-secondary">${a.weight_category || 'Standard Fitarco'}</span></td>
+                </tr>`;
+            } else {
+                // Fallback generico per altri sport individuali
+                tbody.innerHTML += `<tr>
+                    <td><strong>${a.last_name} ${a.first_name}</strong></td>
+                    <td>${a.classe || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${a.gender || '-'}</span></td>
+                    <td>${a.specialty || '-'}</td>
+                    <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
+                </tr>`;
+            }
         });
     } catch (err) { tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Errore caricamento.</td></tr>`; }
 }
@@ -301,7 +335,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return; 
     }
 
-    // Caricamento moduli d'iscrizione (index-judo.html, ecc.)
+    // Caricamento moduli d'iscrizione (index-judo.html e index-fitarco.html)
     const formIscrizione = document.getElementById('registrationForm') || document.getElementById('registerForm');
     if (formIscrizione) {
         if (!document.getElementById('registrationForm')) formIscrizione.id = 'registrationForm';
@@ -326,7 +360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (selectClasse) selectClasse.addEventListener('change', fflushJudoPesi);
         } else if (sportIdentificato === 'fitarco') {
             const selectSpecialty = document.getElementById('regSpecialty');
-            if (selectSpecialty) selectSpecialty.addEventListener('change', cascataFitarcoClassi);
+            if (selectSpecialty) selectSpecialty.addEventListener('change', fflushFitarcoClassi);
         }
 
         document.getElementById('registrationForm').addEventListener('submit', salvaIscrizione);
