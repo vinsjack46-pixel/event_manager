@@ -89,7 +89,11 @@ async function caricaEventiScelta() {
 
     try {
         // Legge tutti gli eventi dal database ordinandoli per data
-        const { data: eventi, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
+        const { data: eventi, error } = await sb
+    .from('eventi')
+    .select('*')
+    .eq('attivo', true) // <--- AGGIUNGI QUESTO FILTRO
+    .order('data_evento', { ascending: false });
         if (error) throw error;
 
         if (!eventi || eventi.length === 0) {
