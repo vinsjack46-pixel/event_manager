@@ -10,7 +10,7 @@ if (!window.supabaseClient) {
 }
 const supabaseClient = window.supabaseClient;
 
-// Dichiarazione sicura globale di sb che evita l'errore "already been declared"
+// Se 'sb' è già stata dichiarata altrove, la associamo senza lanciare eccezioni
 if (typeof window.sb === 'undefined') {
     window.sb = supabaseClient;
 }
@@ -72,12 +72,18 @@ function ottieniIdDallUrl() {
     return id;
 }
 
+// FIX: Rilevamento preciso e flessibile dello sport corrente della pagina
 function determinaSportDaPagina() {
     const pathname = window.location.pathname.toLowerCase();
     if (pathname.includes("judo")) return "judo";
     if (pathname.includes("fitarco")) return "fitarco";
     if (pathname.includes("karate")) return "karate";
-    return sessionStorage.getItem('selectedSportId') || "judo";
+    
+    // Se non ricavato dall'URL, prova a leggerlo dalla sessione, altrimenti usa come fallback lo sport salvato
+    const sessionSport = sessionStorage.getItem('selectedSportId');
+    if (sessionSport) return sessionSport.toLowerCase();
+    
+    return "karate"; // Fallback neutro predefinito se tutto il resto fallisce
 }
 
 // ==========================================
@@ -88,7 +94,6 @@ async function caricaEventiScelta() {
     if (!listaContenitore) return; 
 
     try {
-        // Legge tutti gli eventi dal database ordinandoli per data
         const { data: eventi, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: false });
         if (error) throw error;
 
@@ -101,11 +106,12 @@ async function caricaEventiScelta() {
         eventi.forEach(e => {
             const sportId = e.sport_id ? e.sport_id.toLowerCase() : 'karate';
             
-            let destinazioneHtml = 'index.html'; 
+            // FIX: Assicura il corretto reindirizzamento a index-karate.html per le discipline karate
+            let destinazioneHtml = 'index-karate.html'; 
             if (sportId === 'judo') destinazioneHtml = 'index-judo.html';
             if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
+            if (sportId === 'karate') destinazioneHtml = 'index-karate.html';
 
-            // Normalizzazione data per il rendering dell'interfaccia grafico di scelta-evento
             let visualizzaData = e.data_evento;
             if (e.data_evento && e.data_evento.includes('-')) {
                 const parti = e.data_evento.split('-');
@@ -169,7 +175,7 @@ async function scaricaRegoleSport(sportId) {
                 });
             }
         }
-    } catch (err) { console.error(err.message); }
+    } catch (err) { console.error("Errore caricamento regole:", err.message); }
 }
 
 function cascataJudoClassi() {
@@ -248,6 +254,7 @@ async function popolaTabellaIscritti() {
     const tbody = document.getElementById('iscrittiGaraList');
     if (!tbody) return;
     try {
+        const currentSport = determinaSportDaPagina();
         const { data, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).order('created_at', { ascending: false });
         if (error) throw error;
         if (!data || data.length === 0) {
@@ -260,7 +267,7 @@ async function popolaTabellaIscritti() {
                 <td><strong>${a.last_name} ${a.first_name}</strong></td>
                 <td>${a.classe}</td>
                 <td><span class="badge bg-light text-dark border">${a.gender}</span></td>
-                <td>${determinaSportDaPagina() === 'judo' ? (a.belt || '-') : (a.specialty || '-')}</td>
+                <td>${currentSport === 'judo' ? (a.belt || '-') : (a.specialty || '-')}</td>
                 <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
             </tr>`;
         });
@@ -296,7 +303,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return; 
     }
 
-    // Caricamento moduli d'iscrizione (index-judo.html, ecc.)
+    // Caricamento moduli d'iscrizione (index-judo.html, index-karate.html, ecc.)
     const formIscrizione = document.getElementById('registrationForm') || document.getElementById('registerForm');
     if (formIscrizione) {
         if (!document.getElementById('registrationForm')) formIscrizione.id = 'registrationForm';
