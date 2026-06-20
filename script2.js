@@ -5,7 +5,7 @@ window.currentSocietyId = null;
 let editingAthleteId = null; 
 let editingTeamId = null; 
 
-// CONFIGURAZIONE INIZIALE VUOTA: Senza paracadute. Le regole DEVONO arrivare da Supabase.
+// CONFIGURAZIONE INIZIALE: Caricata dinamicamente da Supabase
 let currentSportConfig = null;
 
 // Funzione Helper per estrarre l'anno da qualsiasi formato di data
@@ -32,7 +32,14 @@ function estraiAnnoDaData(dateVal) {
 async function initPage() {
     const eventId = sessionStorage.getItem('selectedEventId');
     const eventName = sessionStorage.getItem('selectedEventName');
-    const sportId = sessionStorage.getItem('selectedSportId') || 'karate'; 
+    
+    // Rileva lo sport: controlla prima il nome del file HTML corrente (es. index-judo.html), altrimenti usa la sessione
+    let sportId = sessionStorage.getItem('selectedSportId');
+    const pathname = window.location.pathname.toLowerCase();
+    if (pathname.includes("judo")) sportId = "judo";
+    else if (pathname.includes("fitarco")) sportId = "fitarco";
+    else if (pathname.includes("karate")) sportId = "karate";
+    if (!sportId) sportId = 'karate'; 
     
     if (!eventId) {
         window.location.href = "scelta-evento.html";
@@ -54,14 +61,13 @@ async function initPage() {
             throw new Error(configErr ? configErr.message : "Nessuna riga trovata per lo sport: " + sportId);
         }
         
-        // Salva le regole del database nello stato dell'applicazione
         currentSportConfig = config;
-        console.log("Regole caricate con successo da Supabase:", currentSportConfig);
+        console.log(`Regole caricate con successo da Supabase per lo sport [${sportId.toUpperCase()}]:`, currentSportConfig);
 
     } catch (err) {
         console.error("ERRORE CRITICO DATABASE:", err);
         alert("ATTENZIONE: Impossibile caricare le regole da Supabase! Il sistema è bloccato. Controlla la tabella 'configurazioni_sport'. Errore: " + err.message);
-        return; // Blocca l'esecuzione della pagina
+        return; 
     }
 
     adattaInterfacciaAlloSport();
@@ -82,15 +88,19 @@ async function initPage() {
 
 function adattaInterfacciaAlloSport() {
     if (!currentSportConfig) return;
+    
+    // Adatta dinamicamente le etichette di grado (es: "Cintura" per Karate/Judo, "Livello" o "Qualifica" per Arco)
     const labelsGrado = document.querySelectorAll('label[for="belt"]');
-    labelsGrado.forEach(lbl => lbl.innerText = currentSportConfig.etichetta_livello);
+    labelsGrado.forEach(lbl => lbl.innerText = currentSportConfig.etichetta_livello || 'Cintura');
     
     const optBeltDefault = document.querySelector('#belt option[value=""]');
-    if(optBeltDefault) optBeltDefault.innerText = `-- ${currentSportConfig.etichetta_livello} --`;
+    if(optBeltDefault) optBeltDefault.innerText = `-- ${currentSportConfig.etichetta_livello || 'Grado'} --`;
 
+    // Nasconde o mostra il box del peso in base alle impostazioni dello sport nel DB
     const weightBox = document.getElementById('weight_category')?.closest('.col-md-4') || document.getElementById('weight_category')?.parentElement;
     if (weightBox) {
-        weightBox.style.display = currentSportConfig.richiega_peso || currentSportConfig.richiede_peso ? 'block' : 'none';
+        const richiedePeso = currentSportConfig.richiega_peso || currentSportConfig.richiede_peso;
+        weightBox.style.display = richiedePeso ? 'block' : 'none';
     }
 }
 
@@ -156,6 +166,7 @@ function handleTeamYearChange() {
     if (year) updateClassSpecsAndBelts(year);
 }
 
+// MOTORE UNIVERSALE A CASCATA: Calcola classe d'età, cinture e discipline in base all'anno
 function updateClassSpecsAndBelts(year) {
     if (!currentSportConfig || !currentSportConfig.regole) return;
     
@@ -184,13 +195,14 @@ function updateClassSpecsAndBelts(year) {
     }
 
     if (spSel) {
-        spSel.innerHTML = '<option value="">-- Specialità --</option>';
+        spSel.innerHTML = '<option value="">-- Specialità / Divisione --</option>';
         specs.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     }
     
     handleSpecialtyChange();
 }
 
+// GESTORE DINAMICO DEL PESO E SOTTO-CATEGORIE PER SPORT
 function handleSpecialtyChange() {
     if (!currentSportConfig || !currentSportConfig.regole) return;
 
@@ -206,12 +218,17 @@ function handleSpecialtyChange() {
     wInput.innerHTML = '';
     wInput.disabled = true;
 
+    // Se lo sport a livello globale non prevede categorie di peso (es. Tiro con l'Arco / FITARCO)
     if (!currentSportConfig.richiede_peso && !currentSportConfig.richiega_peso) {
         wInput.innerHTML = '<option value="-">-</option>';
         return;
     }
 
-    if (spec === "Kumite") {
+    // Controllo flessibile: richiede il peso se siamo in Karate-Kumite, oppure se siamo nel Judo (dove serve sempre per combattere)
+    const sportId = currentSportConfig.sport_id;
+    const richiedePesoOggi = (sportId === 'karate' && spec === "Kumite") || (sportId === 'judo') || spec.toLowerCase().includes("combattimento");
+
+    if (richiedePesoOggi) {
         wInput.disabled = false;
         let weights = [];
         const pesiConfig = currentSportConfig.regole.pesi || {};
@@ -363,7 +380,7 @@ async function updateGlobalCounters(eventId) {
 
     const gCount = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
     globalTotal.forEach(item => {
-        if (item.specialty === "Kumite") gCount.Kumite++;
+        if (item.specialty === "Kumite" || item.specialty === "Shiai") gCount.Kumite++;
         else if (item.specialty === "Kata") gCount.Kata++;
         else if (item.specialty === "ParaKarate") gCount.Para++;
         else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) gCount.Kids++;
@@ -371,7 +388,7 @@ async function updateGlobalCounters(eventId) {
 
     const sCount = { Kumite: 0, Kata: 0, Para: 0, Kids: 0 };
     myTotal.forEach(item => {
-        if (item.specialty === "Kumite") sCount.Kumite++;
+        if (item.specialty === "Kumite" || item.specialty === "Shiai") sCount.Kumite++;
         else if (item.specialty === "Kata") sCount.Kata++;
         else if (item.specialty === "ParaKarate") sCount.Para++;
         else if (["Combinata", "Percorso-Kata", "Percorso-Palloncino"].includes(item.specialty)) sCount.Kids++;
@@ -408,7 +425,7 @@ async function addAthlete(e) {
         const limitiConfig = currentSportConfig.regole?.limiti || {};
         const maxPosti = limitiConfig.KataKumiteSum || limitiConfig.katakumitesum || limitiConfig.katakumiteSum || 300;
 
-        if ((spec === "Kumite" || spec === "Kata") && currentSum >= maxPosti) {
+        if ((spec === "Kumite" || spec === "Kata" || spec === "Shiai") && currentSum >= maxPosti) {
             return alert(`BLOCCO ISCRIZIONI: Posti esauriti nel database! Limite di ${maxPosti} iscritti raggiunto.`);
         }
     }
@@ -544,8 +561,9 @@ async function exportToExcel() {
 
         const blob = new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement("a");
+        const evName = sessionStorage.getItem('selectedEventName') || "Evento";
         link.href = URL.createObjectURL(blob);
-        link.download = `Iscritti_${sessionStorage.getItem('selectedEventName') || "Evento"}.csv`;
+        link.download = `Iscritti_${evName}.csv`;
         link.click();
     } catch (error) { alert("Errore durante l'esportazione."); }
 }
