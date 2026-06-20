@@ -5,17 +5,21 @@ const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
+// Inizializzazione sicura del client e della variabile globale sb
 if (!window.supabaseClient) {
     window.supabaseClient = createClient(supabaseUrl, supabaseKey);
 }
 const supabaseClient = window.supabaseClient;
 
-// Se 'sb' è già stata dichiarata altrove, la associamo senza lanciare eccezioni
-if (typeof window.sb === 'undefined') {
-    window.sb = supabaseClient;
+// Se 'sb' è già stata dichiarata altrove come variabile globale, non usiamo 'const' per evitare il crash
+if (typeof sb === 'undefined') {
+    window.sb = window.supabaseClient;
+} else {
+    window.sb = window.supabaseClient;
 }
-var sb = window.supabaseClient;
+var sb = window.supabaseClient; // Usando 'var' o l'oggetto window evitiamo l'errore "already been declared"
 
+// Stati globali per le pagine pubbliche e di iscrizione
 let idGaraCorrente = null;
 let configurazioneSportCorrente = null;
 
@@ -65,32 +69,29 @@ async function logout() {
     }
 }
 
+// --- HELPER DI NAVIGAZIONE E CONTESTO ---
 function ottieniIdDallUrl() {
     const params = new URLSearchParams(window.location.search);
     let id = params.get('id');
-    if (!id) id = sessionStorage.getItem('selectedEventId');
+    if (!id) {
+        id = sessionStorage.getItem('selectedEventId');
+    }
     return id;
 }
 
-// FIX: Rilevamento preciso e flessibile dello sport corrente della pagina
 function determinaSportDaPagina() {
     const pathname = window.location.pathname.toLowerCase();
     if (pathname.includes("judo")) return "judo";
     if (pathname.includes("fitarco")) return "fitarco";
     if (pathname.includes("karate")) return "karate";
-    
-    // Se non ricavato dall'URL, prova a leggerlo dalla sessione, altrimenti usa come fallback lo sport salvato
-    const sessionSport = sessionStorage.getItem('selectedSportId');
-    if (sessionSport) return sessionSport.toLowerCase();
-    
-    return "karate"; // Fallback neutro predefinito se tutto il resto fallisce
+    return sessionStorage.getItem('selectedSportId') || "judo";
 }
 
 // ==========================================
 // 2. FUNZIONI PER CARICAMENTO EVENTI ATTIVI (scelta-evento.html)
 // ==========================================
 async function caricaEventiScelta() {
-    const listaContenitore = document.getElementById('eventListContainer') || document.getElementById('listaGare');
+    const listaContenitore = document.getElementById('listaGare') || document.getElementById('eventListContainer');
     if (!listaContenitore) return; 
 
     try {
@@ -98,44 +99,36 @@ async function caricaEventiScelta() {
         if (error) throw error;
 
         if (!eventi || eventi.length === 0) {
-            listaContenitore.innerHTML = '<div class="alert alert-info text-center py-4">Nessuna competizione programmata al momento.</div>';
+            listaContenitore.innerHTML = '<div class="alert alert-info text-center">Nessuna competizione attiva al momento.</div>';
             return;
         }
 
         listaContenitore.innerHTML = "";
         eventi.forEach(e => {
             const sportId = e.sport_id ? e.sport_id.toLowerCase() : 'karate';
-            
-            // FIX: Assicura il corretto reindirizzamento a index-karate.html per le discipline karate
-            let destinazioneHtml = 'index-karate.html'; 
+            let destinazioneHtml = 'index.html'; 
             if (sportId === 'judo') destinazioneHtml = 'index-judo.html';
             if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
-            if (sportId === 'karate') destinazioneHtml = 'index-karate.html';
-
-            let visualizzaData = e.data_evento;
-            if (e.data_evento && e.data_evento.includes('-')) {
-                const parti = e.data_evento.split('-');
-                if(parti[0].length === 4) visualizzaData = `${parti[2]}/${parti[1]}/${parti[0]}`;
-            }
 
             listaContenitore.innerHTML += `
-                <div class="event-item" onclick="selezionaGaraEInvia('${e.id}', '${destinazioneHtml}', '${sportId}', '${e.nome.replace(/'/g, "\\'")}')">
-                    <div class="event-info">
-                        <h5>${e.nome}</h5>
-                        <small>
-                            <i class="far fa-calendar-alt me-1"></i> ${visualizzaData} • 
-                            <i class="fas fa-map-marker-alt me-1"></i> ${e.luogo || 'Sede da definire'}
-                        </small>
-                        <span class="badge bg-secondary text-uppercase ms-2" style="font-size: 0.65rem; vertical-align: middle;">${sportId}</span>
-                    </div>
-                    <div class="btn-select">
-                        <i class="fas fa-chevron-right"></i>
+                <div class="card mb-3 shadow-sm border-0 rounded-3">
+                    <div class="card-body d-flex justify-content-between align-items-center p-3">
+                        <div>
+                            <h5 class="card-title mb-1 fw-bold text-dark">${e.nome}</h5>
+                            <p class="card-text mb-0 text-muted small">
+                                <i class="fas fa-calendar-alt me-1"></i> ${e.data_evento} &nbsp;&nbsp; 
+                                <i class="fas fa-map-marker-alt me-1"></i> ${e.luogo || 'Sede da definire'}
+                            </p>
+                            <span class="badge bg-secondary mt-2 text-uppercase font-monospace" style="font-size:0.7rem;">${sportId}</span>
+                        </div>
+                        <button onclick="selezionaGaraEInvia('${e.id}', '${destinazioneHtml}', '${sportId}', '${e.nome.replace(/'/g, "\\'")}')" class="btn btn-primary px-4 fw-bold">
+                            Iscriviti <i class="fas fa-arrow-right ms-1"></i>
+                        </button>
                     </div>
                 </div>`;
         });
     } catch (err) {
         console.error("Errore recupero eventi:", err.message);
-        listaContenitore.innerHTML = '<div class="alert alert-danger text-center">Impossibile connettersi al servizio eventi.</div>';
     }
 }
 
@@ -156,6 +149,7 @@ async function caricaInformazioniGara() {
         const titoloElemento = document.getElementById('nomeGaraTitolo');
         if (titoloElemento && data) titoloElemento.innerText = data.nome;
     } catch (err) {
+        console.error(err.message);
         const t = document.getElementById('nomeGaraTitolo');
         if (t) t.innerText = "Errore Caricamento Competizione";
     }
@@ -175,7 +169,7 @@ async function scaricaRegoleSport(sportId) {
                 });
             }
         }
-    } catch (err) { console.error("Errore caricamento regole:", err.message); }
+    } catch (err) { console.error(err.message); }
 }
 
 function cascataJudoClassi() {
@@ -254,7 +248,6 @@ async function popolaTabellaIscritti() {
     const tbody = document.getElementById('iscrittiGaraList');
     if (!tbody) return;
     try {
-        const currentSport = determinaSportDaPagina();
         const { data, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).order('created_at', { ascending: false });
         if (error) throw error;
         if (!data || data.length === 0) {
@@ -267,7 +260,7 @@ async function popolaTabellaIscritti() {
                 <td><strong>${a.last_name} ${a.first_name}</strong></td>
                 <td>${a.classe}</td>
                 <td><span class="badge bg-light text-dark border">${a.gender}</span></td>
-                <td>${currentSport === 'judo' ? (a.belt || '-') : (a.specialty || '-')}</td>
+                <td>${determinaSportDaPagina() === 'judo' ? (a.belt || '-') : (a.specialty || '-')}</td>
                 <td><span class="badge bg-secondary">${a.weight_category || 'Open'}</span></td>
             </tr>`;
         });
@@ -298,12 +291,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Caricamento eventi (scelta-evento.html)
-    if (document.getElementById('eventListContainer') || document.getElementById('listaGare')) {
+    if (document.getElementById('listaGare') || document.getElementById('eventListContainer')) {
         await caricaEventiScelta();
         return; 
     }
 
-    // Caricamento moduli d'iscrizione (index-judo.html, index-karate.html, ecc.)
+    // Caricamento moduli d'iscrizione
     const formIscrizione = document.getElementById('registrationForm') || document.getElementById('registerForm');
     if (formIscrizione) {
         if (!document.getElementById('registrationForm')) formIscrizione.id = 'registrationForm';
