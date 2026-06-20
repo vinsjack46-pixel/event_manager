@@ -135,7 +135,7 @@
         <div class="header-section">
             <i class="fas fa-trophy"></i>
             <h2>Seleziona Evento</h2>
-            <p class="text-muted">Scegli la competizione a cui vuoi iscrivere i tuoi atleti o le tue squadre</p>
+            <p class="text-muted">Scegli la competizione a cui vuoi iscrivere i tuoi atleti o le deine squadre</p>
         </div>
 
         <div class="event-container" id="eventsContainer">
@@ -213,12 +213,17 @@
             }
         }
 
-        // Memorizza le informazioni essenziali dell'evento e dello sport nel sessionStorage
+        // AGGIORNATO: Memorizza le informazioni e indirizza alla pagina specifica dello sport
         function selezionaEvento(id, nome, sportId) {
             sessionStorage.setItem('selectedEventId', id);
             sessionStorage.setItem('selectedEventName', nome);
             sessionStorage.setItem('selectedSportId', sportId); 
-            window.location.href = 'index.html';
+            
+            // Converte lo sportId tutto in minuscolo per evitare discrepanze nei nomi dei file
+            const formatoSport = sportId.toLowerCase();
+            
+            // Reindirizzamento dinamico basato sul nome del file strutturato (es. index-judo.html)
+            window.location.href = `index-${formatoSport}.html?id=${id}`;
         }
 
         async function logout() {
