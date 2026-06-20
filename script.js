@@ -101,9 +101,10 @@ async function caricaEventiScelta() {
         eventi.forEach(e => {
             const sportId = e.sport_id ? e.sport_id.toLowerCase() : 'karate';
             
-            let destinazioneHtml = 'index.html'; 
+            let destinazioneHtml = 'index-karate.html'; 
             if (sportId === 'judo') destinazioneHtml = 'index-judo.html';
             if (sportId === 'fitarco') destinazioneHtml = 'index-fitarco.html';
+            if (sportId === 'karate') destinazioneHtml = 'index-karate.html';
 
             // Normalizzazione data per il rendering dell'interfaccia grafico di scelta-evento
             let visualizzaData = e.data_evento;
