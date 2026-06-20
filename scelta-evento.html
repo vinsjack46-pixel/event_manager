@@ -113,7 +113,6 @@
             margin-bottom: 25px;
         }
 
-        /* Custom Scrollbar */
         .event-container::-webkit-scrollbar { width: 6px; }
         .event-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
         .event-container::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
@@ -135,10 +134,10 @@
         <div class="header-section">
             <i class="fas fa-trophy"></i>
             <h2>Seleziona Evento</h2>
-            <p class="text-muted">Scegli la competizione a cui vuoi iscrivere i tuoi atleti o le deine squadre</p>
+            <p class="text-muted">Scegli la competizione a cui vuoi iscrivere i tuoi atleti o i tuoi team</p>
         </div>
 
-        <div class="event-container" id="eventsContainer">
+        <div class="event-container" id="eventListContainer">
             <div class="text-center py-4">
                 <div class="spinner-border text-primary" role="status">
                     <span class="visually-hidden">Caricamento...</span>
@@ -151,89 +150,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
-        const sb = window.supabaseClient;
-
-        async function init() {
-            // Verifica se l'utente è autenticato
-            const { data: { user } } = await sb.auth.getUser();
-            if (!user) {
-                window.location.href = 'login.html';
-                return;
+        // Controllo di sicurezza inline rapido all'avvio della pagina
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (window.supabaseClient) {
+                const { data: { user } } = await window.supabaseClient.auth.getUser();
+                if (!user) {
+                    window.location.href = 'login.html';
+                }
             }
-            await caricaEventi();
-        }
-
-        async function caricaEventi() {
-            // V6.0 FIX CONSOLIDATO: 
-            // 1. Usa l'alias "data:data_evento" per mappare la colonna nativa del database
-            // 2. Chiede il campo "sport_id" per gestire le regole dinamiche
-            // 3. Filtra solo gli eventi attivi (.eq('attivo', true))
-            const { data: eventi, error } = await sb
-                .from('eventi')
-                .select('id, nome, data:data_evento, luogo, sport_id') 
-                .eq('attivo', true)
-                .order('data_evento', { ascending: true });
-
-            const container = document.getElementById('eventsContainer');
-            if (error) {
-                container.innerHTML = `<div class="alert alert-danger">Errore nel caricamento degli eventi: ${error.message}</div>`;
-                return;
-            }
-
-            if (eventi && eventi.length > 0) {
-                container.innerHTML = "";
-                eventi.forEach(e => {
-                    const dataFormattata = new Date(e.data).toLocaleDateString('it-IT', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric'
-                    });
-
-                    // Protezione e fallback se sport_id fosse null per vecchi test: assegna 'karate'
-                    const sportId = e.sport_id || 'karate';
-
-                    container.innerHTML += `
-                        <div class="event-item" onclick="selezionaEvento('${e.id}', '${e.nome.replace(/'/g, "\\'")}', '${sportId}')">
-                            <div class="event-info">
-                                <h5>${e.nome}</h5>
-                                <small><i class="far fa-calendar-alt me-1"></i> ${dataFormattata} • <i class="fas fa-map-marker-alt me-1"></i> ${e.luogo || 'Sede da definire'}</small>
-                            </div>
-                            <div class="btn-select">
-                                <i class="fas fa-chevron-right"></i>
-                            </div>
-                        </div>
-                    `;
-                });
-            } else {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
-                        <p class="text-muted">Nessun evento attivo disponibile.</p>
-                    </div>`;
-            }
-        }
-
-        // AGGIORNATO: Memorizza le informazioni e indirizza alla pagina specifica dello sport
-        function selezionaEvento(id, nome, sportId) {
-            sessionStorage.setItem('selectedEventId', id);
-            sessionStorage.setItem('selectedEventName', nome);
-            sessionStorage.setItem('selectedSportId', sportId); 
-            
-            // Converte lo sportId tutto in minuscolo per evitare discrepanze nei nomi dei file
-            const formatoSport = sportId.toLowerCase();
-            
-            // Reindirizzamento dinamico basato sul nome del file strutturato (es. index-judo.html)
-            window.location.href = `index-${formatoSport}.html?id=${id}`;
-        }
-
-        async function logout() {
-            if(confirm("Sei sicuro di voler uscire?")) {
-                await sb.auth.signOut();
-                window.location.href = 'login.html';
-            }
-        }
-
-        init();
+        });
     </script>
 </body>
 </html>
