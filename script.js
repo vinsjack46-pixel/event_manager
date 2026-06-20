@@ -12,7 +12,7 @@ let idGaraCorrente = null;
 let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
 
-// --- AUTENTICAZIONE ---
+// --- AUTH ---
 async function signIn(email, password) {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) alert('Credenziali non valide.');
@@ -36,6 +36,7 @@ window.logout = async function() {
 
 // --- SCELTA EVENTO ---
 async function caricaEventiScelta() {
+    console.log("Caricamento eventi per la pagina di scelta...");
     const container = document.getElementById('eventListContainer') || document.getElementById('listaGare');
     if (!container) return;
 
@@ -69,158 +70,43 @@ window.selezionaGara = function(id, htmlDest, sportId, nome) {
     window.location.href = htmlDest;
 };
 
-// --- INTERFACCIA ED EVENTI JUDO / FITARCO ---
+// --- LOGICA DASHBOARD (Judo/Fitarco) ---
 async function initDashboardSemplice() {
+    console.log("Inizializzazione Dashboard Judo/Fitarco avviata...");
+
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
     const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
 
-    if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
+    console.log("Dati Sessione -> ID Gara:", idGaraCorrente, "| Nome:", nomeGara, "| Sport:", sportId);
 
-    if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = nomeGara;
-    if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = nomeGara;
-
-    // RISOLUZIONE DEL PROBLEMA: Recupero esplicito del contesto utente e società
-    try {
-        const { data: { user } } = await sb.auth.getUser();
-        if (user) {
-            const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
-            if (soc) {
-                idSocietaCorrente = soc.id;
-                if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
-                if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
-            }
-        } else {
-            window.location.href = "login.html";
-            return;
-        }
-    } catch (e) {
-        console.error("Errore nel caricamento del profilo società:", e);
+    if (!idGaraCorrente) {
+        console.warn("Nessuna gara in sessione, torno alla selezione eventi.");
+        return window.location.href = "scelta-evento.html";
     }
 
-    // Lettura delle regole dello sport specifico dal database
-    const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
-    if (config) {
-        configurazioneSportCorrente = config;
-        
-        if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
-            const sel = document.getElementById('regSpecialty');
-            sel.innerHTML = '<option value="">-- Seleziona Divisione --</option>';
-            config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
-        }
-        
-        const labelsGrado = document.querySelectorAll('label[for="regBelt"], label[for="belt"]');
-        labelsGrado.forEach(lbl => lbl.innerText = config.etichetta_livello || 'Cintura');
-    }
-
-    setupCascateSemplici(sportId);
-    popolaTabellaIscritti(sportId);
-}
-
-function setupCascateSemplici(sportId) {
-    const selGender = document.getElementById('regGender');
-    const selClasse = document.getElementById('regClasse');
-    const selSpecialty = document.getElementById('regSpecialty');
-    const selPeso = document.getElementById('regWeightCategory');
-
-    if (sportId === 'judo' && selGender && selClasse) {
-        selGender.addEventListener('change', () => {
-            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
-            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
-            const classi = configurazioneSportCorrente.regole.classi || [];
-            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
-            selClasse.disabled = false;
-            if(selPeso) { selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>'; selPeso.disabled = true; }
-        });
-        selClasse.addEventListener('change', () => {
-            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
-            selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
-            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
-            if (list) {
-                list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
-                selPeso.disabled = false;
-            } else {
-                selPeso.innerHTML = '<option value="Open">Open</option>';
-                selPeso.disabled = false;
-            }
-        });
-    }
-
-    if (sportId === 'fitarco' && selSpecialty && selClasse) {
-        selSpecialty.addEventListener('change', () => {
-            if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
-            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
-            const classi = configurazioneSportCorrente.regole.classi?.[selSpecialty.value] || [];
-            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
-            selClasse.disabled = false;
-        });
-    }
-}
-
-async function salvaIscrizione(e) {
-    e.preventDefault();
-    if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
-
-    const payload = {
-        event_id: idGaraCorrente,
-        society_id: idSocietaCorrente,
-        first_name: document.getElementById('regFirstName').value.trim(),
-        last_name: document.getElementById('regLastName').value.trim(),
-        gender: document.getElementById('regGender').value,
-        classe: document.getElementById('regClasse').value,
-        specialty: document.getElementById('regSpecialty')?.value || 'Individuale',
-        belt: document.getElementById('regBelt')?.value || 'Base',
-        weight_category: document.getElementById('regWeightCategory')?.value || 'Open'
-    };
+    // 1. CARICAMENTO NOME EVENTO
+    const titleEl = document.getElementById('nomeGaraTitolo');
+    const displayEl = document.getElementById('eventNameDisplay');
     
-    const { error } = await sb.from('atleti').insert([payload]);
-    if (error) {
-        alert("Errore nell'inserimento: " + error.message);
-    } else {
-        document.getElementById('registrationForm').reset();
-        alert("Atleta registrato correttamente!");
-        popolaTabellaIscritti(sessionStorage.getItem('selectedSportId'));
-    }
+    if (titleEl) titleEl.innerText = nomeGara;
+    if (displayEl) displayEl.innerText = nomeGara;
+
+    // (Il resto del codice rimane silente per ora, lo testeremo al prossimo passaggio)
 }
 
-async function popolaTabellaIscritti(sportId) {
-    const tbody = document.getElementById('iscrittiGaraList');
-    if (!tbody) return;
-    
-    const { data, error } = await sb.from('atleti')
-        .select('*')
-        .eq('event_id', idGaraCorrente)
-        .eq('society_id', idSocietaCorrente)
-        .order('created_at', { ascending: false });
-    
-    tbody.innerHTML = "";
-    if (error || !data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
-        return;
-    }
-
-    data.forEach(a => {
-        tbody.innerHTML += `<tr>
-            <td><strong>${a.last_name} ${a.first_name}</strong></td>
-            <td>${a.classe}</td>
-            <td>${a.gender}</td>
-            <td>${a.specialty || '-'}</td>
-            <td>${a.belt || '-'}</td>
-            <td>${a.weight_category || '-'}</td>
-        </tr>`;
-    });
-}
-
-// --- INITIALIZER ---
+// --- DISPATCHER AUTOMATICO DELLE PAGINE ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
+    console.log("Script.js ha rilevato il percorso:", path);
+    
     if (path.includes("login") || path.includes("registrazione")) {
         document.getElementById('loginForm')?.addEventListener('submit', (e) => { e.preventDefault(); signIn(document.getElementById('email').value, document.getElementById('password').value); });
         document.getElementById('registrazioneForm')?.addEventListener('submit', (e) => { e.preventDefault(); signUp(document.getElementById('email').value, document.getElementById('password').value, document.getElementById('nomeSocieta').value, document.getElementById('cfs').value, document.getElementById('cell').value); });
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
-    } else if (document.getElementById('registrationForm')) {
-        document.getElementById('registrationForm').addEventListener('submit', salvaIscrizione);
+    } else if (path.includes("judo") || path.includes("fitarco")) {
+        // Avvia la dashboard forzatamente se siamo in una di queste due pagine
         initDashboardSemplice();
     }
 });
