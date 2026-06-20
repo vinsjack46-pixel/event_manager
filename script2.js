@@ -1,4 +1,11 @@
-const sb = window.supabaseClient;
+// =========================================================================
+// INIZIALIZZAZIONE SICURA: Condivide l'istanza Supabase creata da script.js
+// =========================================================================
+if (typeof window.sb === 'undefined') {
+    window.sb = window.supabaseClient;
+}
+var sb = window.supabaseClient;
+
 window.currentSocietyId = null;
 
 // STATI GLOBALI DI EDITING
@@ -33,13 +40,22 @@ async function initPage() {
     const eventId = sessionStorage.getItem('selectedEventId');
     const eventName = sessionStorage.getItem('selectedEventName');
     
-    // Rileva lo sport: controlla prima il nome del file HTML corrente (es. index-judo.html), altrimenti usa la sessione
-    let sportId = sessionStorage.getItem('selectedSportId');
+    // Rileva lo sport guardando l'URL o la sessione
+    let sportId = null;
     const pathname = window.location.pathname.toLowerCase();
-    if (pathname.includes("judo")) sportId = "judo";
-    else if (pathname.includes("fitarco")) sportId = "fitarco";
-    else if (pathname.includes("karate")) sportId = "karate";
-    if (!sportId) sportId = 'karate'; 
+    
+    if (pathname.includes("judo")) {
+        sportId = "judo";
+    } else if (pathname.includes("fitarco")) {
+        sportId = "fitarco";
+    } else if (pathname.includes("karate")) {
+        sportId = "karate";
+    } else {
+        sportId = sessionStorage.getItem('selectedSportId') || "karate";
+    }
+    
+    sportId = sportId.toLowerCase();
+    sessionStorage.setItem('selectedSportId', sportId);
     
     if (!eventId) {
         window.location.href = "scelta-evento.html";
@@ -99,7 +115,7 @@ function adattaInterfacciaAlloSport() {
     // Nasconde o mostra il box del peso in base alle impostazioni dello sport nel DB
     const weightBox = document.getElementById('weight_category')?.closest('.col-md-4') || document.getElementById('weight_category')?.parentElement;
     if (weightBox) {
-        const richiedePeso = currentSportConfig.richiega_peso || currentSportConfig.richiede_peso;
+        const richiedePeso = currentSportConfig.richiega_peso || currentSportConfig.richede_peso || currentSportConfig.richiede_peso;
         weightBox.style.display = richiedePeso ? 'block' : 'none';
     }
 }
@@ -218,13 +234,12 @@ function handleSpecialtyChange() {
     wInput.innerHTML = '';
     wInput.disabled = true;
 
-    // Se lo sport a livello globale non prevede categorie di peso (es. Tiro con l'Arco / FITARCO)
+    // Se lo sport a livello globale non prevede categorie di peso
     if (!currentSportConfig.richiede_peso && !currentSportConfig.richiega_peso) {
         wInput.innerHTML = '<option value="-">-</option>';
         return;
     }
 
-    // Controllo flessibile: richiede il peso se siamo in Karate-Kumite, oppure se siamo nel Judo (dove serve sempre per combattere)
     const sportId = currentSportConfig.sport_id;
     const richiedePesoOggi = (sportId === 'karate' && spec === "Kumite") || (sportId === 'judo') || spec.toLowerCase().includes("combattimento");
 
