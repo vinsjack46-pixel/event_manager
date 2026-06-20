@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON ADATTAMENTO CINTURE E EVIDENZIAZIONE RIGA)
+// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON MODIFICA CINTURE E PULSANTE GIALLO)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -106,7 +106,6 @@ function updateSpecs(year) {
     spSel.innerHTML = '<option value="">-- Specialità --</option>';
     if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
     
-    // Popolamento dinamico delle cinture accorpate basato sulla classe d'età
     const beltSel = document.getElementById('belt');
     if (beltSel) {
         beltSel.innerHTML = '<option value="">-- Cintura --</option>';
@@ -156,8 +155,7 @@ async function fetchAthletes() {
 
     data?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
         if(a.specialty==="Kumite") counts.kumite++; else if(a.specialty==="Kata") counts.kata++; else if(a.specialty==="ParaKarate") counts.para++; else counts.kids++;
-        // Aggiunto l'id sulla riga tr (row-athlete-ID) per poter cambiare colore
-        tbody.innerHTML += `<tr id="row-athlete-${a.id}">
+        tbody.innerHTML += `<tr>
             <td><strong>${a.last_name} ${a.first_name}</strong></td>
             <td>${a.classe}</td>
             <td>${a.gender}</td>
@@ -183,8 +181,7 @@ async function fetchTeams() {
     if (!tbody) return;
     tbody.innerHTML = "";
     data?.forEach(t => {
-        // Aggiunto l'id sulla riga tr (row-team-ID) per poter cambiare colore
-        tbody.innerHTML += `<tr id="row-team-${t.id}">
+        tbody.innerHTML += `<tr>
             <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
             <td>${t.classe}</td>
             <td>${t.gender}</td>
@@ -199,18 +196,11 @@ async function fetchTeams() {
     });
 }
 
-// COMPILAZIONE DEL FORM IN MODALITÀ MODIFICA (REAL TIME)
+// COMPILAZIONE DEL FORM IN MODALITÀ MODIFICA
 window.editAthlete = async function(id) {
-    // Rimuove eventuali colorazioni precedenti prima di applicare la nuova
-    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
-    
     editingTeamId = null;
     const { data: a } = await sb.from('atleti').select('*').eq('id', id).single();
     if (!a) return;
-
-    // Cambia il colore dello sfondo della riga selezionata in giallo chiaro
-    const riga = document.getElementById(`row-athlete-${id}`);
-    if (riga) riga.style.backgroundColor = '#fff3cd';
 
     document.querySelector('input[name="regType"][value="individual"]').checked = true;
     toggleRegMode();
@@ -224,7 +214,6 @@ window.editAthlete = async function(id) {
     document.getElementById('specialty').value = a.specialty;
     handleSpecialtyChange();
 
-    // Selezione intelligente della cintura accorpata (Tolleranza singola/accorpata)
     const beltSel = document.getElementById('belt');
     if (beltSel) {
         beltSel.value = a.belt;
@@ -239,21 +228,19 @@ window.editAthlete = async function(id) {
     document.getElementById('weight_category').value = a.weight_category;
 
     editingAthleteId = id;
+    
+    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
     const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
+    if(btn) {
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
+        btn.className = "btn btn-warning w-100"; 
+    }
 };
 
 window.editTeam = async function(id) {
-    // Rimuove eventuali colorazioni precedenti prima di applicare la nuova
-    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
-
     editingAthleteId = null;
     const { data: t } = await sb.from('teams').select('*').eq('id', id).single();
     if (!t) return;
-
-    // Cambia il colore dello sfondo della riga selezionata in giallo chiaro
-    const riga = document.getElementById(`row-team-${id}`);
-    if (riga) riga.style.backgroundColor = '#fff3cd';
 
     document.querySelector('input[name="regType"][value="team"]').checked = true;
     toggleRegMode();
@@ -266,7 +253,6 @@ window.editTeam = async function(id) {
     document.getElementById('specialty').value = t.specialty;
     handleSpecialtyChange();
 
-    // Selezione intelligente della cintura accorpata per i Team
     const beltSel = document.getElementById('belt');
     if (beltSel) {
         beltSel.value = t.belt;
@@ -285,14 +271,19 @@ window.editTeam = async function(id) {
     t.members.forEach(m => window.addMemberField(m));
 
     editingTeamId = id;
+    
+    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
     const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
+    if(btn) {
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
+        btn.className = "btn btn-warning w-100";
+    }
 };
 
 window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
 window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
 
-// GESTIONE SCRITTURA (INSERIMENTO O AGGIORNAMENTO SE FLAG ATTIVO)
+// GESTIONE SCRITTURA (INSERIMENTO O AGGIORNAMENTO)
 async function addEntity(e) {
     e.preventDefault();
     const ev = sessionStorage.getItem('selectedEventId');
@@ -328,13 +319,14 @@ async function addEntity(e) {
         }
     }
     
-    // Ripristino stato iniziale del form e azzeramento dei colori delle righe
+    // Ripristino stato iniziale del form e del colore del pulsante
     editingAthleteId = null;
     editingTeamId = null;
-    document.querySelectorAll('tr').forEach(tr => tr.style.backgroundColor = '');
-
     const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
+    if(btn) {
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
+        btn.className = "btn btn-success w-100"; // Ripristina il colore originale (es. verde)
+    }
 
     document.getElementById('athleteForm').reset();
     document.getElementById('membersContainer').innerHTML = "";
