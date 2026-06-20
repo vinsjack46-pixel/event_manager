@@ -141,10 +141,11 @@ async function saveSportConfigToDB(e) {
 
         const payload = {
             richiede_peso: requiresWeight,
+            richiega_peso: requiresWeight,
             regole: baseRegole,
             etichetta_livello: labelLivello,
             // Assegna in modo sicuro sia a 'nome' che a 'nome_sport' (qualunque sia presente sulla tabella)
-            sport_id: sportValueFormatted,
+            nome: sportValueFormatted,
             nome_sport: sportValueFormatted
         };
 
