@@ -1,6 +1,3 @@
-// ==========================================================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (STILE UNIFORMATO, COMPONENTI E STRUTTURA LOGICA NATURALE)
-// ==========================================================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
@@ -12,7 +9,6 @@ let currentSportConfig = null;
 let editingAthleteId = null; 
 let editingTeamId = null;
 
-// Helper per estrarre l'anno in modo dinamico
 function estraiAnnoDaData(dateVal) {
     if (!dateVal) return null;
     dateVal = dateVal.trim();
@@ -30,7 +26,6 @@ window.logout = async function() {
     window.location.href = "login.html";
 };
 
-// Inizializzazione Dashboard Karate
 async function initKarateDashboard() {
     const eventId = sessionStorage.getItem('selectedEventId');
     if (!eventId) return window.location.href = "scelta-evento.html";
@@ -38,7 +33,6 @@ async function initKarateDashboard() {
     if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = sessionStorage.getItem('selectedEventName') || "";
     if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = sessionStorage.getItem('selectedEventName') || "";
 
-    // Carica regole Karate
     try {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', 'karate').single();
         if (config) {
@@ -46,7 +40,6 @@ async function initKarateDashboard() {
         }
     } catch(e) { console.error(e); }
 
-    // Rileva sessione utente e popola dati Società
     const { data: { user } } = await sb.auth.getUser();
     if (user) {
         const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
@@ -59,7 +52,6 @@ async function initKarateDashboard() {
         }
     }
 
-    // Bind degli eventi UI
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
     document.getElementById('birthdate')?.addEventListener('change', handleBirthdateChange);
     document.getElementById('team_year')?.addEventListener('change', handleTeamYearChange);
@@ -68,7 +60,6 @@ async function initKarateDashboard() {
     document.getElementById('specialty')?.addEventListener('change', handleSpecialtyChange);
     document.getElementById('athleteForm')?.addEventListener('submit', addEntity);
 
-    // Inizializza i 3 campi vuoti fin dall'avvio
     toggleRegMode();
 }
 
@@ -77,14 +68,12 @@ function toggleRegMode() {
     document.getElementById('individualFields').style.display = isTeam ? 'none' : 'block';
     document.getElementById('teamFields').style.display = isTeam ? 'block' : 'none';
     
-    // Gestione campi richiesti principali
     document.getElementById('first_name').required = !isTeam;
     document.getElementById('last_name').required = !isTeam;
     document.getElementById('birthdate').required = !isTeam;
     document.getElementById('team_name').required = isTeam;
     document.getElementById('team_year').required = isTeam;
 
-    // Genera 3 campi di default se la lista componenti è vuota e siamo in inserimento squadra
     if (isTeam && !editingTeamId) {
         const cont = document.getElementById('membersContainer');
         if (cont && cont.children.length === 0) {
@@ -94,7 +83,7 @@ function toggleRegMode() {
         }
     }
 
-    // Risoluzione errore "not focusable": l'attributo required segue la visibilità della scheda team
+    // CORREZIONE APPLICATA: Rimuove il required dai campi nascosti per evitare l'errore "not focusable"
     const memberInputs = document.querySelectorAll('.member-input');
     memberInputs.forEach(input => {
         input.required = isTeam;
@@ -107,6 +96,7 @@ window.addMemberField = function(val = "") {
     const c = cont.children.length;
     if (c >= 6) return alert("Massimo 6 componenti per squadra.");
     
+    // CORREZIONE APPLICATA: Il nuovo campo è required solo se siamo effettivamente in modalità team
     const isTeam = document.querySelector('input[name="regType"]:checked')?.value === 'team';
     const isRequired = isTeam ? "required" : "";
 
