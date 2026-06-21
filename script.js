@@ -212,7 +212,6 @@ async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Sessione società non valida.");
 
-    const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
     const lastName = document.getElementById('regLastName').value.trim();
     const firstName = document.getElementById('regFirstName').value.trim();
     const genderInput = document.getElementById('regGender').value;
@@ -242,7 +241,7 @@ async function salvaIscrizione(e) {
     if (error) {
         alert("Errore inserimento: " + error.message);
     } else {
-        alert("Atleta registered!");
+        alert("Atleta registrato!");
         document.getElementById('registrationForm').reset();
         if(document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
         if(document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
@@ -250,7 +249,7 @@ async function salvaIscrizione(e) {
     }
 }
 
-// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Tabella 'teams') ---
+// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Tabella 'teams' con Array Nativo) ---
 function inizializzaGestioneComponentiTeam() {
     const container = document.getElementById('teamMembersContainer');
     const btnAdd = document.getElementById('btnAddTeamMember');
@@ -309,7 +308,7 @@ async function salvaSquadraSemplice(e) {
         classe: teamClasse,
         belt: teamBelt,
         weight_category: 'Open',
-        members: componenti
+        members: componenti  // Array nativo JSON/text[] salvato correttamente sin da prima
     };
 
     const { error } = await sb.from('teams').insert([payload]);
@@ -323,7 +322,7 @@ async function salvaSquadraSemplice(e) {
     }
 }
 
-// --- 6. AGGIORNAMENTO INCROCIATO TABELLE E CONTATORI ---
+// --- 6. AGGIORNAMENTO INCROCIATO TABELLE, CONTATORI E DISMISSIONI DINAMICHE ---
 async function aggiornaTabelleEStatistiche() {
     if (!sb) return;
     const tbodyAtleti = document.getElementById('iscrittiGaraList');
@@ -354,10 +353,15 @@ async function aggiornaTabelleEStatistiche() {
                     <td>${a.specialty || 'Individuale'}</td>
                     <td>${a.belt || '-'}</td>
                     <td>${a.weight_category || '-'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaAtleta('${a.id}')" title="Elimina iscrizione">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 </tr>`;
             });
         } else {
-            tbodyAtleti.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun atleta individuale iscritto.</td></tr>`;
+            tbodyAtleti.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Nessun atleta individuale iscritto.</td></tr>`;
         }
     }
 
@@ -369,20 +373,31 @@ async function aggiornaTabelleEStatistiche() {
             teams.forEach(t => {
                 squadreCount++;
                 totali++;
+                
+                let membriVisualizzati = "Nessuno inserito";
+                if (t.members) {
+                    membriVisualizzati = Array.isArray(t.members) ? t.members.join(', ') : t.members;
+                }
+
                 tbodySquadre.innerHTML += `<tr>
                     <td>
                         <strong class="text-success"><i class="fas fa-users me-1"></i> ${t.name}</strong>
-                        <div class="small text-muted mt-1" style="font-size:0.8rem;"><strong>Componenti:</strong> ${t.members || 'Nessuno inserito'}</div>
+                        <div class="small text-muted mt-1" style="font-size:0.8rem;"><strong>Componenti:</strong> ${membriVisualizzati}</div>
                     </td>
                     <td>${t.classe || '-'}</td>
                     <td><span class="badge bg-light text-success border">${t.gender || '-'}</span></td>
                     <td>Squadre</td>
                     <td>${t.belt || 'Libera'}</td>
                     <td>${t.weight_category || 'Open'}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaSquadra('${t.id}')" title="Elimina Squadra">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 </tr>`;
             });
         } else {
-            tbodySquadre.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessuna squadra iscritta.</td></tr>`;
+            tbodySquadre.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Nessuna squadra iscritta.</td></tr>`;
         }
     }
 
@@ -391,6 +406,25 @@ async function aggiornaTabelleEStatistiche() {
     if (elFemmine) elFemmine.innerText = femmine;
     if (elSquadre) elSquadre.innerText = squadreCount;
 }
+
+// --- 6B. FUNZIONI DI RIMOZIONE ATLETI/SQUADRE ---
+window.eliminaAtleta = async function(idAtleta) {
+    if (!confirm("Vuoi cancellare definitivamente questo atleta dall'evento?")) return;
+    try {
+        const { error } = await sb.from('atleti').delete().eq('id', idAtleta);
+        if (error) throw error;
+        aggiornaTabelleEStatistiche();
+    } catch (err) { alert("Errore di eliminazione: " + err.message); }
+};
+
+window.eliminaSquadra = async function(idTeam) {
+    if (!confirm("Vuoi cancellare definitivamente questa squadra dall'evento?")) return;
+    try {
+        const { error } = await sb.from('teams').delete().eq('id', idTeam);
+        if (error) throw error;
+        aggiornaTabelleEStatistiche();
+    } catch (err) { alert("Errore di eliminazione: " + err.message); }
+};
 
 // --- 7. DISPATCHER AUTOMATICO ---
 document.addEventListener('DOMContentLoaded', () => {
