@@ -1,11 +1,9 @@
 // ==========================================
 // SCRIPT2.JS - MOTORE KARATE COMPLETO (CON MODIFICA CINTURE E PULSANTE GIALLO)
 // ==========================================
-const { createClient } = window.supabase;
-const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-const sb = createClient(supabaseUrl, supabaseKey);
+// Utilizziamo il client Supabase globale già inizializzato in script.js per evitare errori di ridefinizione
+const sb = window.supabaseClient;
 
 window.currentSocietyId = null;
 let currentSportConfig = null;
@@ -37,6 +35,26 @@ async function initKarateDashboard() {
 
     if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = sessionStorage.getItem('selectedEventName') || "";
     if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = sessionStorage.getItem('selectedEventName') || "";
+
+    // Configurazione dinamica dei campi Sesso/Gender generici all'avvio come richiesto
+    const genderSel = document.getElementById('gender');
+    if (genderSel) {
+        genderSel.innerHTML = `
+            <option value="" disabled selected>-- Sesso --</option>
+            <option value="Maschio">Maschio</option>
+            <option value="Femmina">Femmina</option>
+        `;
+    }
+
+    const teamGenderSel = document.getElementById('team_gender');
+    if (teamGenderSel) {
+        teamGenderSel.innerHTML = `
+            <option value="" disabled selected>-- Genere Squadra --</option>
+            <option value="Maschile">Maschile</option>
+            <option value="Femminile">Femminile</option>
+            <option value="Mista (Mix)">Mista (Mix)</option>
+        `;
+    }
 
     // Carica regole Karate
     try {
@@ -100,11 +118,13 @@ function updateSpecs(year) {
     const classe = currentSportConfig.classi_eta?.find(c => year >= c.anno_min && year <= c.anno_max);
     
     const clSel = document.getElementById('classe');
-    clSel.innerHTML = `<option value="${classe ? classe.nome : 'Fuori Quota'}">${classe ? classe.nome : 'Fuori Quota'}</option>`;
+    if (clSel) clSel.innerHTML = `<option value="${classe ? classe.nome : 'Fuori Quota'}">${classe ? classe.nome : 'Fuori Quota'}</option>`;
 
     const spSel = document.getElementById('specialty');
-    spSel.innerHTML = '<option value="">-- Specialità --</option>';
-    if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
+    if (spSel) {
+        spSel.innerHTML = '<option value="">-- Specialità --</option>';
+        if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
+    }
     
     const beltSel = document.getElementById('belt');
     if (beltSel) {
@@ -267,8 +287,10 @@ window.editTeam = async function(id) {
     document.getElementById('weight_category').value = t.weight_category;
 
     const cont = document.getElementById('membersContainer');
-    cont.innerHTML = "";
-    t.members.forEach(m => window.addMemberField(m));
+    if (cont) {
+        cont.innerHTML = "";
+        t.members.forEach(m => window.addMemberField(m));
+    }
 
     editingTeamId = id;
     
@@ -289,6 +311,13 @@ async function addEntity(e) {
     const ev = sessionStorage.getItem('selectedEventId');
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
+    // Recupera e valida il genere selezionato per impedire l'invio del placeholder vuoto
+    const currentGender = document.getElementById(isTeam ? 'team_gender' : 'gender').value;
+    if (!currentGender) {
+        alert("Per favore, seleziona un'opzione valida per il campo sesso/genere.");
+        return;
+    }
+
     const common = {
         event_id: ev, society_id: window.currentSocietyId,
         classe: document.getElementById('classe').value,
@@ -298,20 +327,22 @@ async function addEntity(e) {
     };
 
     if (isTeam) {
-        const payload = { ...common, team_name: document.getElementById('team_name').value, gender: document.getElementById('team_gender').value, team_year: parseInt(document.getElementById('team_year').value), members: Array.from(document.querySelectorAll('.member-input')).map(i=>i.value.trim()) };
+        const payload = { ...common, team_name: document.getElementById('team_name').value, gender: currentGender, team_year: parseInt(document.getElementById('team_year').value), members: Array.from(document.querySelectorAll('.member-input')).map(i=>i.value.trim()) };
         
         if (editingTeamId) {
-            await sb.from('teams').update([payload]).eq('id', editingTeamId);
+            // CORRETTO: .update() accetta l'oggetto del payload direttamente, senza array racchiuso
+            await sb.from('teams').update(payload).eq('id', editingTeamId);
             alert("Squadra aggiornata!");
         } else {
             await sb.from('teams').insert([payload]);
             alert("Squadra inserita!");
         }
     } else {
-        const payload = { ...common, first_name: document.getElementById('first_name').value, last_name: document.getElementById('last_name').value, gender: document.getElementById('gender').value, birthdate: document.getElementById('birthdate').value };
+        const payload = { ...common, first_name: document.getElementById('first_name').value, last_name: document.getElementById('last_name').value, gender: currentGender, birthdate: document.getElementById('birthdate').value };
         
         if (editingAthleteId) {
-            await sb.from('atleti').update([payload]).eq('id', editingAthleteId);
+            // CORRETTO: .update() accetta l'oggetto del payload direttamente, senza array racchiuso
+            await sb.from('atleti').update(payload).eq('id', editingAthleteId);
             alert("Atleta aggiornato!");
         } else {
             await sb.from('atleti').insert([payload]);
@@ -325,11 +356,16 @@ async function addEntity(e) {
     const btn = document.querySelector('#athleteForm button[type="submit"]');
     if(btn) {
         btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
-        btn.className = "btn btn-success w-100"; // Ripristina il colore originale (es. verde)
+        btn.className = "btn btn-success w-100"; 
     }
 
     document.getElementById('athleteForm').reset();
-    document.getElementById('membersContainer').innerHTML = "";
+    if (document.getElementById('membersContainer')) document.getElementById('membersContainer').innerHTML = "";
+    
+    // Forza il ritorno al valore generico (placeholder) su entrambi i menu sesso/genere
+    if (document.getElementById('gender')) document.getElementById('gender').value = "";
+    if (document.getElementById('team_gender')) document.getElementById('team_gender').value = "";
+
     fetchAthletes(); fetchTeams();
 }
 
