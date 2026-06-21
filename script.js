@@ -70,7 +70,7 @@ async function caricaListaEventi() {
             let badgeColor = "bg-primary";
             let htmlDest = "index-judo.html";
             if (sportId === "karate") { badgeColor = "bg-danger"; htmlDest = "index-karate.html"; }
-            if (sportId === "fitarco") { badgeColor = "bg-warning text-dark"; htmlDest = "index-fitarco.html"; }
+            if (sportId === "fitarco") { badgeColor = "bg-success text-dark"; htmlDest = "index-fitarco.html"; }
 
             const card = document.createElement('div');
             card.className = "col-md-6 col-lg-4 mb-4";
