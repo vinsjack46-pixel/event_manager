@@ -6,20 +6,43 @@ let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
 let istanzaModale = null; // Memorizza l'oggetto della modale a comparsa
 
-async function checkAdminAccess() {
-    const { data: { user }, error } = await window.supabaseClient.auth.getUser();
-    const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"]; 
+// Funzione di utilità per recuperare in modo sicuro il client Supabase globale
+function getSupabaseClient() {
+    const client = window.supabaseClient || window.sb;
+    if (!client) {
+        throw new Error("Il client di Supabase non è ancora pronto o non è stato inizializzato in script.js");
+    }
+    return client;
+}
 
-    if (error || !user || !authorizedAdmins.includes(user.email)) {
-        alert("Accesso negato: Non sei autorizzato a vedere questa pagina.");
-        window.location.href = "login.html";
+async function checkAdminAccess() {
+    try {
+        const client = getSupabaseClient();
+        const { data: { user }, error } = await client.auth.getUser();
+        const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"]; 
+
+        if (error || !user || !authorizedAdmins.includes(user.email)) {
+            alert("Accesso negato: Non sei autorizzato a vedere questa pagina.");
+            window.location.href = "login.html";
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error("Errore di autenticazione critica:", err.message);
         return false;
     }
-    return true;
 }
 
 async function initAdmin() {
     console.log("Verifica autorizzazione in corso...");
+    
+    // Se script.js impiega qualche millisecondo in più ad inizializzare Supabase, lo attendiamo
+    if (!window.supabaseClient && !window.sb) {
+        console.warn("Supabase non pronto. Attesa modulo di inizializzazione...");
+        setTimeout(initAdmin, 200);
+        return;
+    }
+
     const isAuthorized = await checkAdminAccess();
     if (!isAuthorized) return;
     
@@ -41,7 +64,8 @@ async function initAdmin() {
 
 async function refreshSportDropdowns() {
     try {
-        const { data: sports, error } = await window.supabaseClient.from('configurazioni_sport').select('sport_id');
+        const client = getSupabaseClient();
+        const { data: sports, error } = await client.from('configurazioni_sport').select('sport_id');
         if (error) throw error;
 
         const configSelect = document.getElementById('configSportId');
@@ -97,7 +121,8 @@ async function loadSportConfigFromDB() {
     if (!sportId) return;
 
     try {
-        const { data: config, error } = await window.supabaseClient
+        const client = getSupabaseClient();
+        const { data: config, error } = await client
             .from('configurazioni_sport')
             .select('*')
             .eq('sport_id', sportId)
@@ -136,9 +161,10 @@ async function saveSportConfigToDB(e) {
     }
 
     try {
+        const client = getSupabaseClient();
         let baseRegole = { classi_eta: [], pesi: { Default: ["Open"] } };
         if (!isCreatingNewSport) {
-            const { data: currentConfig } = await window.supabaseClient.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+            const { data: currentConfig } = await client.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
             if (currentConfig && currentConfig.regole) baseRegole = currentConfig.regole;
         }
 
@@ -160,10 +186,10 @@ async function saveSportConfigToDB(e) {
         let resultError = null;
 
         if (isCreatingNewSport) {
-            const { error } = await window.supabaseClient.from('configurazioni_sport').insert([payload]);
+            const { error } = await client.from('configurazioni_sport').insert([payload]);
             resultError = error;
         } else {
-            const { error } = await window.supabaseClient.from('configurazioni_sport').update(payload).eq('sport_id', sportId);
+            const { error } = await client.from('configurazioni_sport').update(payload).eq('sport_id', sportId);
             resultError = error;
         }
 
@@ -182,27 +208,38 @@ async function createEvent(e) {
     e.preventDefault();
     const sId = document.getElementById('eventSportId').value;
     if (!sId) return alert("Seleziona uno sport da associare a questo evento!");
-    const { error } = await window.supabaseClient.from('eventi').insert([{ 
-        nome: document.getElementById('eventName').value, 
-        data_evento: document.getElementById('eventDate').value, 
-        luogo: document.getElementById('eventLocation').value,
-        sport_id: sId 
-    }]);
-    if (!error) { 
-        document.getElementById('eventForm').reset(); 
-        loadFilterEvents();
-        alert("Evento associato allo sport '" + sId.toUpperCase() + "' creato con successo!");
-    } else {
-        alert("Errore creazione evento: " + error.message);
+    
+    try {
+        const client = getSupabaseClient();
+        const { error } = await client.from('eventi').insert([{ 
+            nome: document.getElementById('eventName').value, 
+            data_evento: document.getElementById('eventDate').value, 
+            luogo: document.getElementById('eventLocation').value,
+            sport_id: sId 
+        }]);
+        if (!error) { 
+            document.getElementById('eventForm').reset(); 
+            loadFilterEvents();
+            alert("Evento associato allo sport '" + sId.toUpperCase() + "' creato con successo!");
+        } else {
+            alert("Errore creazione evento: " + error.message);
+        }
+    } catch (err) {
+        alert("Errore di sistema: " + err.message);
     }
 }
 
 async function fetchGlobalData() {
-    const { data: atleti } = await window.supabaseClient.from('atleti').select('*, societa(nome), eventi(nome)');
-    const { data: teams } = await window.supabaseClient.from('teams').select('*, societa(nome), eventi(nome)');
-    allAthletes = atleti || [];
-    allTeams = teams || [];
-    renderTables(allAthletes, allTeams);
+    try {
+        const client = getSupabaseClient();
+        const { data: atleti } = await client.from('atleti').select('*, societa(nome), eventi(nome)');
+        const { data: teams } = await client.from('teams').select('*, societa(nome), eventi(nome)');
+        allAthletes = atleti || [];
+        allTeams = teams || [];
+        renderTables(allAthletes, allTeams);
+    } catch (err) {
+        console.error("Errore nel recupero dati globali:", err);
+    }
 }
 
 function renderTables(atleti, teams) {
@@ -246,38 +283,58 @@ function filterAll() {
 
 async function deleteRecord(table, id) {
     if(confirm("Sei sicuro di voler eliminare questo record?")) { 
-        await window.supabaseClient.from(table).delete().eq('id', id);
-        fetchGlobalData(); 
+        try {
+            const client = getSupabaseClient();
+            await client.from(table).delete().eq('id', id);
+            fetchGlobalData(); 
+        } catch (err) {
+            alert(err.message);
+        }
     }
 }
 
 async function loadFilterEvents() {
-    const { data: eventi } = await window.supabaseClient.from('eventi').select('*').order('data_evento', { ascending: false });
-    const select = document.getElementById('filterEvent');
-    const scroll = document.getElementById('eventList');
-    
-    if(select) select.innerHTML = '<option value="">Tutti gli Eventi</option>';
-    if(scroll) scroll.innerHTML = "";
-    eventi?.forEach(e => {
-        if(select) select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
-        if(scroll) scroll.innerHTML += `<div class="p-2 border-bottom d-flex justify-content-between align-items-center bg-white">
-            <small><strong>${e.nome}</strong> (${e.sport_id ? e.sport_id.toUpperCase() : 'KARATE'})<br>${e.data_evento}</small>
-            <button onclick="deleteEvent('${e.id}')" class="btn btn-sm text-danger p-0"><i class="fas fa-times"></i></button>
-        </div>`;
-    });
+    try {
+        const client = getSupabaseClient();
+        const { data: eventi } = await client.from('eventi').select('*').order('data_evento', { ascending: false });
+        const select = document.getElementById('filterEvent');
+        const scroll = document.getElementById('eventList');
+        
+        if(select) select.innerHTML = '<option value="">Tutti gli Eventi</option>';
+        if(scroll) scroll.innerHTML = "";
+        eventi?.forEach(e => {
+            if(select) select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
+            if(scroll) scroll.innerHTML += `<div class="p-2 border-bottom d-flex justify-content-between align-items-center bg-white">
+                <small><strong>${e.nome}</strong> (${e.sport_id ? e.sport_id.toUpperCase() : 'KARATE'})<br>${e.data_evento}</small>
+                <button onclick="deleteEvent('${e.id}')" class="btn btn-sm text-danger p-0"><i class="fas fa-times"></i></button>
+            </div>`;
+        });
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 async function deleteEvent(id) {
     if(confirm("Eliminando l'evento cancellerai anche tutti gli iscritti associati. Procedere?")) { 
-        await window.supabaseClient.from('eventi').delete().eq('id', id);
-        loadFilterEvents(); 
-        fetchGlobalData(); 
+        try {
+            const client = getSupabaseClient();
+            await client.from('eventi').delete().eq('id', id);
+            loadFilterEvents(); 
+            fetchGlobalData(); 
+        } catch (err) {
+            alert(err.message);
+        }
     }
 }
 
 async function handleLogout() {
-    await window.supabaseClient.auth.signOut();
-    window.location.href = 'login.html';
+    try {
+        const client = getSupabaseClient();
+        await client.auth.signOut();
+        window.location.href = 'login.html';
+    } catch (err) {
+        window.location.href = 'login.html';
+    }
 }
 
 function exportAllToCSV() {
@@ -304,7 +361,8 @@ async function leggiJsonDaDb() {
     const spId = selectEl.value;
     if (!spId) return;
     try {
-        const { data, error } = await window.supabaseClient.from('configurazioni_sport').select('regole').eq('sport_id', spId).single();
+        const client = getSupabaseClient();
+        const { data, error } = await client.from('configurazioni_sport').select('regole').eq('sport_id', spId).single();
         if (error) throw error;
         
         if (data && data.regole) {
@@ -334,7 +392,8 @@ async function inviaJsonAggiustato() {
     if (!spId) return;
     try {
         const jsonDefinitivo = JSON.parse(document.getElementById('testoJson').value);
-        const { error } = await window.supabaseClient.from('configurazioni_sport').update({ regole: jsonDefinitivo }).eq('sport_id', spId);
+        const client = getSupabaseClient();
+        const { error } = await client.from('configurazioni_sport').update({ regole: jsonDefinitivo }).eq('sport_id', spId);
         if (error) throw error;
         
         alert("Regole a cascata aggiornate con successo nel database per: " + spId.toUpperCase());
