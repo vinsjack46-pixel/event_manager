@@ -4,7 +4,8 @@
 if (typeof window.sb === 'undefined') {
     window.sb = window.supabaseClient;
 }
-var sb = window.supabaseClient;
+// CORREZIONE: Rimosso "var sb" che creava il conflitto di sintassi
+sb = window.sb; 
 
 let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
@@ -32,9 +33,10 @@ async function initAdmin() {
         istanzaModale = new bootstrap.Modal(document.getElementById('modalEditor'));
     }
     
+    // AGGIUNTA: Forza il caricamento iniziale dei dati degli atleti e dei filtri
     await refreshSportDropdowns();
     await loadFilterEvents();
-    await fetchGlobalData();
+    await fetchGlobalData(); 
     
     if (document.getElementById('eventForm')) document.getElementById('eventForm').addEventListener('submit', createEvent);
     if (document.getElementById('sportConfigForm')) document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
