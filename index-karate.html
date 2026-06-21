@@ -3,221 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iscrizioni Gare | Karate</title>
+    <title>Gestionale Iscrizioni Karate | Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary-color: #1e90ff; --bg-accent: #f0f6fc; }
+        :root { --primary-color: #1e90ff; --bg-gradient: linear-gradient(135deg, #00ced1 0%, #1e90ff 100%); }
         body { font-family: 'Inter', sans-serif; background: #f4f7f9; margin: 0; padding-bottom: 50px; }
-        .top-bar { background: white; padding: 10px 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 0; z-index: 1000; }
-        .main-container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
-        .registration-card { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: none; padding: 25px; }
-        .form-label { font-weight: 600; font-size: 0.85rem; color: #495057; }
-        .table-container { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); border: 1px solid #eef2f5; }
-        .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
-        .table thead th { background: var(--bg-accent); font-size: 0.75rem; text-transform: uppercase; color: #495057; border: none; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-box { background: white; padding: 15px 20px; border-radius: 10px; border: 1px solid #eef2f5; display: flex; justify-content: space-between; align-items: center; }
-        .stat-box span:first-child { font-size: 0.85rem; color: #6c757d; font-weight: 600; }
-        .stat-box span:last-child { font-size: 1.4rem; font-weight: 700; color: var(--primary-color); }
-        .nav-pills .nav-link { color: #6c757d; border: 1px solid #dee2e6; margin: 0 5px; background-color: #f8f9fa; }
-        .nav-pills .nav-link.active { background-color: var(--primary-color); border-color: var(--primary-color); color: white; }
+        
+        .top-bar { 
+            background: white; 
+            padding: 10px 25px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+        }
+
+        .main-form-card { 
+            background: white; 
+            border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.08); 
+            padding: 30px; 
+            margin-top: 25px; 
+        }
+
+        .stat-box { 
+            background: white; 
+            padding: 12px 15px; 
+            border-radius: 12px; 
+            border: 1px solid #e2e8f0; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            transition: transform 0.2s;
+        }
+        .stat-box:hover { transform: translateY(-3px); }
+        .stat-box span:first-child { font-weight: 600; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
+        .stat-box span:last-child { font-weight: 800; color: var(--primary-color); font-size: 1.1rem; }
+        
+        .mini-stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 15px; 
+            margin: 20px 0; 
+        }
+
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-container {
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-top: 25px;
+        }
     </style>
 </head>
 <body>
 
-<div class="top-bar d-flex justify-content-between align-items-center">
-    <div class="d-flex align-items-center gap-3">
-        <a href="scelta-evento.html" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Indietro</a>
-        <div>
-            <h5 class="m-0 fw-bold text-dark" id="eventNameDisplay">Caricamento Gara...</h5>
-            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Karate</small>
-        </div>
+<div class="top-bar d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3" style="flex: 1;">
+        <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary rounded-pill">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold" style="font-size: 1.1rem;">Caricamento...</h4>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <span class="badge bg-light text-dark border p-2" id="societyNameDisplay">Società: Caricamento...</span>
-        <button onclick="logout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
+
+    <div class="text-center" style="flex: 1;">
+        <button onclick="exportToExcel()" class="btn btn-sm btn-success shadow-sm rounded-pill px-3">
+            <i class="fas fa-file-excel me-1"></i> Esporta Dati
+        </button>
+    </div>
+
+    <div class="text-end" style="flex: 1;">
+        <button class="btn btn-sm btn-outline-danger rounded-pill" onclick="logout()">Logout</button>
     </div>
 </div>
 
-<div class="main-container">
-    <div class="stats-grid">
-        <div class="stat-box"><span>Iscritti Kumite</span><span id="kumiteAthleteCountDisplay">0</span></div>
-        <div class="stat-box"><span>Iscritti Kata</span><span id="kataAthleteCountDisplay">0</span></div>
-        <div class="stat-box"><span>Iscritti Para</span><span id="ParaKarateAthleteCountDisplay">0</span></div>
-        <div class="stat-box"><span>Iscritti Kids</span><span id="KIDSAthleteCountDisplay">0</span></div>
-    </div>
+<div class="container">
+    <div class="main-form-card">
+        <h3 class="fw-bold mb-1"><i class="fas fa-edit text-primary me-2"></i>Iscrizione</h3>
+        <p class="text-muted mb-4 small">Evento: <span id="eventNameDisplay" class="fw-bold text-dark">---</span></p>
+        
+        <form id="athleteForm">
+            <input type="hidden" id="selectedEventId">
 
-    <div class="row">
-        <div class="col-lg-4 mb-4">
-            <div class="registration-card shadow-sm">
-                
-                <div class="mb-4">
-                    <div class="nav nav-pills d-flex w-100" role="tablist">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="regType" id="typeIndividual" value="individual" checked onchange="toggleRegMode()">
-                        <label class="nav-link flex-fill text-center fw-bold btn-sm active" for="typeIndividual" id="indiv-tab" style="cursor: pointer;">
-                            <i class="fas fa-user me-1"></i> Singolo
+                        <label class="btn btn-outline-primary py-2 fw-semibold" for="typeIndividual">
+                            <i class="fas fa-user me-2"></i>Atleta Singolo
                         </label>
 
                         <input type="radio" class="btn-check" name="regType" id="typeTeam" value="team" onchange="toggleRegMode()">
-                        <label class="nav-link flex-fill text-center fw-bold btn-sm" for="typeTeam" id="team-tab" style="cursor: pointer;">
-                            <i class="fas fa-users me-1"></i> Squadra
+                        <label class="btn btn-outline-primary py-2 fw-semibold" for="typeTeam">
+                            <i class="fas fa-users me-2"></i>Team / Squadra
                         </label>
                     </div>
                 </div>
+            </div>
 
-                <form id="athleteForm">
-                    <input type="hidden" id="selectedEventId">
+            <div class="registration-dynamic-section">
+                
+                <div id="individualFields">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Nome</label>
+                            <input type="text" id="first_name" class="form-control form-control-lg" placeholder="Mario">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Cognome</label>
+                            <input type="text" id="last_name" class="form-control form-control-lg" placeholder="Rossi">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Genere</label>
+                            <select id="gender" class="form-select form-select-lg">
+                                <option value="Maschio">Maschio</option>
+                                <option value="Femmina">Femmina</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary">Data di Nascita (1960-2018)</label>
+                            <input type="date" id="birthdate" class="form-control form-control-lg" min="1960-01-01" max="2018-12-31" onchange="handleBirthdateChange()">
+                            <small id="dateError" class="text-danger" style="display:none;">Anno non consentito (Range: 2013-2018)</small>
+                        </div>
+                    </div>
+                </div>
 
-                    <div class="registration-dynamic-section mb-3">
-                        
-                        <div id="individualFields">
-                            <h5 class="fw-bold text-dark mb-3"><i class="fas fa-user-plus text-primary me-2"></i>Nuovo Atleta</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Cognome Atleta</label>
-                                <input type="text" id="last_name" class="form-control" placeholder="es. Rossi">
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Nome Atleta</label>
-                                <input type="text" id="first_name" class="form-control" placeholder="es. Mario">
-                            </div>
-                            <div class="row">
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Sesso</label>
-                                    <select id="gender" class="form-select">
-                                        <option value="Maschio">Maschio</option>
-                                        <option value="Femmina">Femmina</option>
-                                    </select>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Data Nascita</label>
-                                    <input type="date" id="birthdate" class="form-control" min="1960-01-01" max="2018-12-31" onchange="handleBirthdateChange()">
-                                    <small id="dateError" class="text-danger" style="display:none;">Anno non consentito</small>
-                                </div>
-                            </div>
+                <div id="teamFields" style="display: none;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-primary small text-uppercase">Nome della Squadra</label>
+                            <input type="text" id="team_name" class="form-control form-control-lg border-primary" placeholder="Es: Ken Zen Ichiro Squadra A">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Genere Squadra</label>
+                            <select id="team_gender" class="form-select form-select-lg">
+                                <option value="Maschile">Maschile</option>
+                                <option value="Femminile">Femminile</option>
+                                <option value="Mista">Mista (Mix)</option>
+                            </select>
                         </div>
 
-                        <div id="teamFields" style="display: none;">
-                            <h5 class="fw-bold text-success mb-3"><i class="fas fa-users text-success me-2"></i>Nuova Squadra</h5>
-                            <div class="mb-3">
-                                <label class="form-label">Nome Squadra</label>
-                                <input type="text" id="team_name" class="form-control" placeholder="es. Club Karate Roma A">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold text-secondary text-uppercase">Anno di Nascita Riferimento (1960-2018)</label>
+                            <input type="number" id="team_year" class="form-control form-control-lg" min="1960" max="2018" placeholder="Es: 2015" onchange="handleTeamYearChange()">
+                            <small id="teamYearError" class="text-danger" style="display:none;">Anno non consentito per questa categoria</small>
+                        </div>
+                        
+                        <div class="col-md-6"></div>
+
+                        <div class="col-12 mt-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="form-label small fw-bold text-secondary text-uppercase m-0">Elenco Componenti</label>
+                                <hr class="flex-grow-1 ms-3 my-0" style="opacity: 0.1;">
                             </div>
-                            <div class="row">
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Sesso Squadra</label>
-                                    <select id="team_gender" class="form-select">
-                                        <option value="Maschile">Maschile</option>
-                                        <option value="Femminile">Femminile</option>
-                                        <option value="Mista">Mista (Mix)</option>
-                                    </select>
-                                </div>
-                                <div class="col-6 mb-3">
-                                    <label class="form-label">Anno di Riferimento</label>
-                                    <input type="number" id="team_year" class="form-control" min="1960" max="2018" placeholder="es. 2012" onchange="handleTeamYearChange()">
-                                    <small id="teamYearError" class="text-danger" style="display:none;">Anno non consentito</small>
-                                </div>
-                            </div>
-                            <div class="border p-3 rounded bg-light mb-3">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-label m-0">Componenti Squadra</label>
-                                    <button type="button" class="btn btn-success btn-sm fw-bold" onclick="addMemberField()"><i class="fas fa-plus"></i> Componente</button>
-                                </div>
-                                <div id="membersContainer" class="row g-2"></div>
+                            
+                            <div id="membersContainer" class="row g-2"></div>
+
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-outline-success btn-sm fw-bold px-3 rounded-pill" onclick="addMemberField()">
+                                    <i class="fas fa-plus-circle me-1"></i> Aggiungi Componente
+                                </button>
                             </div>
                         </div>
                     </div>
-                        
-                    <div class="technical-section border-top pt-3">
-                        <div class="mb-3">
-                            <label class="form-label">Classe d'Età</label>
-                            <select id="classe" class="form-select bg-light" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Grado / Cintura</label>
-                            <select id="belt" class="form-select" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Specialità</label>
-                            <select id="specialty" class="form-select" required onchange="handleSpecialtyChange()"></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Categoria Peso / Para</label>
-                            <select id="weight_category" class="form-select" disabled></select>
-                        </div>
-                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-bold py-2 shadow-sm mt-2">
-                            <i class="fas fa-save me-1"></i> REGISTRA ISCRIZIONE
+                </div>
+            </div>
+                
+            <div class="technical-section border-top pt-4 mt-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-secondary">Classe</label>
+                        <select id="classe" class="form-select form-select-lg bg-light" required></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-secondary">Cintura</label>
+                        <select id="belt" class="form-select form-select-lg" required></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-secondary">Specialità</label>
+                        <select id="specialty" class="form-select form-select-lg" required onchange="handleSpecialtyChange()"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold text-secondary">Peso / Para</label>
+                        <select id="weight_category" class="form-select form-select-lg" disabled></select>
+                    </div>
+                </div>
+
+                <div class="row mt-5">
+                    <div class="col-12">
+                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-bold py-3 shadow-sm rounded-3">
+                            <i class="fas fa-save me-2"></i>CONFERMA E REGISTRA
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
+        </form>
+    </div>
+
+    <div class="mini-stats-grid">
+        <div class="stat-box"><span>Kumite</span><span id="kumiteAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Kata</span><span id="kataAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Para</span><span id="ParaKarateAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Kids</span><span id="KIDSAthleteCountDisplay">0</span></div>
+    </div>
+
+    <div class="table-container">
+        <div class="section-title"><i class="fas fa-user text-primary"></i> Atleti Iscritti</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Atleta</th>
+                        <th>Classe</th>
+                        <th>Sesso</th> 
+                        <th>Spec.</th>
+                        <th>Cintura</th>
+                        <th>Peso</th>
+                        <th class="text-end">Azione</th>
+                    </tr>
+                </thead>
+                <tbody id="athleteList"></tbody>
+            </table>
         </div>
+    </div>
 
-        <div class="col-lg-8">
-            <div class="table-container mb-4">
-                <div class="section-title text-primary"><i class="fas fa-user"></i> Elenco Atleti Iscritti (Gare Singole)</div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle m-0">
-                        <thead>
-                            <tr>
-                                <th>Atleta</th>
-                                <th>Classe</th>
-                                <th>Sesso</th> 
-                                <th>Spec.</th>
-                                <th>Cintura</th>
-                                <th>Peso</th>
-                                <th class="text-end" style="width: 110px;">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody id="athleteList">
-                            <tr><td colspan="7" class="text-center text-muted py-3">Caricamento atleti...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <div class="table-container">
-                <div class="section-title text-success"><i class="fas fa-users"></i> Elenco Squadre Iscritte (Tabella Teams)</div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle m-0">
-                        <thead>
-                            <tr>
-                                <th>Nome Team / Componenti</th>
-                                <th>Classe</th>
-                                <th>Sesso</th> 
-                                <th>Spec.</th>
-                                <th>Cintura</th> 
-                                <th>Peso</th> 
-                                <th class="text-end" style="width: 110px;">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamList">
-                            <tr><td colspan="7" class="text-center text-muted py-3">Caricamento squadre...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+    <div class="table-container">
+        <div class="section-title text-success"><i class="fas fa-users"></i> Riepilogo Squadre</div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Nome Squadra</th>
+                        <th>Classe</th>
+                        <th>Sesso</th> 
+                        <th>Spec.</th>
+                        <th>Cintura</th> 
+                        <th>Peso</th> 
+                        <th class="text-end">Azione</th>
+                    </tr>
+                </thead>
+                <tbody id="teamList"></tbody>
+            </table>
         </div>
     </div>
 </div>
-
-<script>
-    function updateTabVisuals() {
-        const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
-        const labelIndiv = document.getElementById('indiv-tab');
-        const labelTeam = document.getElementById('team-tab');
-        
-        if (isTeam) {
-            labelIndiv.classList.remove('active');
-            labelTeam.classList.add('active');
-        } else {
-            labelTeam.classList.remove('active');
-            labelIndiv.classList.add('active');
-        }
-    }
-    document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', updateTabVisuals));
-</script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script2.js"></script>
