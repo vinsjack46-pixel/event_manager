@@ -44,12 +44,17 @@ async function caricaListaEventi() {
     container.innerHTML = '<div class="col-12 text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Caricamento eventi...</div>';
 
     try {
-        const { data: eventi, error } = await sb.from('eventi').select('*').order('data_evento', { ascending: true });
+        // AGGIUNTO IL FILTRO .eq('attivo', true) PER ESCLUDERE GLI EVENTI DISATTIVATI
+        const { data: eventi, error } = await sb.from('eventi')
+            .select('*')
+            .eq('attivo', true)
+            .order('data_evento', { ascending: true });
+            
         if (error) throw error;
 
         container.innerHTML = "";
         if (!eventi || eventi.length === 0) {
-            container.innerHTML = '<div class="col-12 alert alert-info">Nessun evento disponibile al momento.</div>';
+            container.innerHTML = '<div class="col-12 alert alert-info">Nessuna competizione attiva in programma.</div>';
             return;
         }
 
@@ -80,10 +85,10 @@ async function caricaListaEventi() {
             container.appendChild(card);
         });
     } catch (e) {
+        console.error(e);
         container.innerHTML = '<div class="col-12 alert alert-danger">Errore durante il recupero degli eventi.</div>';
     }
 }
-
 window.selezionaEvento = function(id, htmlDest, sportId, nome) {
     sessionStorage.setItem('selectedEventId', id);
     sessionStorage.setItem('selectedSportId', sportId);
