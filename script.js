@@ -2,11 +2,18 @@
 // SCRIPT.JS - ARCHITETTURA SEPARATA (atleti / teams)
 // ==========================================================================
 
-const { createClient } = window.supabase;
+// Controllo di sicurezza per evitare il blocco se Supabase non è ancora pronto
+if (!window.supabase) {
+    console.error("Supabase CDN non caricato! Verifica l'ordine degli script nell'HTML.");
+}
+
+const { createClient } = window.supabase || {};
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-window.sb = createClient(supabaseUrl, supabaseKey);
+if (createClient) {
+    window.sb = createClient(supabaseUrl, supabaseKey);
+}
 const sb = window.sb;
 
 let idGaraCorrente = null;
@@ -235,7 +242,7 @@ async function salvaIscrizione(e) {
     if (error) {
         alert("Errore inserimento: " + error.message);
     } else {
-        alert("Atleta registrato correttamente!");
+        alert("Atleta registered!");
         document.getElementById('registrationForm').reset();
         if(document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
         if(document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
@@ -302,15 +309,14 @@ async function salvaSquadraSemplice(e) {
         classe: teamClasse,
         belt: teamBelt,
         weight_category: 'Open',
-        members: componenti.join(', ') // Inserito come stringa separata da virgole
+        members: componenti.join(', ')
     };
 
-    // CAMBIO TABELLA DESTINAZIONE: DA 'atleti' A 'teams'
     const { error } = await sb.from('teams').insert([payload]);
     if (error) {
         alert("Errore registrazione Squadra: " + error.message);
     } else {
-        alert("Squadra registrata correttamente nella tabella Teams!");
+        alert("Squadra registrata correttamente!");
         document.getElementById('teamForm').reset();
         inizializzaGestioneComponentiTeam();
         aggiornaTabelleEStatistiche();
@@ -319,6 +325,7 @@ async function salvaSquadraSemplice(e) {
 
 // --- 6. AGGIORNAMENTO INCROCIATO TABELLE E CONTATORI ---
 async function aggiornaTabelleEStatistiche() {
+    if (!sb) return;
     const tbodyAtleti = document.getElementById('iscrittiGaraList');
     const tbodySquadre = document.getElementById('iscrittiSquadreList');
     
@@ -329,7 +336,6 @@ async function aggiornaTabelleEStatistiche() {
 
     let totali = 0, maschi = 0, femmine = 0, squadreCount = 0;
 
-    // A. Popolamento Tabella Atleti Individuali
     if (tbodyAtleti) {
         const { data: atleti, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).eq('society_id', idSocietaCorrente).order('created_at', { ascending: false });
         tbodyAtleti.innerHTML = "";
@@ -355,7 +361,6 @@ async function aggiornaTabelleEStatistiche() {
         }
     }
 
-    // B. Popolamento Tabella Squadre (da Tabella 'teams')
     if (tbodySquadre) {
         const { data: teams, error: errTeams } = await sb.from('teams').select('*').eq('event_id', idGaraCorrente).eq('society_id', idSocietaCorrente).order('id', { ascending: false });
         tbodySquadre.innerHTML = "";
@@ -363,7 +368,7 @@ async function aggiornaTabelleEStatistiche() {
         if (!errTeams && teams && teams.length > 0) {
             teams.forEach(t => {
                 squadreCount++;
-                totali++; // Aggiunge l'entità squadra al totale complessivo iscrizioni
+                totali++;
                 tbodySquadre.innerHTML += `<tr>
                     <td>
                         <strong class="text-success"><i class="fas fa-users me-1"></i> ${t.name}</strong>
@@ -381,7 +386,6 @@ async function aggiornaTabelleEStatistiche() {
         }
     }
 
-    // C. Aggiornamento Contatori Grafici
     if (elTotale) elTotale.innerText = totali;
     if (elMaschi) elMaschi.innerText = maschi;
     if (elFemmine) elFemmine.innerText = femmine;
