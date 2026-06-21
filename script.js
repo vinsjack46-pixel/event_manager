@@ -1,19 +1,23 @@
-// ==========================================
-// SCRIPT.JS - INIZIO FILE
-// ==========================================
+// ==========================================================================
+// SCRIPT.JS - MOTORE BASE, GESTIONE COMPLETA DI JUDO E FITARCO (VERSIONE TOTALE)
+// ==========================================================================
+
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-// Creiamo l'istanza e la attacchiamo a window in modo che TUTTI gli script la vedano
-window.sb = createClient(supabaseUrl, supabaseKey);
-const sb = window.sb; // Consente l'uso locale di 'sb' dentro questo file
+// Inizializzazione sicura condivisa con script2
+if (!window.sb) {
+    window.sb = createClient(supabaseUrl, supabaseKey);
+}
+const sb = window.sb;
 
 let idGaraCorrente = null;
 let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
+let contatoreComponentiTeam = 0;
 
-// --- AUTH ---
+// --- AUTENTICAZIONE ---
 async function signIn(email, password) {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (error) alert('Credenziali non valide.');
@@ -70,7 +74,7 @@ window.selezionaGara = function(id, htmlDest, sportId, nome) {
     window.location.href = htmlDest;
 };
 
-// --- LOGICA DASHBOARD (Judo/Fitarco) ---
+// --- INIZIALIZZAZIONE DASHBOARD (JUDO / FITARCO) ---
 async function initDashboardSemplice() {
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
@@ -78,15 +82,13 @@ async function initDashboardSemplice() {
 
     if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
 
-    // 1. Scrittura Nomi Evento
     const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
     targetGaraIDs.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = nomeGara;
     });
 
-    // 2. FORZATURA MENU SESSO (RISOLUZIONE BUG)
-    // Svuotiamo forzatamente i menu in modo che l'utente debba per forza scegliere
+    // Reset automatico e forzatura dei menu Gender Individuali
     const selGender = document.getElementById('regGender') || document.getElementById('gender');
     if (selGender) {
         selGender.innerHTML = `
@@ -96,6 +98,7 @@ async function initDashboardSemplice() {
         `;
     }
 
+    // Reset automatico e forzatura dei menu Gender Squadre
     const selTeamGender = document.getElementById('teamGender') || document.getElementById('team_gender');
     if (selTeamGender) {
         selTeamGender.innerHTML = `
@@ -106,7 +109,7 @@ async function initDashboardSemplice() {
         `;
     }
 
-    // 3. Recupero Società
+    // Recupero Dati Società connessa
     try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) {
@@ -124,7 +127,7 @@ async function initDashboardSemplice() {
         }
     } catch (e) { console.error(e); }
 
-    // 4. Lettura regole DB
+    // Caricamento Regole e Strutturazione Tabelle/Form Dinamici
     try {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
         if (config) {
@@ -140,10 +143,55 @@ async function initDashboardSemplice() {
     } catch (e) { console.error(e); }
 
     setupCascateSemplici(sportId);
+    inizializzaGestioneComponentiTeam();
     popolaTabellaIscritti();
 }
 
-// --- GESTIONE MENU A CASCATA ---
+// --- CONTROLLO DINAMICO COMPONENTI SQUADRA (MODELLO KARATE CON TASTO +) ---
+function inizializzaGestioneComponentiTeam() {
+    const container = document.getElementById('teamMembersContainer');
+    const btnAdd = document.getElementById('btnAddTeamMember');
+    if (!container || !btnAdd) return;
+
+    container.innerHTML = "";
+    contatoreComponentiTeam = 0;
+
+    // Gestione click sul tasto + per aggiungere componenti dinamicamente
+    btnAdd.onclick = function(e) {
+        e.preventDefault();
+        if (contatoreComponentiTeam >= 7) {
+            alert("Puoi aggiungere un massimo di 7 componenti per squadra.");
+            return;
+        }
+        contatoreComponentiTeam++;
+        
+        const row = document.createElement('div');
+        row.className = "row g-2 mb-2 align-items-center team-member-row";
+        row.id = `teamMemberRow_${contatoreComponentiTeam}`;
+        row.innerHTML = `
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm member-lastname" placeholder="Cognome Atleta ${contatoreComponentiTeam}" required>
+            </div>
+            <div class="col-md-5">
+                <input type="text" class="form-control form-control-sm member-firstname" placeholder="Nome Atleta ${contatoreComponentiTeam}" required>
+            </div>
+            <div class="col-md-2 text-end">
+                <button type="button" class="btn btn-danger btn-sm" onclick="rimuoviComponenteTeam(${contatoreComponentiTeam})">✕</button>
+            </div>
+        `;
+        container.appendChild(row);
+    };
+}
+
+window.rimuoviComponenteTeam = function(idId) {
+    const row = document.getElementById(`teamMemberRow_${idId}`);
+    if (row) {
+        row.remove();
+        contatoreComponentiTeam--;
+    }
+};
+
+// --- MENU A CASCATA INDIVIDUALI ---
 function setupCascateSemplici(sportId) {
     const selGender = document.getElementById('regGender') || document.getElementById('gender');
     const selClasse = document.getElementById('regClasse') || document.getElementById('classe');
@@ -153,7 +201,7 @@ function setupCascateSemplici(sportId) {
     if (sportId === 'judo' && selGender && selClasse) {
         selGender.addEventListener('change', () => {
             const val = selGender.value;
-            if (!val) return; // Se vuoto blocca tutto
+            if (!val) return;
             
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
             selClasse.innerHTML = '<option value="" disabled selected>-- Scegli Classe --</option>';
@@ -171,13 +219,7 @@ function setupCascateSemplici(sportId) {
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
             selPeso.innerHTML = '<option value="" disabled selected>-- Scegli Peso --</option>';
             
-            // Per il Judo mappa il genere ai valori del JSON se usi M/F nel DB
-            let jsonGender = selGender.value; 
-            if (jsonGender === "Maschio") jsonGender = "M";
-            if (jsonGender === "Femmina") jsonGender = "F";
-
-            const list = configurazioneSportCorrente.regole.pesi?.[jsonGender]?.[selClasse.value] || configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
-            
+            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
             if (list) {
                 list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
                 selPeso.disabled = false;
@@ -210,18 +252,11 @@ async function salvaIscrizione(e) {
         return el ? el.value.trim() : '';
     };
 
-    // CONTROLLO BLOCCANTE SUL SESSO VUOTO
     let genderVal = getValoreCampo('gender');
     if (!genderVal) {
         return alert("ATTENZIONE: Devi selezionare obbligatoriamente il sesso dell'atleta.");
     }
-    
-    // Per far contenta la tabella del database, convertiamo in M o F se il check constraint lo richiede
-    // (Se il DB accetta "Maschio" per esteso, puoi rimuovere queste 2 righe, ma di solito è più sicuro M/F)
-    if (genderVal === "Maschio") genderVal = "M";
-    if (genderVal === "Femmina") genderVal = "F";
 
-    // GENERAZIONE DATA DA ANNO
     let annoInserito = getValoreCampo('anno') || getValoreCampo('annoNascita') || getValoreCampo('birthdate') || getValoreCampo('birthYear');
     if (!annoInserito) {
         return alert("Errore: L'anno di nascita è obbligatorio.");
@@ -236,7 +271,7 @@ async function salvaIscrizione(e) {
         society_id: idSocietaCorrente,
         first_name: getValoreCampo('firstName') || getValoreCampo('first_name'),
         last_name: getValoreCampo('lastName') || getValoreCampo('last_name'),
-        gender: genderVal,
+        gender: genderVal, // "Maschio" o "Femmina"
         classe: getValoreCampo('classe'),
         specialty: getValoreCampo('specialty') || 'Individuale',
         belt: getValoreCampo('belt') || 'Base',
@@ -251,10 +286,7 @@ async function salvaIscrizione(e) {
         const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
         if (form) form.reset();
         
-        // Forza il reset dei menu a tendina
-        const selGender = document.getElementById('regGender') || document.getElementById('gender');
         if(selGender) selGender.value = "";
-        
         const selClasse = document.getElementById('regClasse') || document.getElementById('classe');
         if(selClasse) { selClasse.innerHTML = '<option value="" disabled selected>-- Seleziona --</option>'; selClasse.disabled = true; }
         
@@ -263,9 +295,66 @@ async function salvaIscrizione(e) {
     }
 }
 
-// --- POPOLAMENTO TABELLA ---
+// --- GESTIONE E SALVATAGGIO SQUADRE (JUDO E FITARCO) ---
+async function salvaSquadraSemplice(e) {
+    e.preventDefault();
+    if (!idSocietaCorrente) return alert("Errore Società mancante.");
+
+    const teamName = document.getElementById('teamName')?.value.trim();
+    const teamGender = document.getElementById('teamGender')?.value;
+    const teamClasse = document.getElementById('teamClasse')?.value || 'Squadra';
+    const teamAnno = document.getElementById('teamAnno')?.value.trim(); // Anno obbligatorio per classe d'età
+
+    if (!teamName || !teamGender || !teamAnno) {
+        return alert("Inserisci Nome Squadra, Sesso e Anno di Riferimento.");
+    }
+
+    // Ricostruiamo i nomi dall'interfaccia a tasti +
+    const rows = document.querySelectorAll('.team-member-row');
+    if (rows.length === 0) {
+        return alert("Devi inserire almeno un componente nella squadra.");
+    }
+
+    let arrayNomi = [];
+    rows.forEach(r => {
+        const cognome = r.querySelector('.member-lastname').value.trim();
+        const nome = r.querySelector('.member-firstname').value.trim();
+        if (cognome && nome) {
+            arrayNomi.push(`${cognome} ${nome}`);
+        }
+    });
+
+    let stringaAtleti = arrayNomi.join(', ');
+    let dataFormattataTeam = `${teamAnno}-01-01`;
+
+    const payload = {
+        event_id: idGaraCorrente,
+        society_id: idSocietaCorrente,
+        first_name: stringaAtleti, 
+        last_name: teamName,
+        gender: teamGender, // "Maschile", "Femminile", "Mista (Mix)"
+        classe: teamClasse,
+        specialty: 'Squadre',
+        belt: 'Squadra',
+        weight_category: 'Open',
+        birthdate: dataFormattataTeam
+    };
+
+    const { error } = await sb.from('atleti').insert([payload]);
+    if (error) {
+        alert("Errore inserimento Squadra: " + error.message);
+    } else {
+        alert("Squadra registrata correttamente!");
+        document.getElementById('teamRegistrationForm')?.reset();
+        inizializzaGestioneComponentiTeam();
+        popolaTabellaIscritti();
+    }
+}
+
+// --- POPOLAMENTO TABELLA E CONTEGGIO TOTALE ---
 async function popolaTabellaIscritti() {
     const tbody = document.getElementById('iscrittiGaraList') || document.getElementById('athleteList');
+    const txtConteggio = document.getElementById('totalRegistrationCount') || document.getElementById('conteggioTotale');
     if (!tbody) return;
     
     const { data, error } = await sb.from('atleti')
@@ -277,27 +366,29 @@ async function popolaTabellaIscritti() {
     tbody.innerHTML = "";
     if (error || !data || !data.length) {
         tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
+        if (txtConteggio) txtConteggio.innerText = "0";
         return;
     }
 
+    // Popolamento righe tabella
     data.forEach(a => {
-        // Riconverte M/F in parole per la visualizzazione a schermo
-        let stampaSesso = a.gender;
-        if (stampaSesso === "M") stampaSesso = "Maschio";
-        if (stampaSesso === "F") stampaSesso = "Femmina";
-
         tbody.innerHTML += `<tr>
             <td><strong>${a.last_name} ${a.first_name}</strong></td>
             <td>${a.classe}</td>
-            <td>${stampaSesso}</td>
+            <td>${a.gender}</td>
             <td>${a.specialty || '-'}</td>
             <td>${a.belt || '-'}</td>
             <td>${a.weight_category || '-'}</td>
         </tr>`;
     });
+
+    // SISTEMA DI CONTEGGIO TOTALE EFFETTIVO
+    if (txtConteggio) {
+        txtConteggio.innerText = data.length.toString();
+    }
 }
 
-// --- DISPATCHER AUTOMATICO ---
+// --- DISPATCHER EVENTI AUTOMATICO ---
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
     
@@ -307,8 +398,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
-        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
-        if (form) form.addEventListener('submit', salvaIscrizione);
+        const formInd = document.getElementById('registrationForm') || document.getElementById('registerForm');
+        if (formInd) formInd.addEventListener('submit', salvaIscrizione);
+
+        const formTeam = document.getElementById('teamRegistrationForm') || document.getElementById('teamForm');
+        if (formTeam) formTeam.addEventListener('submit', salvaSquadraSemplice);
         
         initDashboardSemplice();
     }
