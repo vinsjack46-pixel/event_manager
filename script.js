@@ -1,5 +1,5 @@
 // ==========================================================================
-// SCRIPT.JS - VERSIONE IBRIDA DEFINITIVA (Normalizzata + Supporto Squadre)
+// SCRIPT.JS - ARCHITETTURA SEPARATA (atleti / teams)
 // ==========================================================================
 
 const { createClient } = window.supabase;
@@ -36,7 +36,7 @@ window.logout = async function() {
     window.location.href = "login.html";
 };
 
-// --- 2. CARICAMENTO EVENTI (Scelta Gara) ---
+// --- 2. CARICAMENTO EVENTI ---
 async function caricaListaEventi() {
     const container = document.getElementById('eventsContainer') || document.getElementById('listaEventi') || document.getElementById('eventListContainer') || document.getElementById('listaGare');
     if (!container) return; 
@@ -44,12 +44,7 @@ async function caricaListaEventi() {
     container.innerHTML = '<div class="col-12 text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Caricamento eventi...</div>';
 
     try {
-        // AGGIUNTO IL FILTRO .eq('attivo', true) PER ESCLUDERE GLI EVENTI DISATTIVATI
-        const { data: eventi, error } = await sb.from('eventi')
-            .select('*')
-            .eq('attivo', true)
-            .order('data_evento', { ascending: true });
-            
+        const { data: eventi, error } = await sb.from('eventi').select('*').eq('attivo', true).order('data_evento', { ascending: true });
         if (error) throw error;
 
         container.innerHTML = "";
@@ -85,10 +80,10 @@ async function caricaListaEventi() {
             container.appendChild(card);
         });
     } catch (e) {
-        console.error(e);
         container.innerHTML = '<div class="col-12 alert alert-danger">Errore durante il recupero degli eventi.</div>';
     }
 }
+
 window.selezionaEvento = function(id, htmlDest, sportId, nome) {
     sessionStorage.setItem('selectedEventId', id);
     sessionStorage.setItem('selectedSportId', sportId);
@@ -96,7 +91,7 @@ window.selezionaEvento = function(id, htmlDest, sportId, nome) {
     window.location.href = htmlDest;
 };
 
-// --- 3. LOGICA DASHBOARD DI GARA ---
+// --- 3. LOGICA DASHBOARD (Judo / Fitarco) ---
 async function initDashboardSemplice() {
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
@@ -148,18 +143,26 @@ async function initDashboardSemplice() {
 
     try {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
-        if (config) { configurazioneSportCorrente = config; }
+        if (config) { 
+            configurazioneSportCorrente = config; 
+            if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
+                const sel = document.getElementById('regSpecialty');
+                sel.innerHTML = '<option value="" disabled selected>-- Seleziona Divisione --</option>';
+                config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+            }
+        }
     } catch (e) { console.error(e); }
 
     setupCascateSemplici(sportId);
     inizializzaGestioneComponentiTeam();
-    popolaTabellaIscritti();
+    aggiornaTabelleEStatistiche();
 }
 
 function setupCascateSemplici(sportId) {
     const selGender = document.getElementById('regGender');
     const selClasse = document.getElementById('regClasse');
     const selPeso = document.getElementById('regWeightCategory');
+    const selSpecialty = document.getElementById('regSpecialty');
 
     if (sportId === 'judo' && selGender && selClasse) {
         selGender.addEventListener('change', () => {
@@ -174,10 +177,7 @@ function setupCascateSemplici(sportId) {
         selClasse.addEventListener('change', () => {
             if (!configurazioneSportCorrente?.regole || !selPeso) return;
             selPeso.innerHTML = '<option value="" disabled selected>-- Scegli Peso --</option>';
-            
-            // Mappatura M/F per interrogare correttamente le regole JSON del DB
             let jsonGender = selGender.value === "Maschio" ? "M" : "F";
-
             const list = configurazioneSportCorrente.regole.pesi?.[jsonGender]?.[selClasse.value] || configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
             if (list) {
                 list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
@@ -188,6 +188,16 @@ function setupCascateSemplici(sportId) {
             }
         });
     }
+
+    if (sportId === 'fitarco' && selSpecialty && selClasse) {
+        selSpecialty.addEventListener('change', () => {
+            if (!configurazioneSportCorrente?.regole) return;
+            selClasse.innerHTML = '<option value="" disabled selected>-- Scegli Classe --</option>';
+            const classi = configurazioneSportCorrente.regole.classi?.[selSpecialty.value] || [];
+            classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
+            selClasse.disabled = false;
+        });
+    }
 }
 
 // --- 4. SALVATAGGIO INDIVIDUALI ---
@@ -195,15 +205,17 @@ async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Sessione società non valida.");
 
+    const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
     const lastName = document.getElementById('regLastName').value.trim();
     const firstName = document.getElementById('regFirstName').value.trim();
     const genderInput = document.getElementById('regGender').value;
     const birthYear = document.getElementById('regBirthYear').value.trim();
     const classe = document.getElementById('regClasse').value;
     const belt = document.getElementById('regBelt').value;
-    const weightCategory = document.getElementById('regWeightCategory').value;
+    
+    const weightCategoryEl = document.getElementById('regWeightCategory');
+    const specialtyEl = document.getElementById('regSpecialty');
 
-    // Normalizzazione Genere per Vincoli DB (Maschio -> M, Femmina -> F)
     const dbGender = (genderInput === "Maschio") ? "M" : "F";
 
     const payload = {
@@ -213,9 +225,9 @@ async function salvaIscrizione(e) {
         last_name: lastName,
         gender: dbGender,
         classe: classe,
-        specialty: 'Shiai',
+        specialty: specialtyEl ? specialtyEl.value : 'Shiai',
         belt: belt,
-        weight_category: weightCategory,
+        weight_category: (weightCategoryEl && !weightCategoryEl.disabled) ? weightCategoryEl.value : 'Open',
         birthdate: `${birthYear}-01-01`
     };
     
@@ -227,11 +239,11 @@ async function salvaIscrizione(e) {
         document.getElementById('registrationForm').reset();
         if(document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
         if(document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
-        popolaTabellaIscritti();
+        aggiornaTabelleEStatistiche();
     }
 }
 
-// --- 5. GESTIONE E SALVATAGGIO SQUADRE ---
+// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Tabella 'teams') ---
 function inizializzaGestioneComponentiTeam() {
     const container = document.getElementById('teamMembersContainer');
     const btnAdd = document.getElementById('btnAddTeamMember');
@@ -242,7 +254,7 @@ function inizializzaGestioneComponentiTeam() {
 
     btnAdd.onclick = function(e) {
         e.preventDefault();
-        if (contatoreComponentiTeam >= 7) return alert("Massimo 7 componenti per squadra.");
+        if (contatoreComponentiTeam >= 10) return alert("Massimo componenti raggiunto.");
         contatoreComponentiTeam++;
         
         const row = document.createElement('div');
@@ -259,7 +271,7 @@ function inizializzaGestioneComponentiTeam() {
 
 window.rimuoviComponenteTeam = function(rowId) {
     const row = document.getElementById(`teamMemberRow_${rowId}`);
-    if (row) { row.remove(); contatoreComponentiTeam--; }
+    if (row) { row.remove(); }
 };
 
 async function salvaSquadraSemplice(e) {
@@ -285,83 +297,102 @@ async function salvaSquadraSemplice(e) {
     const payload = {
         event_id: idGaraCorrente,
         society_id: idSocietaCorrente,
-        first_name: componenti.join(', '), 
-        last_name: teamName,
+        name: teamName,
         gender: teamGender,
         classe: teamClasse,
-        specialty: 'Squadre',
         belt: teamBelt,
         weight_category: 'Open',
-        birthdate: `${teamAnno}-01-01`
+        members: componenti.join(', ') // Inserito come stringa separata da virgole
     };
 
-    const { error } = await sb.from('atleti').insert([payload]);
+    // CAMBIO TABELLA DESTINAZIONE: DA 'atleti' A 'teams'
+    const { error } = await sb.from('teams').insert([payload]);
     if (error) {
-        alert("Errore: " + error.message);
+        alert("Errore registrazione Squadra: " + error.message);
     } else {
-        alert("Squadra registrata!");
+        alert("Squadra registrata correttamente nella tabella Teams!");
         document.getElementById('teamForm').reset();
         inizializzaGestioneComponentiTeam();
-        popolaTabellaIscritti();
+        aggiornaTabelleEStatistiche();
     }
 }
 
-// --- 6. AGGIORNAMENTO TABELLA E CONTATORI STATISTICHE ---
-async function popolaTabellaIscritti() {
-    const tbody = document.getElementById('iscrittiGaraList');
-    if (!tbody) return;
-
+// --- 6. AGGIORNAMENTO INCROCIATO TABELLE E CONTATORI ---
+async function aggiornaTabelleEStatistiche() {
+    const tbodyAtleti = document.getElementById('iscrittiGaraList');
+    const tbodySquadre = document.getElementById('iscrittiSquadreList');
+    
     const elTotale = document.getElementById('totalAthleteCountDisplay');
     const elMaschi = document.getElementById('maleAthleteCountDisplay');
     const elFemmine = document.getElementById('femaleAthleteCountDisplay');
     const elSquadre = document.getElementById('teamAthleteCountDisplay');
-    
-    const { data, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).eq('society_id', idSocietaCorrente).order('created_at', { ascending: false });
-    
-    tbody.innerHTML = "";
-    if (error || !data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato.</td></tr>`;
-        if (elTotale) elTotale.innerText = "0";
-        if (elMaschi) elMaschi.innerText = "0";
-        if (elFemmine) elFemmine.innerText = "0";
-        if (elSquadre) elSquadre.innerText = "0";
-        return;
+
+    let totali = 0, maschi = 0, femmine = 0, squadreCount = 0;
+
+    // A. Popolamento Tabella Atleti Individuali
+    if (tbodyAtleti) {
+        const { data: atleti, error } = await sb.from('atleti').select('*').eq('event_id', idGaraCorrente).eq('society_id', idSocietaCorrente).order('created_at', { ascending: false });
+        tbodyAtleti.innerHTML = "";
+        
+        if (!error && atleti && atleti.length > 0) {
+            atleti.forEach(a => {
+                totali++;
+                let sessoVisualizzato = "Maschio";
+                if (a.gender === 'F' || a.gender === 'Femmina') { femmine++; sessoVisualizzato = "Femmina"; } 
+                else { maschi++; }
+
+                tbodyAtleti.innerHTML += `<tr>
+                    <td><strong>${a.last_name}</strong> ${a.first_name}</td>
+                    <td>${a.classe}</td>
+                    <td><span class="badge bg-light text-dark border">${sessoVisualizzato}</span></td>
+                    <td>${a.specialty || 'Individuale'}</td>
+                    <td>${a.belt || '-'}</td>
+                    <td>${a.weight_category || '-'}</td>
+                </tr>`;
+            });
+        } else {
+            tbodyAtleti.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun atleta individuale iscritto.</td></tr>`;
+        }
     }
 
-    let tot = 0, m = 0, f = 0, sq = 0;
+    // B. Popolamento Tabella Squadre (da Tabella 'teams')
+    if (tbodySquadre) {
+        const { data: teams, error: errTeams } = await sb.from('teams').select('*').eq('event_id', idGaraCorrente).eq('society_id', idSocietaCorrente).order('id', { ascending: false });
+        tbodySquadre.innerHTML = "";
 
-    data.forEach(a => {
-        tot++;
-        let sessoVisualizzato = a.gender;
-
-        if (a.specialty === 'Squadre') {
-            sq++;
+        if (!errTeams && teams && teams.length > 0) {
+            teams.forEach(t => {
+                squadreCount++;
+                totali++; // Aggiunge l'entità squadra al totale complessivo iscrizioni
+                tbodySquadre.innerHTML += `<tr>
+                    <td>
+                        <strong class="text-success"><i class="fas fa-users me-1"></i> ${t.name}</strong>
+                        <div class="small text-muted mt-1" style="font-size:0.8rem;"><strong>Componenti:</strong> ${t.members || 'Nessuno inserito'}</div>
+                    </td>
+                    <td>${t.classe || '-'}</td>
+                    <td><span class="badge bg-light text-success border">${t.gender || '-'}</span></td>
+                    <td>Squadre</td>
+                    <td>${t.belt || 'Libera'}</td>
+                    <td>${t.weight_category || 'Open'}</td>
+                </tr>`;
+            });
         } else {
-            if (a.gender === 'M' || a.gender === 'Maschio') { m++; sessoVisualizzato = "Maschio"; }
-            if (a.gender === 'F' || a.gender === 'Femmina') { f++; sessoVisualizzato = "Femmina"; }
+            tbodySquadre.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessuna squadra iscritta.</td></tr>`;
         }
+    }
 
-        tbody.innerHTML += `<tr>
-            <td><strong>${a.last_name}</strong> ${a.first_name}</td>
-            <td>${a.classe}</td>
-            <td><span class="badge bg-light text-dark border">${sessoVisualizzato}</span></td>
-            <td>${a.specialty || '-'}</td>
-            <td>${a.belt || '-'}</td>
-            <td>${a.weight_category || '-'}</td>
-        </tr>`;
-    });
-
-    if (elTotale) elTotale.innerText = tot;
-    if (elMaschi) elMaschi.innerText = m;
-    if (elFemmine) elFemmine.innerText = f;
-    if (elSquadre) elSquadre.innerText = sq;
+    // C. Aggiornamento Contatori Grafici
+    if (elTotale) elTotale.innerText = totali;
+    if (elMaschi) elMaschi.innerText = maschi;
+    if (elFemmine) elFemmine.innerText = femmine;
+    if (elSquadre) elSquadre.innerText = squadreCount;
 }
 
-// --- 7. DISPATCHER STRUTTURATO (Infallibile su ID) ---
+// --- 7. DISPATCHER AUTOMATICO ---
 document.addEventListener('DOMContentLoaded', () => {
     const formLogin = document.getElementById('loginForm');
     const formRegSoc = document.getElementById('registrazioneForm');
-    const containerScelta = document.getElementById('eventsContainer') || document.getElementById('listaEventi') || document.getElementById('eventListContainer');
+    const containerScelta = document.getElementById('eventListContainer');
     const formAtleta = document.getElementById('registrationForm');
 
     if (formLogin) {
