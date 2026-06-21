@@ -1,12 +1,13 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO 
+// SCRIPT.JS - INIZIO FILE
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-const sb = createClient(supabaseUrl, supabaseKey);
-window.sb = sb;
+// Creiamo l'istanza e la attacchiamo a window in modo che TUTTI gli script la vedano
+window.sb = createClient(supabaseUrl, supabaseKey);
+const sb = window.sb; // Consente l'uso locale di 'sb' dentro questo file
 
 let idGaraCorrente = null;
 let idSocietaCorrente = null;
