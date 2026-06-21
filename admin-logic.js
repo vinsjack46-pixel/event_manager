@@ -4,8 +4,9 @@
 if (typeof window.sb === 'undefined') {
     window.sb = window.supabaseClient;
 }
-// CORREZIONE: Rimosso "var sb" che creava il conflitto di sintassi
-sb = window.sb; 
+
+// Costante locale per evitare conflitti di riassegnazione con l'oggetto globale
+const sb = window.sb || window.supabaseClient; 
 
 let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
@@ -33,10 +34,10 @@ async function initAdmin() {
         istanzaModale = new bootstrap.Modal(document.getElementById('modalEditor'));
     }
     
-    // AGGIUNTA: Forza il caricamento iniziale dei dati degli atleti e dei filtri
+    // Caricamento iniziale dei dati
     await refreshSportDropdowns();
     await loadFilterEvents();
-    await fetchGlobalData(); 
+    await fetchGlobalData();
     
     if (document.getElementById('eventForm')) document.getElementById('eventForm').addEventListener('submit', createEvent);
     if (document.getElementById('sportConfigForm')) document.getElementById('sportConfigForm').addEventListener('submit', saveSportConfigToDB);
