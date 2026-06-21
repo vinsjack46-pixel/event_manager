@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (CON FIX SALVATAGGIO)
+// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (CON FIX CONVERSIONE ANNO DI NASCITA)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -180,17 +180,24 @@ async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
 
-    // Funzione interna helper per leggere i campi indifferentemente se hanno il prefisso "reg" o meno
     const getValoreCampo = (idBase) => {
         const idConPrefisso = 'reg' + idBase.charAt(0).toUpperCase() + idBase.slice(1);
         const el = document.getElementById(idConPrefisso) || document.getElementById('reg' + idBase) || document.getElementById(idBase);
         return el ? el.value.trim() : '';
     };
 
-    const birthdateVal = getValoreCampo('birthdate') || getValoreCampo('birthDate');
+    // Cerchiamo il valore nei possibili ID (anno, regAnno, birthdate, birthYear, ecc.)
+    let annoInserito = getValoreCampo('anno') || getValoreCampo('annoNascita') || getValoreCampo('birthdate') || getValoreCampo('birthYear');
 
-    if (!birthdateVal) {
-        return alert("Errore: La data di nascita è obbligatoria per completare l'iscrizione dell'atleta.");
+    if (!annoInserito) {
+        return alert("Errore: L'anno di nascita è obbligatorio per completare l'iscrizione dell'atleta.");
+    }
+
+    // COSTRUZIONE DATA VALIDA PER SUPABASE (Es: "2010" diventa "2010-01-01")
+    let dataFormattata = annoInserito;
+    if (annoInserito.length === 4 && !isNaN(annoInserito)) {
+        dataFormattata = `${annoInserito}-01-01`; 
+        console.log(`Conversione intelligente: Anno [${annoInserito}] trasformato in Data ISO [${dataFormattata}]`);
     }
 
     const payload = {
@@ -203,7 +210,7 @@ async function salvaIscrizione(e) {
         specialty: getValoreCampo('specialty') || 'Individuale',
         belt: getValoreCampo('belt') || 'Base',
         weight_category: getValoreCampo('weightCategory') || getValoreCampo('weight_category') || 'Open',
-        birthdate: birthdateVal // <-- Risolto il BUG: Ora viene mappata e inviata a Supabase
+        birthdate: dataFormattata // <-- Invia la stringa "AAAA-01-01" digeribile dal DB
     };
     
     console.log("Invio payload iscrizione a Supabase:", payload);
@@ -258,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
-        // Aggancia l'evento di submit al form dinamicamente, qualunque sia l'ID usato nell'HTML
         const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
         if (form) form.addEventListener('submit', salvaIscrizione);
         
