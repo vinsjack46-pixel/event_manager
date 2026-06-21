@@ -1,12 +1,11 @@
 // ==========================================================================
-// SCRIPT.JS - MOTORE COMPLETO CON RIPRISTINO SELEZIONE EVENTI, JUDO E FITARCO
+// SCRIPT.JS - VERSIONE DEFINITIVA E COGENTATA CON DISPATCHER AD ELEMENTI
 // ==========================================================================
 
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
-// Configurazione della variabile globale sicura condivisa con script2.js
 if (!window.sb) {
     window.sb = createClient(supabaseUrl, supabaseKey);
 }
@@ -18,13 +17,14 @@ let configurazioneSportCorrente = null;
 let contatoreComponentiTeam = 0;
 
 // ==========================================================================
-// 1. FUNZIONE RIPRISTINATA: CARICAMENTO EVENTI (Per scelta-evento.html)
+// 1. CARICAMENTO EVENTI (Per scelta-evento.html)
 // ==========================================================================
 async function caricaListaEventi() {
+    // Cerca qualsiasi ID compatibile usato nei tuoi vecchi o nuovi file HTML
     const container = document.getElementById('eventsContainer') || document.getElementById('listaEventi');
-    if (!container) return; // Non siamo nella pagina di scelta evento
+    if (!container) return; 
 
-    container.innerHTML = '<div class="text-center text-muted py-3">Caricamento eventi in corso...</div>';
+    container.innerHTML = '<div class="col-12 text-center text-muted py-3"><i class="fas fa-spinner fa-spin me-2"></i>Caricamento eventi in corso...</div>';
 
     try {
         const { data: eventi, error } = await sb.from('eventi')
@@ -35,16 +35,14 @@ async function caricaListaEventi() {
 
         container.innerHTML = "";
         if (!eventi || eventi.length === 0) {
-            container.innerHTML = '<div class="alert alert-info">Nessun evento disponibile al momento.</div>';
+            container.innerHTML = '<div class="col-12 alert alert-info">Nessun evento disponibile al momento.</div>';
             return;
         }
 
         eventi.forEach(ev => {
-            // Formattazione data leggibile
             const dataOpzioni = { year: 'numeric', month: 'long', day: 'numeric' };
             const dataGara = new Date(ev.data_evento).toLocaleDateString('it-IT', dataOpzioni);
             
-            // Determina il badge dello sport
             let badgeColor = "bg-primary";
             if (ev.sport_id === "karate") badgeColor = "bg-danger";
             if (ev.sport_id === "fitarco") badgeColor = "bg-warning text-dark";
@@ -71,23 +69,21 @@ async function caricaListaEventi() {
 
     } catch (e) {
         console.error("Errore caricamento eventi:", e);
-        container.innerHTML = '<div class="alert alert-danger">Errore durante il recupero degli eventi. Ricarica la pagina.</div>';
+        container.innerHTML = '<div class="col-12 alert alert-danger">Errore durante il recupero degli eventi.</div>';
     }
 }
 
-// Funzione globale al click sulla card dell'evento
 window.selezionaEvento = function(id, titolo, sportId) {
     sessionStorage.setItem('selectedEventId', id);
     sessionStorage.setItem('selectedEventName', titolo);
     sessionStorage.setItem('selectedSportId', sportId);
 
-    // Reindirizzamento dinamico alla pagina dello sport corretto
     if (sportId === 'karate') {
         window.location.href = "index-karate.html";
     } else if (sportId === 'fitarco') {
         window.location.href = "index-fitarco.html";
     } else {
-        window.location.href = "index-judo.html"; // Default Judo
+        window.location.href = "index-judo.html";
     }
 };
 
@@ -348,7 +344,7 @@ async function popolaTabellaIscritti() {
     
     tbody.innerHTML = "";
     if (error || !data || !data.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Nessun iscritto trovato per la tua società.</td></tr>`;
         if (elTotale) elTotale.innerText = "0";
         if (elMaschi) elMaschi.innerText = "0";
         if (elFemmine) elFemmine.innerText = "0";
@@ -389,17 +385,17 @@ window.logout = async function() {
 };
 
 // ==========================================================================
-// 3. EVENT DISPATCHER INTELLIGENTE (Rileva automaticamente la pagina)
+// 3. EVENT DISPATCHER STRUTTURATO AD ELEMENTI (Infallibile)
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
-    const path = window.location.pathname.toLowerCase();
-    
-    // Se siamo nella pagina di scelta dell'evento, esegui il caricamento
-    if (path.includes("scelta-evento") || document.getElementById('eventsContainer') || document.getElementById('listaEventi')) {
+    const isSelectionPage = document.getElementById('eventsContainer') || document.getElementById('listaEventi');
+    const isDashboardPage = document.getElementById('registrationForm');
+
+    if (isSelectionPage) {
+        // Se la pagina ha il contenitore delle card gare, carica la lista eventi
         caricaListaEventi();
-    } 
-    // Se siamo in una pagina di gara Judo o Fitarco, esegui l'init della dashboard
-    else if (path.includes("judo") || path.includes("fitarco")) {
+    } else if (isDashboardPage) {
+        // Se la pagina ha il form di registrazione, inizializza le funzioni della gara
         const formInd = document.getElementById('registrationForm');
         if (formInd) formInd.addEventListener('submit', salvaIscrizione);
 
