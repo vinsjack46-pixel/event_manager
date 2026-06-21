@@ -1,5 +1,5 @@
 // ==========================================================================
-// SCRIPT.JS - ARCHITETTURA SEPARATA (atleti / teams)
+// SCRIPT.JS - ARCHITETTURA SEPARATA (atleti / teams) con Apertura Tab Automatica
 // ==========================================================================
 
 if (!window.supabase) {
@@ -158,7 +158,7 @@ async function initDashboardSemplice() {
             if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
                 const sel = document.getElementById('regSpecialty');
                 sel.innerHTML = '<option value="" disabled selected>-- Seleziona Divisione --</option>';
-                config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
+                config.regoles?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
             }
         }
     } catch (e) { console.error(e); }
@@ -242,10 +242,8 @@ async function salvaIscrizione(e) {
     
     let risultato;
     if (idAtletaInModifica) {
-        // Logica di Modifica (UPDATE)
         risultato = await sb.from('atleti').update(payload).eq('id', idAtletaInModifica);
     } else {
-        // Logica di Inserimento (INSERT)
         risultato = await sb.from('atleti').insert([payload]);
     }
 
@@ -271,7 +269,6 @@ window.avviaModificaAtleta = async function(idAtleta) {
         document.getElementById('regBirthYear').value = a.birthdate ? a.birthdate.substring(0, 4) : '';
         document.getElementById('regBelt').value = a.belt || 'Bianca';
 
-        // Forza trigger cascata classi e pesi/divisioni
         const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
         const selGender = document.getElementById('regGender');
         const selClasse = document.getElementById('regClasse');
@@ -287,14 +284,19 @@ window.avviaModificaAtleta = async function(idAtleta) {
             if (selClasse) selClasse.value = a.classe;
         }
 
-        // Cambia lo stile del bottone del Form in modalità modifica
+        // --- FORZA APERTURA VISIVA DEL TAB SINGOLO ---
+        const tabSingolo = document.getElementById('indiv-tab');
+        if (tabSingolo) {
+            const bsTab = bootstrap.Tab.getOrCreateInstance(tabSingolo);
+            bsTab.show();
+        }
+
         const btnSubmit = document.querySelector('#registrationForm button[type="submit"]');
         if(btnSubmit) {
             btnSubmit.innerText = "AGGIORNA DATI ATLETA";
             btnSubmit.className = "btn btn-warning w-100 fw-bold py-2 shadow-sm text-dark";
         }
         
-        // Scorri la pagina verso il form
         document.getElementById('registrationForm').scrollIntoView({ behavior: 'smooth' });
     } catch (err) { console.error(err); }
 };
@@ -312,7 +314,7 @@ function annullaModificaAtleta() {
     }
 }
 
-// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Con Modifica Dinamica incorporata) ---
+// --- 5. GESTIONE E SALVATAGGIO SQUADRE ---
 function inizializzaGestioneComponentiTeam() {
     const container = document.getElementById('teamMembersContainer');
     const btnAdd = document.getElementById('btnAddTeamMember');
@@ -406,9 +408,8 @@ window.avviaModificaSquadra = async function(idTeam) {
         document.getElementById('teamGender').value = t.gender;
         document.getElementById('teamClasse').value = t.classe || '';
         document.getElementById('teamBelt').value = t.belt || 'Libera';
-        document.getElementById('teamAnno').value = "2026"; // Fallback anno standard
+        document.getElementById('teamAnno').value = "2026";
 
-        // Rigenera i componenti nel form sussidiario
         const container = document.getElementById('teamMembersContainer');
         container.innerHTML = "";
         contatoreComponentiTeam = 0;
@@ -424,6 +425,13 @@ window.avviaModificaSquadra = async function(idTeam) {
             const nome = blocchi.slice(1).join(' ') || "";
             aggiungiRigaComponente(cognome, nome);
         });
+
+        // --- FORZA APERTURA VISIVA DEL TAB SQUADRA ---
+        const tabSquadra = document.getElementById('team-tab');
+        if (tabSquadra) {
+            const bsTab = bootstrap.Tab.getOrCreateInstance(tabSquadra);
+            bsTab.show();
+        }
 
         const btnSubmit = document.querySelector('#teamForm button[type="submit"]');
         if(btnSubmit) {
@@ -447,7 +455,7 @@ function annullaModificaSquadra() {
     }
 }
 
-// --- 6. AGGIORNAMENTO INCROCIATO TABELLE, CONTATORI E DISMISSIONI DINAMICHE ---
+// --- 6. AGGIORNAMENTO INCROCIATO TABELLE E CONTATORI ---
 async function aggiornaTabelleEStatistiche() {
     if (!sb) return;
     const tbodyAtleti = document.getElementById('iscrittiGaraList');
