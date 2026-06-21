@@ -1,6 +1,6 @@
-// ==========================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON MODIFICA CINTURE E PULSANTE GIALLO)
-// ==========================================
+// ==========================================================================
+// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON COMPONENTI DEFAULT E STILE UNIFORMATO)
+// ==========================================================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
@@ -79,6 +79,16 @@ function toggleRegMode() {
     document.getElementById('birthdate').required = !isTeam;
     document.getElementById('team_name').required = isTeam;
     document.getElementById('team_year').required = isTeam;
+
+    // Genera 3 campi di default se la lista componenti è vuota e siamo in inserimento squadra
+    if (isTeam && !editingTeamId) {
+        const cont = document.getElementById('membersContainer');
+        if (cont && cont.children.length === 0) {
+            for (let i = 0; i < 3; i++) {
+                window.addMemberField("");
+            }
+        }
+    }
 }
 
 window.addMemberField = function(val = "") {
@@ -233,7 +243,7 @@ window.editAthlete = async function(id) {
     const btn = document.querySelector('#athleteForm button[type="submit"]');
     if(btn) {
         btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
-        btn.className = "btn btn-warning w-100"; 
+        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3"; 
     }
 };
 
@@ -276,7 +286,7 @@ window.editTeam = async function(id) {
     const btn = document.querySelector('#athleteForm button[type="submit"]');
     if(btn) {
         btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
-        btn.className = "btn btn-warning w-100";
+        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3";
     }
 };
 
@@ -325,11 +335,19 @@ async function addEntity(e) {
     const btn = document.querySelector('#athleteForm button[type="submit"]');
     if(btn) {
         btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
-        btn.className = "btn btn-success w-100"; // Ripristina il colore originale (es. verde)
+        btn.className = "btn btn-primary w-100 fw-bold py-3 shadow-sm rounded-3"; 
     }
 
     document.getElementById('athleteForm').reset();
     document.getElementById('membersContainer').innerHTML = "";
+    
+    // Rigenera i 3 campi di default per la squadra se l'utente si trovava già sul tab squadra
+    if (document.querySelector('input[name="regType"]:checked').value === 'team') {
+        for (let i = 0; i < 3; i++) {
+            window.addMemberField("");
+        }
+    }
+    
     fetchAthletes(); fetchTeams();
 }
 
