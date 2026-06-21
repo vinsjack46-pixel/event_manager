@@ -1,9 +1,18 @@
 // ==========================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON MODIFICA CINTURE E PULSANTE GIALLO)
+// SCRIPT2.JS - INIZIO FILE MODIFICATO
 // ==========================================
 
-// Utilizziamo il client Supabase globale già inizializzato in script.js per evitare errori di ridefinizione
-const sb = window.supabaseClient;
+// NON dichiarare di nuovo 'const sb', usa direttamente quella globale se esiste
+if (!window.sb && window.supabase) {
+    // Fail-safe nel caso script2 venisse caricato prima o da solo
+    const { createClient } = window.supabase;
+    const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
+    window.sb = createClient(supabaseUrl, supabaseKey);
+}
+
+// Definiamo un alias locale non-const (o usiamo direttamente window.sb)
+var sb = window.sb; 
 
 window.currentSocietyId = null;
 let currentSportConfig = null;
