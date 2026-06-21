@@ -9,12 +9,12 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { 
-            --primary-color: #198754; /* Verde Fitarco/Tiro con l'Arco */
-            --bg-gradient: linear-gradient(135deg, #198754 0%, #0d5c3a 100%); 
+            --primary-color: #ffc107; /* Giallo Fitarco (Allineato a bg-warning) */
+            --primary-dark: #d39e00;  /* Giallo scuro per elementi di testo o hover */
         }
         body { 
             font-family: 'Inter', sans-serif; 
-            background: #f4f7f9; /* Lo stesso sfondo pulito e uniforme di selezione-evento */
+            background: #f4f7f9; /* Sfondo identico alla pagina di selezione */
             margin: 0; 
             padding-bottom: 50px; 
         }
@@ -48,7 +48,7 @@
         }
         .stat-box:hover { transform: translateY(-3px); }
         .stat-box span:first-child { font-weight: 600; color: #64748b; font-size: 0.85rem; text-transform: uppercase; }
-        .stat-box span:last-child { font-weight: 800; color: var(--primary-color); font-size: 1.1rem; }
+        .stat-box span:last-child { font-weight: 800; color: #212529; font-size: 1.1rem; }
         
         .mini-stats-grid { 
             display: grid; 
@@ -74,9 +74,15 @@
             margin-top: 25px;
         }
 
-        /* Nav pills uniformate allo stile piatto, moderno ed elegante */
+        /* Nav pills - Stile Giallo Fitarco con testo scuro per leggibilità */
         .nav-pills .nav-link { color: #64748b; font-weight: 600; border-radius: 8px; transition: all 0.2s; }
-        .nav-pills .nav-link.active { background-color: var(--primary-color); color: white; }
+        .nav-pills .nav-link.active { background-color: var(--primary-color); color: #212529; }
+        
+        /* Outline personalizzato per i bottoni per richiamare il tema */
+        .btn-fitarco { background-color: var(--primary-color); color: #212529; font-weight: bold; }
+        .btn-fitarco:hover { background-color: var(--primary-dark); color: #212529; }
+        .btn-outline-fitarco { border: 2px solid var(--primary-color); color: #212529; font-weight: bold; }
+        .btn-outline-fitarco:hover { background-color: var(--primary-color); color: #212529; }
     </style>
 </head>
 <body>
@@ -90,7 +96,7 @@
     </div>
 
     <div class="text-center" style="flex: 1;">
-        <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold" id="nomeSocieta">Società: Caricamento...</span>
+        <span class="badge bg-warning text-dark border border-warning px-3 py-2 rounded-pill fw-bold" id="nomeSocieta">Società: Caricamento...</span>
     </div>
 
     <div class="text-end" style="flex: 1;">
@@ -100,8 +106,8 @@
 
 <div class="container">
     <div class="main-form-card">
-        <h3 class="fw-bold mb-1"><i class="fas fa-bullseye text-success me-2"></i>Iscrizione Gara</h3>
-        <p class="text-muted mb-4 small">Disciplina: <span class="fw-bold text-dark text-uppercase">Tiro con l'Arco (Fitarco)</span></p>
+        <h3 class="fw-bold mb-1"><i class="fas fa-bullseye text-warning me-2"></i>Iscrizione Gara</h3>
+        <p class="text-muted mb-4 small">Disciplina: <span class="badge bg-warning text-dark text-uppercase fw-bold">Fitarco</span></p>
         
         <div class="row mb-4">
             <div class="col-12">
@@ -160,7 +166,7 @@
                     
                     <div class="row mt-5">
                         <div class="col-12">
-                            <button type="submit" class="btn btn-success w-100 fw-bold py-3 shadow-sm rounded-3">
+                            <button type="submit" class="btn btn-fitarco w-100 fw-bold py-3 shadow-sm rounded-3">
                                 <i class="fas fa-save me-2"></i>REGISTRA ARCIERE
                             </button>
                         </div>
@@ -172,8 +178,8 @@
                 <form id="teamForm">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-success small text-uppercase">Nome Squadra</label>
-                            <input type="text" id="teamName" class="form-control form-control-lg border-success" placeholder="es. Arcieri del Lazio Compound" required>
+                            <label class="form-label fw-bold text-dark small text-uppercase">Nome Squadra</label>
+                            <input type="text" id="teamName" class="form-control form-control-lg border-warning" placeholder="es. Arcieri del Lazio Compound" required>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-secondary text-uppercase">Sesso Team</label>
@@ -199,7 +205,7 @@
                             <div id="teamMembersContainer" class="row g-2"></div>
 
                             <div class="mt-3">
-                                <button type="button" id="btnAddTeamMember" class="btn btn-outline-success btn-sm fw-bold px-3 rounded-pill">
+                                <button type="button" id="btnAddTeamMember" class="btn btn-outline-fitarco btn-sm fw-bold px-3 rounded-pill">
                                     <i class="fas fa-plus-circle me-1"></i> Aggiungi Arciere
                                 </button>
                             </div>
@@ -208,7 +214,7 @@
 
                     <div class="row mt-5">
                         <div class="col-12">
-                            <button type="submit" class="btn btn-success w-100 fw-bold py-3 shadow-sm rounded-3">
+                            <button type="submit" class="btn btn-fitarco w-100 fw-bold py-3 shadow-sm rounded-3">
                                 <i class="fas fa-save me-2"></i>REGISTRA TEAM ARCO
                             </button>
                         </div>
@@ -226,7 +232,7 @@
     </div>
 
     <div class="table-container">
-        <div class="section-title text-success"><i class="fas fa-user"></i> Arcieri Iscritti Individuali</div>
+        <div class="section-title text-dark"><i class="fas fa-user text-warning"></i> Arcieri Iscritti Individuali</div>
         <div class="table-responsive">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
@@ -248,7 +254,7 @@
     </div>
 
     <div class="table-container">
-        <div class="section-title text-success"><i class="fas fa-users"></i> Squadre Fitarco Iscritte (Tabella Teams)</div>
+        <div class="section-title text-dark"><i class="fas fa-users text-warning"></i> Squadre Fitarco Iscritte (Tabella Teams)</div>
         <div class="table-responsive">
             <table class="table table-hover align-middle m-0">
                 <thead class="table-light">
