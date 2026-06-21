@@ -309,7 +309,7 @@ async function salvaSquadraSemplice(e) {
         classe: teamClasse,
         belt: teamBelt,
         weight_category: 'Open',
-        members: componenti.
+        members: componenti
     };
 
     const { error } = await sb.from('teams').insert([payload]);
