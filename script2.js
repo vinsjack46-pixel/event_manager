@@ -1,396 +1,304 @@
-// ==========================================
-// SCRIPT2.JS - INIZIO FILE MODIFICATO
-// ==========================================
+// ==========================================================================
+// SCRIPT2.JS GESTIONE COMPLETA KARATE (VERSIONE TOTALMENTE RIGIDA SENZA TAGLI)
+// ==========================================================================
 
-// NON dichiarare di nuovo 'const sb', usa direttamente quella globale se esiste
-if (!window.sb && window.supabase) {
-    // Fail-safe nel caso script2 venisse caricato prima o da solo
-    const { createClient } = window.supabase;
-    const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
-    window.sb = createClient(supabaseUrl, supabaseKey);
-}
+// Utilizza l'istanza Supabase globale già creata in script.js per evitare conflitti
+const sbKarate = window.sb;
 
-// Definiamo un alias locale non-const (o usiamo direttamente window.sb)
-var sb = window.sb; 
+let idGaraKarate = null;
+let idSocietaKarate = null;
+let contatoreComponentiKarate = 0;
 
-window.currentSocietyId = null;
-let currentSportConfig = null;
-let editingAthleteId = null; 
-let editingTeamId = null;
+// --- INIZIALIZZAZIONE SPECIFICA KARATE ---
+async function initDashboardKarate() {
+    idGaraKarate = sessionStorage.getItem('selectedEventId');
+    const nomeGara = sessionStorage.getItem('selectedEventName');
 
-// Helper per estrarre l'anno in modo dinamico
-function estraiAnnoDaData(dateVal) {
-    if (!dateVal) return null;
-    dateVal = dateVal.trim();
-    if (dateVal.includes('-')) {
-        const parts = dateVal.split('-');
-        if (parts[0].length === 4) return parseInt(parts[0]);
-        if (parts[2].length === 4) return parseInt(parts[2]);
-    }
-    const year = new Date(dateVal).getFullYear();
-    return isNaN(year) ? null : year;
-}
+    if (!idGaraKarate) return; // Non siamo nella pagina corretta o sessione scaduta
 
-window.logout = async function() {
-    await sb.auth.signOut();
-    window.location.href = "login.html";
-};
+    // Allineamento Titoli e Nomi Gara
+    const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
+    targetGaraIDs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = nomeGara;
+    });
 
-// Inizializzazione Dashboard Karate
-async function initKarateDashboard() {
-    const eventId = sessionStorage.getItem('selectedEventId');
-    if (!eventId) return window.location.href = "scelta-evento.html";
-
-    if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = sessionStorage.getItem('selectedEventName') || "";
-    if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = sessionStorage.getItem('selectedEventName') || "";
-
-    // Configurazione dinamica dei campi Sesso/Gender generici all'avvio come richiesto
-    const genderSel = document.getElementById('gender');
-    if (genderSel) {
-        genderSel.innerHTML = `
-            <option value="" disabled selected>-- Sesso --</option>
+    // Iniezione controllata dei valori testuali per il Sesso Singolo
+    const selGender = document.getElementById('regGender');
+    if (selGender) {
+        selGender.innerHTML = `
+            <option value="" disabled selected>-- Seleziona Sesso --</option>
             <option value="Maschio">Maschio</option>
             <option value="Femmina">Femmina</option>
         `;
     }
 
-    const teamGenderSel = document.getElementById('team_gender');
-    if (teamGenderSel) {
-        teamGenderSel.innerHTML = `
-            <option value="" disabled selected>-- Genere Squadra --</option>
+    // Iniezione controllata dei valori testuali per il Sesso Squadra
+    const selTeamGender = document.getElementById('teamGender');
+    if (selTeamGender) {
+        selTeamGender.innerHTML = `
+            <option value="" disabled selected>-- Seleziona Sesso Squadra --</option>
             <option value="Maschile">Maschile</option>
             <option value="Femminile">Femminile</option>
             <option value="Mista (Mix)">Mista (Mix)</option>
         `;
     }
 
-    // Carica regole Karate
+    // Recupero Società Connessa
     try {
-        const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', 'karate').single();
-        if (config) {
-            currentSportConfig = config.regole;
+        const { data: { user } } = await sbKarate.auth.getUser();
+        if (user) {
+            const { data: soc } = await sbKarate.from('societa').select('*').eq('user_id', user.id).single();
+            if (soc) {
+                idSocietaKarate = soc.id;
+                const targetSocietaIDs = ['societyNameDisplay', 'nomeSocietaHeader', 'nomeSocieta', 'societyName'];
+                targetSocietaIDs.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = "Società: " + soc.nome;
+                });
+            }
         }
-    } catch(e) { console.error(e); }
+    } catch (e) { console.error("Errore Karate Auth:", e); }
 
-    // Rileva sessione utente e popola dati Società
-    const { data: { user } } = await sb.auth.getUser();
-    if (user) {
-        const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
-        if (soc) {
-            window.currentSocietyId = soc.id;
-            if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
-            if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
-            fetchAthletes();
-            fetchTeams();
+    // Avvio dei componenti Karate obbligatori (Primi 3 bloccati)
+    configuraInizialeSquadraKarate();
+    popolaTabellaKarate();
+}
+
+// --- CONFIGURAZIONE SQUADRA KARATE: PRIMI 3 OBBLIGATORI + FINO A 7 ---
+function configuraInizialeSquadraKarate() {
+    const container = document.getElementById('teamMembersContainer');
+    const btnAdd = document.getElementById('btnAddTeamMember');
+    if (!container || !btnAdd) return;
+
+    container.innerHTML = "";
+    contatoreComponentiKarate = 0;
+
+    // Generazione automatica dei primi 3 atleti fissi e obbligatori
+    for (let i = 1; i <= 3; i++) {
+        contatoreComponentiKarate++;
+        const row = document.createElement('div');
+        row.className = "row g-2 mb-2 align-items-center";
+        row.innerHTML = `
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm member-lastname" placeholder="Cognome Atleta Obbligatorio ${i}" required>
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm member-firstname" placeholder="Nome Atleta Obbligatorio ${i}" required>
+            </div>
+            <div class="col-2 text-center text-muted small fw-bold">
+                Fisso
+            </div>
+        `;
+        container.appendChild(row);
+    }
+
+    // Gestione del tasto + per i successivi atleti opzionali (Fino a 7 totali)
+    btnAdd.onclick = function(e) {
+        e.preventDefault();
+        if (contatoreComponentiKarate >= 7) {
+            alert("Raggiunto il limite massimo di 7 componenti complessivi per la squadra di Karate.");
+            return;
         }
-    }
-
-    // Bind degli eventi UI
-    document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
-    document.getElementById('birthdate')?.addEventListener('change', handleBirthdateChange);
-    document.getElementById('team_year')?.addEventListener('change', handleTeamYearChange);
-    document.getElementById('gender')?.addEventListener('change', handleSpecialtyChange);
-    document.getElementById('team_gender')?.addEventListener('change', handleSpecialtyChange);
-    document.getElementById('specialty')?.addEventListener('change', handleSpecialtyChange);
-    document.getElementById('athleteForm')?.addEventListener('submit', addEntity);
+        contatoreComponentiKarate++;
+        
+        const row = document.createElement('div');
+        row.className = "row g-2 mb-2 align-items-center team-member-row-extra";
+        row.id = `karateMemberRow_${contatoreComponentiKarate}`;
+        row.innerHTML = `
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm member-lastname" placeholder="Cognome Atleta Opzionale ${contatoreComponentiKarate}" required>
+            </div>
+            <div class="col-5">
+                <input type="text" class="form-control form-control-sm member-firstname" placeholder="Nome Atleta Opzionale ${contatoreComponentiKarate}" required>
+            </div>
+            <div class="col-2 text-end">
+                <button type="button" class="btn btn-danger btn-sm" onclick="rimuoviAtletaExtraKarate(${contatoreComponentiKarate})">✕</button>
+            </div>
+        `;
+        container.appendChild(row);
+    };
 }
 
-function toggleRegMode() {
-    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
-    document.getElementById('individualFields').style.display = isTeam ? 'none' : 'block';
-    document.getElementById('teamFields').style.display = isTeam ? 'block' : 'none';
-    
-    document.getElementById('first_name').required = !isTeam;
-    document.getElementById('last_name').required = !isTeam;
-    document.getElementById('birthdate').required = !isTeam;
-    document.getElementById('team_name').required = isTeam;
-    document.getElementById('team_year').required = isTeam;
-}
-
-window.addMemberField = function(val = "") {
-    const cont = document.getElementById('membersContainer');
-    if (!cont) return;
-    const c = cont.children.length;
-    if (c >= 6) return alert("Massimo 6 componenti per squadra.");
-    const d = document.createElement('div');
-    d.className = "col-md-4 mb-2";
-    d.innerHTML = `<div class="input-group input-group-sm"><span class="input-group-text">${c+1}</span><input type="text" class="form-control member-input" value="${val}" required><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button></div>`;
-    cont.appendChild(d);
-};
-
-function handleBirthdateChange() { updateSpecs(estraiAnnoDaData(document.getElementById('birthdate').value)); }
-function handleTeamYearChange() { updateSpecs(parseInt(document.getElementById('team_year').value)); }
-
-function updateSpecs(year) {
-    if (!currentSportConfig || !year) return;
-    const classe = currentSportConfig.classi_eta?.find(c => year >= c.anno_min && year <= c.anno_max);
-    
-    const clSel = document.getElementById('classe');
-    if (clSel) clSel.innerHTML = `<option value="${classe ? classe.nome : 'Fuori Quota'}">${classe ? classe.nome : 'Fuori Quota'}</option>`;
-
-    const spSel = document.getElementById('specialty');
-    if (spSel) {
-        spSel.innerHTML = '<option value="">-- Specialità --</option>';
-        if (classe) classe.specialita.forEach(s => spSel.innerHTML += `<option value="${s}">${s}</option>`);
-    }
-    
-    const beltSel = document.getElementById('belt');
-    if (beltSel) {
-        beltSel.innerHTML = '<option value="">-- Cintura --</option>';
-        if (classe && classe.cinture) {
-            classe.cinture.forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
-        } else {
-            ["Bianca/Gialla", "Arancio/Verde", "Blu/Marrone/Nera"].forEach(c => beltSel.innerHTML += `<option value="${c}">${c}</option>`);
-        }
-    }
-    
-    handleSpecialtyChange();
-}
-
-function handleSpecialtyChange() {
-    if (!currentSportConfig) return;
-    const spec = document.getElementById('specialty').value;
-    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
-    const gender = document.getElementById(isTeam ? 'team_gender' : 'gender').value;
-    const classe = document.getElementById('classe').value;
-    
-    const wInput = document.getElementById('weight_category');
-    if (!wInput) return;
-    wInput.innerHTML = '';
-    
-    if (spec === "Kumite") {
-        wInput.disabled = false;
-        const pList = currentSportConfig.pesi?.[classe]?.[gender] || currentSportConfig.pesi?.Default || ["Open"];
-        pList.forEach(w => wInput.innerHTML += `<option value="${w}">${w} kg</option>`);
-    } else if (spec === "ParaKarate") {
-        wInput.disabled = false;
-        currentSportConfig.parakarate_categorie?.forEach(p => wInput.innerHTML += `<option value="${p}">${p}</option>`);
-    } else {
-        wInput.disabled = true;
-        wInput.innerHTML = '<option value="-">-</option>';
-    }
-}
-
-// TABELLE E CONTEGGI ATLETI IN TEMPO REALE
-async function fetchAthletes() {
-    const ev = sessionStorage.getItem('selectedEventId');
-    const { data } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', ev);
-    
-    const tbody = document.getElementById('athleteList');
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    let counts = { kumite:0, kata:0, para:0, kids:0 };
-
-    data?.sort((a,b) => a.last_name.localeCompare(b.last_name)).forEach(a => {
-        if(a.specialty==="Kumite") counts.kumite++; else if(a.specialty==="Kata") counts.kata++; else if(a.specialty==="ParaKarate") counts.para++; else counts.kids++;
-        tbody.innerHTML += `<tr>
-            <td><strong>${a.last_name} ${a.first_name}</strong></td>
-            <td>${a.classe}</td>
-            <td>${a.gender}</td>
-            <td>${a.specialty}</td>
-            <td>${a.belt}</td>
-            <td>${a.weight_category}</td>
-            <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editAthlete('${a.id}')"><i class="fas fa-edit"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="delA('${a.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-    
-    if(document.getElementById('kumiteAthleteCountDisplay')) document.getElementById('kumiteAthleteCountDisplay').innerText = counts.kumite;
-    if(document.getElementById('kataAthleteCountDisplay')) document.getElementById('kataAthleteCountDisplay').innerText = counts.kata;
-    if(document.getElementById('ParaKarateAthleteCountDisplay')) document.getElementById('ParaKarateAthleteCountDisplay').innerText = counts.para;
-    if(document.getElementById('KIDSAthleteCountDisplay')) document.getElementById('KIDSAthleteCountDisplay').innerText = counts.kids;
-}
-
-async function fetchTeams() {
-    const { data } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', sessionStorage.getItem('selectedEventId'));
-    const tbody = document.getElementById('teamList');
-    if (!tbody) return;
-    tbody.innerHTML = "";
-    data?.forEach(t => {
-        tbody.innerHTML += `<tr>
-            <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
-            <td>${t.classe}</td>
-            <td>${t.gender}</td>
-            <td>${t.specialty}</td>
-            <td>${t.belt}</td>
-            <td>${t.weight_category||'-'}</td>
-            <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editTeam('${t.id}')"><i class="fas fa-edit"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="delT('${t.id}')"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>`;
-    });
-}
-
-// COMPILAZIONE DEL FORM IN MODALITÀ MODIFICA
-window.editAthlete = async function(id) {
-    editingTeamId = null;
-    const { data: a } = await sb.from('atleti').select('*').eq('id', id).single();
-    if (!a) return;
-
-    document.querySelector('input[name="regType"][value="individual"]').checked = true;
-    toggleRegMode();
-
-    document.getElementById('first_name').value = a.first_name;
-    document.getElementById('last_name').value = a.last_name;
-    document.getElementById('birthdate').value = a.birthdate;
-    document.getElementById('gender').value = a.gender;
-
-    updateSpecs(estraiAnnoDaData(a.birthdate));
-    document.getElementById('specialty').value = a.specialty;
-    handleSpecialtyChange();
-
-    const beltSel = document.getElementById('belt');
-    if (beltSel) {
-        beltSel.value = a.belt;
-        if (!beltSel.value && a.belt) {
-            const opzioneValida = Array.from(beltSel.options).find(opt => 
-                opt.value.toLowerCase().includes(a.belt.toLowerCase())
-            );
-            if (opzioneValida) beltSel.value = opzioneValida.value;
-        }
-    }
-    
-    document.getElementById('weight_category').value = a.weight_category;
-
-    editingAthleteId = id;
-    
-    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) {
-        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
-        btn.className = "btn btn-warning w-100"; 
+window.rimuoviAtletaExtraKarate = function(id) {
+    const row = document.getElementById(`karateMemberRow_${id}`);
+    if (row) {
+        row.remove();
+        contatoreComponentiKarate--;
     }
 };
 
-window.editTeam = async function(id) {
-    editingAthleteId = null;
-    const { data: t } = await sb.from('teams').select('*').eq('id', id).single();
-    if (!t) return;
-
-    document.querySelector('input[name="regType"][value="team"]').checked = true;
-    toggleRegMode();
-
-    document.getElementById('team_name').value = t.team_name;
-    document.getElementById('team_year').value = t.team_year;
-    document.getElementById('team_gender').value = t.gender;
-
-    updateSpecs(t.team_year);
-    document.getElementById('specialty').value = t.specialty;
-    handleSpecialtyChange();
-
-    const beltSel = document.getElementById('belt');
-    if (beltSel) {
-        beltSel.value = t.belt;
-        if (!beltSel.value && t.belt) {
-            const opzioneValida = Array.from(beltSel.options).find(opt => 
-                opt.value.toLowerCase().includes(t.belt.toLowerCase())
-            );
-            if (opzioneValida) beltSel.value = opzioneValida.value;
-        }
-    }
-    
-    document.getElementById('weight_category').value = t.weight_category;
-
-    const cont = document.getElementById('membersContainer');
-    if (cont) {
-        cont.innerHTML = "";
-        t.members.forEach(m => window.addMemberField(m));
-    }
-
-    editingTeamId = id;
-    
-    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) {
-        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
-        btn.className = "btn btn-warning w-100";
-    }
-};
-
-window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
-window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
-
-// GESTIONE SCRITTURA (INSERIMENTO O AGGIORNAMENTO)
-async function addEntity(e) {
+// --- SALVATAGGIO INDIVIDUALE KARATE ---
+async function salvaIscrizioneKarate(e) {
     e.preventDefault();
-    const ev = sessionStorage.getItem('selectedEventId');
-    const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
+    if (!idSocietaKarate) return alert("Società non identificata.");
 
-    // Recupera e valida il genere selezionato per impedire l'invio del placeholder vuoto
-    const currentGender = document.getElementById(isTeam ? 'team_gender' : 'gender').value;
-    if (!currentGender) {
-        alert("Per favore, seleziona un'opzione valida per il campo sesso/genere.");
+    const lastName = document.getElementById('regLastName')?.value.trim();
+    const firstName = document.getElementById('regFirstName')?.value.trim();
+    const gender = document.getElementById('regGender')?.value;
+    const birthYear = document.getElementById('regBirthYear')?.value.trim();
+    const classe = document.getElementById('regClasse')?.value;
+    const specialty = document.getElementById('regSpecialty')?.value; 
+    const belt = document.getElementById('regBelt')?.value || 'Bianca';
+    const weightCategory = document.getElementById('regWeightCategory')?.value || 'Open';
+
+    if (!lastName || !firstName || !gender || !birthYear || !classe || !specialty) {
+        return alert("Compila tutti i campi obbligatori per l'atleta.");
+    }
+
+    const dataFormattata = `${birthYear}-01-01`;
+
+    const payload = {
+        event_id: idGaraKarate,
+        society_id: idSocietaKarate,
+        first_name: firstName,
+        last_name: lastName,
+        gender: gender, // "Maschio" o "Femmina"
+        classe: classe,
+        specialty: specialty, // Kata o Kumite
+        belt: belt,
+        weight_category: weightCategory,
+        birthdate: dataFormattata
+    };
+
+    const { error } = await sbKarate.from('atleti').insert([payload]);
+    if (error) {
+        alert("Errore nel salvataggio dell'atleta: " + error.message);
+    } else {
+        alert("Atleta registrato correttamente nel Karate!");
+        document.getElementById('registrationForm')?.reset();
+        popolaTabellaKarate();
+    }
+}
+
+// --- SALVATAGGIO SQUADRA KARATE ---
+async function salvaSquadraKarate(e) {
+    e.preventDefault();
+    if (!idSocietaKarate) return alert("Società non identificata.");
+
+    const teamName = document.getElementById('teamName')?.value.trim();
+    const teamGender = document.getElementById('teamGender')?.value;
+    const teamClasse = document.getElementById('teamClasse')?.value.trim();
+    const teamSpecialty = document.getElementById('teamSpecialty')?.value || 'Kata Squadra'; // Specialty esplicita per Karate
+    const teamBelt = document.getElementById('teamBelt')?.value || 'Squadra';
+
+    if (!teamName || !teamGender || !teamClasse) {
+        return alert("Compila tutti i campi intestazione della squadra.");
+    }
+
+    // Raccoglie tutti i campi atleti (sia obbligatori che extra aggiunti col +)
+    const inputsLastname = document.querySelectorAll('#teamMembersContainer .member-lastname');
+    const inputsFirstname = document.querySelectorAll('#teamMembersContainer .member-firstname');
+
+    let arrayNomi = [];
+    for (let i = 0; i < inputsLastname.length; i++) {
+        const cognome = inputsLastname[i].value.trim();
+        const nome = inputsFirstname[i].value.trim();
+        if (cognome && nome) {
+            arrayNomi.push(`${cognome} ${nome}`);
+        }
+    }
+
+    if (arrayNomi.length < 3) {
+        return alert("Errore di convalida: Una squadra di Karate deve contenere almeno i 3 componenti iniziali obbligatori.");
+    }
+
+    let stringaAtleti = arrayNomi.join(', ');
+
+    const payload = {
+        event_id: idGaraKarate,
+        society_id: idSocietaKarate,
+        first_name: stringaAtleti,
+        last_name: teamName,
+        gender: teamGender, // "Maschile", "Femminile", "Mista (Mix)"
+        classe: teamClasse,
+        specialty: teamSpecialty, // Registrato con la specialità corretta per rientrare nel conteggio specialità
+        belt: teamBelt,
+        weight_category: 'Open',
+        birthdate: '2026-01-01'
+    };
+
+    const { error } = await sbKarate.from('atleti').insert([payload]);
+    if (error) {
+        alert("Errore nell'inserimento della squadra: " + error.message);
+    } else {
+        alert("Squadra Karate inserita con successo!");
+        document.getElementById('teamForm')?.reset();
+        configuraInizialeSquadraKarate();
+        popolaTabellaKarate();
+    }
+}
+
+// --- POPOLAMENTO ED ELABORAZIONE CONTEGGI SPECIALI PER IL KARATE ---
+async function popolaTabellaKarate() {
+    const tbody = document.getElementById('iscrittiGaraList');
+    if (!tbody) return;
+
+    const elTotale = document.getElementById('totalAthleteCountDisplay');
+    const elMaschi = document.getElementById('maleAthleteCountDisplay');
+    const elFemmine = document.getElementById('femaleAthleteCountDisplay');
+    const elSquadre = document.getElementById('teamAthleteCountDisplay');
+
+    const { data, error } = await sbKarate.from('atleti')
+        .select('*')
+        .eq('event_id', idGaraKarate)
+        .eq('society_id', idSocietaKarate)
+        .order('created_at', { ascending: false });
+
+    tbody.innerHTML = "";
+    if (error || !data || !data.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato per il Karate.</td></tr>`;
+        if (elTotale) elTotale.innerText = "0";
+        if (elMaschi) elMaschi.innerText = "0";
+        if (elFemmine) elFemmine.innerText = "0";
+        if (elSquadre) elSquadre.innerText = "0";
         return;
     }
 
-    const common = {
-        event_id: ev, society_id: window.currentSocietyId,
-        classe: document.getElementById('classe').value,
-        specialty: document.getElementById('specialty').value,
-        belt: document.getElementById('belt').value,
-        weight_category: document.getElementById('weight_category').value || '-'
-    };
+    let contatoreTotale = 0;
+    let contatoreMaschi = 0;
+    let contatoreFemmine = 0;
+    let contatoreSquadre = 0;
 
-    if (isTeam) {
-        const payload = { ...common, team_name: document.getElementById('team_name').value, gender: currentGender, team_year: parseInt(document.getElementById('team_year').value), members: Array.from(document.querySelectorAll('.member-input')).map(i=>i.value.trim()) };
+    data.forEach(a => {
+        contatoreTotale++;
         
-        if (editingTeamId) {
-            // CORRETTO: .update() accetta l'oggetto del payload direttamente, senza array racchiuso
-            await sb.from('teams').update(payload).eq('id', editingTeamId);
-            alert("Squadra aggiornata!");
+        // Verifica se si tratta di una squadra (tramite specialità contenente 'Squadra' o attributo cintura)
+        if (a.specialty.toLowerCase().includes('squadra') || a.belt === 'Squadra') {
+            contatoreSquadre++;
         } else {
-            await sb.from('teams').insert([payload]);
-            alert("Squadra inserita!");
+            if (a.gender === 'Maschio') contatoreMaschi++;
+            if (a.gender === 'Femmina') contatoreFemmine++;
         }
-    } else {
-        const payload = { ...common, first_name: document.getElementById('first_name').value, last_name: document.getElementById('last_name').value, gender: currentGender, birthdate: document.getElementById('birthdate').value };
-        
-        if (editingAthleteId) {
-            // CORRETTO: .update() accetta l'oggetto del payload direttamente, senza array racchiuso
-            await sb.from('atleti').update(payload).eq('id', editingAthleteId);
-            alert("Atleta aggiornato!");
-        } else {
-            await sb.from('atleti').insert([payload]);
-            alert("Atleta inserito!");
-        }
-    }
-    
-    // Ripristino stato iniziale del form e del colore del pulsante
-    editingAthleteId = null;
-    editingTeamId = null;
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
-    if(btn) {
-        btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
-        btn.className = "btn btn-success w-100"; 
-    }
 
-    document.getElementById('athleteForm').reset();
-    if (document.getElementById('membersContainer')) document.getElementById('membersContainer').innerHTML = "";
-    
-    // Forza il ritorno al valore generico (placeholder) su entrambi i menu sesso/genere
-    if (document.getElementById('gender')) document.getElementById('gender').value = "";
-    if (document.getElementById('team_gender')) document.getElementById('team_gender').value = "";
+        tbody.innerHTML += `<tr>
+            <td><strong>${a.last_name}</strong> ${a.first_name}</td>
+            <td>${a.classe}</td>
+            <td><span class="badge bg-light text-dark border">${a.gender}</span></td>
+            <td>${a.specialty || '-'}</td>
+            <td>${a.belt || '-'}</td>
+            <td>${a.weight_category || '-'}</td>
+        </tr>`;
+    });
 
-    fetchAthletes(); fetchTeams();
+    // Scrittura dei risultati aggiornati a video
+    if (elTotale) elTotale.innerText = contatoreTotale.toString();
+    if (elMaschi) elMaschi.innerText = contatoreMaschi.toString();
+    if (elFemmine) elFemmine.innerText = contatoreFemmine.toString();
+    if (elSquadre) elSquadre.innerText = contatoreSquadre.toString();
 }
 
-window.exportToExcel = async function() {
-    const ev = sessionStorage.getItem('selectedEventId');
-    const { data: a } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', ev);
-    const { data: t } = await sb.from('teams').select('*').eq('society_id', window.currentSocietyId).eq('event_id', ev);
+// --- DISPATCHER AUTOMATICO DEGLI EVENTI DI PAGINA ---
+document.addEventListener('DOMContentLoaded', () => {
+    const path = window.location.pathname.toLowerCase();
     
-    let csv = ["TIPO;NOME;MEMBRI;CLASSE;SPECIALITA;CINTURA;SESSO;PESO"];
-    a?.forEach(x => csv.push(`"Indiv.";"${x.last_name} ${x.first_name}";"-";"${x.classe}";"${x.specialty}";"${x.belt}";"${x.gender}";"${x.weight_category}"`));
-    t?.forEach(x => csv.push(`"Team";"${x.team_name}";"${x.members.join(', ')}";"${x.classe}";"${x.specialty}";"${x.belt}";"${x.gender}";"${x.weight_category}"`));
-    
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(new Blob(["\uFEFF" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' }));
-    link.download = `Iscritti.csv`;
-    link.click();
-};
+    if (path.includes("karate")) {
+        const formInd = document.getElementById('registrationForm');
+        if (formInd) formInd.addEventListener('submit', salvaIscrizioneKarate);
 
-document.addEventListener('DOMContentLoaded', initKarateDashboard);
+        const formTeam = document.getElementById('teamForm');
+        if (formTeam) formTeam.addEventListener('submit', salvaSquadraKarate);
+        
+        initDashboardKarate();
+    }
+});
