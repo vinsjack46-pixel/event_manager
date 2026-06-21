@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (CON FIX CONVERSIONE ANNO DI NASCITA)
+// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (CON VALIDAZIONE GENDER)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -153,7 +153,13 @@ function setupCascateSemplici(sportId) {
         selClasse.addEventListener('change', () => {
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
             selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
-            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
+            
+            // Per mappare correttamente le chiavi dei pesi sul DB in base alla selezione front-end
+            let genderKey = selGender.value;
+            if (genderKey === "Maschio") genderKey = "M";
+            if (genderKey === "Femmina") genderKey = "F";
+
+            const list = configurazioneSportCorrente.regole.pesi?.[genderKey]?.[selClasse.value] || configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
             if (list) {
                 list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
                 selPeso.disabled = false;
@@ -186,18 +192,26 @@ async function salvaIscrizione(e) {
         return el ? el.value.trim() : '';
     };
 
-    // Cerchiamo il valore nei possibili ID (anno, regAnno, birthdate, birthYear, ecc.)
-    let annoInserito = getValoreCampo('anno') || getValoreCampo('annoNascita') || getValoreCampo('birthdate') || getValoreCampo('birthYear');
-
-    if (!annoInserito) {
-        return alert("Errore: L'anno di nascita è obbligatorio per completare l'iscrizione dell'atleta.");
+    // 1. VALIDAZIONE GENERE
+    let sessoSelezionato = getValoreCampo('gender');
+    if (!sessoSelezionato || sessoSelezionato === "") {
+        return alert("Errore: Seleziona il sesso dell'atleta (Maschio/Femmina) per procedere.");
     }
 
-    // COSTRUZIONE DATA VALIDA PER SUPABASE (Es: "2010" diventa "2010-01-01")
+    // Normalizzazione automatica per salvaguardare il vincolo DB (Es: "Maschio" o "M" -> standardizza se necessario)
+    // Se il tuo DB vuole tassativamente "M" o "F", lasciamo questa conversione sicura:
+    if (sessoSelezionato === "Maschio") sessoSelezionato = "M";
+    if (sessoSelezionato === "Femmina") sessoSelezionato = "F";
+
+    // 2. VALIDAZIONE ANNO NASCITA
+    let annoInserito = getValoreCampo('anno') || getValoreCampo('annoNascita') || getValoreCampo('birthdate') || getValoreCampo('birthYear');
+    if (!annoInserito) {
+        return alert("Errore: L'anno di nascita è obbligatoria per completare l'iscrizione.");
+    }
+
     let dataFormattata = annoInserito;
     if (annoInserito.length === 4 && !isNaN(annoInserito)) {
         dataFormattata = `${annoInserito}-01-01`; 
-        console.log(`Conversione intelligente: Anno [${annoInserito}] trasformato in Data ISO [${dataFormattata}]`);
     }
 
     const payload = {
@@ -205,12 +219,12 @@ async function salvaIscrizione(e) {
         society_id: idSocietaCorrente,
         first_name: getValoreCampo('firstName') || getValoreCampo('first_name'),
         last_name: getValoreCampo('lastName') || getValoreCampo('last_name'),
-        gender: getValoreCampo('gender'),
+        gender: sessoSelezionato, // <-- Passa il valore validato e ripulito
         classe: getValoreCampo('classe'),
         specialty: getValoreCampo('specialty') || 'Individuale',
         belt: getValoreCampo('belt') || 'Base',
         weight_category: getValoreCampo('weightCategory') || getValoreCampo('weight_category') || 'Open',
-        birthdate: dataFormattata // <-- Invia la stringa "AAAA-01-01" digeribile dal DB
+        birthdate: dataFormattata 
     };
     
     console.log("Invio payload iscrizione a Supabase:", payload);
@@ -244,10 +258,15 @@ async function popolaTabellaIscritti() {
     }
 
     data.forEach(a => {
+        // Mostriamo un output pulito in tabella anche se salviamo come M/F
+        let sessoMostrato = a.gender;
+        if (a.gender === "M") sessoMostrato = "Maschio";
+        if (a.gender === "F") sessoMostrato = "Femmina";
+
         tbody.innerHTML += `<tr>
             <td><strong>${a.last_name} ${a.first_name}</strong></td>
             <td>${a.classe}</td>
-            <td>${a.gender}</td>
+            <td>${sessoMostrato}</td>
             <td>${a.specialty || '-'}</td>
             <td>${a.belt || '-'}</td>
             <td>${a.weight_category || '-'}</td>
