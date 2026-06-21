@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (COMPLETO E CORRETTO)
+// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (CON FIX SALVATAGGIO)
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -117,8 +117,8 @@ async function initDashboardSemplice() {
         if (config) {
             configurazioneSportCorrente = config;
             
-            if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
-                const sel = document.getElementById('regSpecialty');
+            if (sportId === 'fitarco' && (document.getElementById('regSpecialty') || document.getElementById('specialty'))) {
+                const sel = document.getElementById('regSpecialty') || document.getElementById('specialty');
                 sel.innerHTML = '<option value="">-- Seleziona Divisione --</option>';
                 config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
             }
@@ -136,10 +136,10 @@ async function initDashboardSemplice() {
 
 // --- GESTIONE MENU A CASCATA ---
 function setupCascateSemplici(sportId) {
-    const selGender = document.getElementById('regGender');
-    const selClasse = document.getElementById('regClasse');
-    const selSpecialty = document.getElementById('regSpecialty');
-    const selPeso = document.getElementById('regWeightCategory');
+    const selGender = document.getElementById('regGender') || document.getElementById('gender');
+    const selClasse = document.getElementById('regClasse') || document.getElementById('classe');
+    const selSpecialty = document.getElementById('regSpecialty') || document.getElementById('specialty');
+    const selPeso = document.getElementById('regWeightCategory') || document.getElementById('weight_category');
 
     if (sportId === 'judo' && selGender && selClasse) {
         selGender.addEventListener('change', () => {
@@ -180,23 +180,39 @@ async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
 
+    // Funzione interna helper per leggere i campi indifferentemente se hanno il prefisso "reg" o meno
+    const getValoreCampo = (idBase) => {
+        const idConPrefisso = 'reg' + idBase.charAt(0).toUpperCase() + idBase.slice(1);
+        const el = document.getElementById(idConPrefisso) || document.getElementById('reg' + idBase) || document.getElementById(idBase);
+        return el ? el.value.trim() : '';
+    };
+
+    const birthdateVal = getValoreCampo('birthdate') || getValoreCampo('birthDate');
+
+    if (!birthdateVal) {
+        return alert("Errore: La data di nascita è obbligatoria per completare l'iscrizione dell'atleta.");
+    }
+
     const payload = {
         event_id: idGaraCorrente,
         society_id: idSocietaCorrente,
-        first_name: document.getElementById('regFirstName').value.trim(),
-        last_name: document.getElementById('regLastName').value.trim(),
-        gender: document.getElementById('regGender').value,
-        classe: document.getElementById('regClasse').value,
-        specialty: document.getElementById('regSpecialty')?.value || 'Individuale',
-        belt: document.getElementById('regBelt')?.value || 'Base',
-        weight_category: document.getElementById('regWeightCategory')?.value || 'Open'
+        first_name: getValoreCampo('firstName') || getValoreCampo('first_name'),
+        last_name: getValoreCampo('lastName') || getValoreCampo('last_name'),
+        gender: getValoreCampo('gender'),
+        classe: getValoreCampo('classe'),
+        specialty: getValoreCampo('specialty') || 'Individuale',
+        belt: getValoreCampo('belt') || 'Base',
+        weight_category: getValoreCampo('weightCategory') || getValoreCampo('weight_category') || 'Open',
+        birthdate: birthdateVal // <-- Risolto il BUG: Ora viene mappata e inviata a Supabase
     };
     
+    console.log("Invio payload iscrizione a Supabase:", payload);
+
     const { error } = await sb.from('atleti').insert([payload]);
     if (error) {
         alert("Errore nell'inserimento: " + error.message);
     } else {
-        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
+        const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
         if (form) form.reset();
         alert("Atleta registrato correttamente!");
         popolaTabellaIscritti();
@@ -205,7 +221,7 @@ async function salvaIscrizione(e) {
 
 // --- POPOLAMENTO TABELLA ---
 async function popolaTabellaIscritti() {
-    const tbody = document.getElementById('iscrittiGaraList');
+    const tbody = document.getElementById('iscrittiGaraList') || document.getElementById('athleteList');
     if (!tbody) return;
     
     const { data, error } = await sb.from('atleti')
@@ -242,8 +258,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
-        // Aggancia l'evento di submit al form dinamicamente, qualunque sia l'ID usato
-        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
+        // Aggancia l'evento di submit al form dinamicamente, qualunque sia l'ID usato nell'HTML
+        const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
         if (form) form.addEventListener('submit', salvaIscrizione);
         
         initDashboardSemplice();
