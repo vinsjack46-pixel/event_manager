@@ -1,5 +1,5 @@
 // ==========================================
-// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO (GESTIONE OPZIONE INIZIALE VUOTA)
+// SCRIPT.JS - MOTORE BASE, JUDO E FITARCO 
 // ==========================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -36,7 +36,6 @@ window.logout = async function() {
 
 // --- SCELTA EVENTO ---
 async function caricaEventiScelta() {
-    console.log("Caricamento eventi per la pagina di scelta...");
     const container = document.getElementById('eventListContainer') || document.getElementById('listaGare');
     if (!container) return;
 
@@ -72,23 +71,41 @@ window.selezionaGara = function(id, htmlDest, sportId, nome) {
 
 // --- LOGICA DASHBOARD (Judo/Fitarco) ---
 async function initDashboardSemplice() {
-    console.log("Inizializzazione Dashboard Judo/Fitarco avviata...");
-
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
     const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
 
-    if (!idGaraCorrente) {
-        console.warn("Nessuna gara in sessione, torno alla selezione eventi.");
-        return window.location.href = "scelta-evento.html";
-    }
+    if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
 
+    // 1. Scrittura Nomi Evento
     const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
     targetGaraIDs.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = nomeGara;
     });
 
+    // 2. FORZATURA MENU SESSO (RISOLUZIONE BUG)
+    // Svuotiamo forzatamente i menu in modo che l'utente debba per forza scegliere
+    const selGender = document.getElementById('regGender') || document.getElementById('gender');
+    if (selGender) {
+        selGender.innerHTML = `
+            <option value="" disabled selected>-- Seleziona Sesso --</option>
+            <option value="Maschio">Maschio</option>
+            <option value="Femmina">Femmina</option>
+        `;
+    }
+
+    const selTeamGender = document.getElementById('teamGender') || document.getElementById('team_gender');
+    if (selTeamGender) {
+        selTeamGender.innerHTML = `
+            <option value="" disabled selected>-- Seleziona Sesso Squadra --</option>
+            <option value="Maschile">Maschile</option>
+            <option value="Femminile">Femminile</option>
+            <option value="Mista (Mix)">Mista (Mix)</option>
+        `;
+    }
+
+    // 3. Recupero Società
     try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) {
@@ -102,36 +119,30 @@ async function initDashboardSemplice() {
                 });
             }
         } else {
-            window.location.href = "login.html";
-            return;
+            return window.location.href = "login.html";
         }
-    } catch (e) {
-        console.error("Errore nel caricamento del profilo società:", e);
-    }
+    } catch (e) { console.error(e); }
 
+    // 4. Lettura regole DB
     try {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
         if (config) {
             configurazioneSportCorrente = config;
-            
-            if (sportId === 'fitarco' && (document.getElementById('regSpecialty') || document.getElementById('specialty'))) {
-                const sel = document.getElementById('regSpecialty') || document.getElementById('specialty');
+            if (sportId === 'fitarco' && document.getElementById('regSpecialty')) {
+                const sel = document.getElementById('regSpecialty');
                 sel.innerHTML = '<option value="">-- Seleziona Divisione --</option>';
                 config.regole?.divisioni?.forEach(d => sel.innerHTML += `<option value="${d}">${d}</option>`);
             }
-            
             const labelsGrado = document.querySelectorAll('label[for="regBelt"], label[for="belt"]');
             labelsGrado.forEach(lbl => lbl.innerText = config.etichetta_livello || 'Cintura');
         }
-    } catch (e) {
-        console.error("Errore nel caricamento delle configurazioni sport:", e);
-    }
+    } catch (e) { console.error(e); }
 
     setupCascateSemplici(sportId);
     popolaTabellaIscritti();
 }
 
-// --- GESTIONE MENU A CASCATA PROTETTA ---
+// --- GESTIONE MENU A CASCATA ---
 function setupCascateSemplici(sportId) {
     const selGender = document.getElementById('regGender') || document.getElementById('gender');
     const selClasse = document.getElementById('regClasse') || document.getElementById('classe');
@@ -139,47 +150,33 @@ function setupCascateSemplici(sportId) {
     const selPeso = document.getElementById('regWeightCategory') || document.getElementById('weight_category');
 
     if (sportId === 'judo' && selGender && selClasse) {
-        // Quando cambia il sesso
         selGender.addEventListener('change', () => {
-            const sessoSelezionato = selGender.value;
+            const val = selGender.value;
+            if (!val) return; // Se vuoto blocca tutto
             
-            // Se l'utente torna sull'opzione vuota iniziale
-            if (!sessoSelezionato) {
-                selClasse.innerHTML = '<option value="">-- Scegli prima il Sesso --</option>';
-                selClasse.disabled = true;
-                if (selPeso) {
-                    selPeso.innerHTML = '<option value="">-- Scegli prima la Classe --</option>';
-                    selPeso.disabled = true;
-                }
-                return;
-            }
-
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
-            
-            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
+            selClasse.innerHTML = '<option value="" disabled selected>-- Scegli Classe --</option>';
             const classi = configurazioneSportCorrente.regole.classi || [];
             classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
             
-            if (selPeso) { 
-                selPeso.innerHTML = '<option value="">-- Scegli prima la Classe --</option>'; 
+            if(selPeso) { 
+                selPeso.innerHTML = '<option value="" disabled selected>-- Scegli Peso --</option>'; 
                 selPeso.disabled = true; 
             }
         });
 
-        // Quando cambia la classe
         selClasse.addEventListener('change', () => {
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole || !selPeso) return;
+            selPeso.innerHTML = '<option value="" disabled selected>-- Scegli Peso --</option>';
             
-            const classeSelezionata = selClasse.value;
-            if (!classeSelezionata) {
-                selPeso.innerHTML = '<option value="">-- Scegli prima la Classe --</option>';
-                selPeso.disabled = true;
-                return;
-            }
+            // Per il Judo mappa il genere ai valori del JSON se usi M/F nel DB
+            let jsonGender = selGender.value; 
+            if (jsonGender === "Maschio") jsonGender = "M";
+            if (jsonGender === "Femmina") jsonGender = "F";
 
-            selPeso.innerHTML = '<option value="">-- Scegli Peso --</option>';
-            const list = configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[classeSelezionata];
+            const list = configurazioneSportCorrente.regole.pesi?.[jsonGender]?.[selClasse.value] || configurazioneSportCorrente.regole.pesi?.[selGender.value]?.[selClasse.value];
+            
             if (list) {
                 list.forEach(p => selPeso.innerHTML += `<option value="${p}">${p} kg</option>`);
                 selPeso.disabled = false;
@@ -192,22 +189,16 @@ function setupCascateSemplici(sportId) {
 
     if (sportId === 'fitarco' && selSpecialty && selClasse) {
         selSpecialty.addEventListener('change', () => {
-            const specSelezionata = selSpecialty.value;
-            if (!specSelezionata) {
-                selClasse.innerHTML = '<option value="">-- Scegli prima la Divisione --</option>';
-                selClasse.disabled = true;
-                return;
-            }
             if(!configurazioneSportCorrente || !configurazioneSportCorrente.regole) return;
-            selClasse.innerHTML = '<option value="">-- Scegli Classe --</option>';
-            const classi = configurazioneSportCorrente.regole.classi?.[specSelezionata] || [];
+            selClasse.innerHTML = '<option value="" disabled selected>-- Scegli Classe --</option>';
+            const classi = configurazioneSportCorrente.regole.classi?.[selSpecialty.value] || [];
             classi.forEach(c => selClasse.innerHTML += `<option value="${c}">${c}</option>`);
             selClasse.disabled = false;
         });
     }
 }
 
-// --- SALVATAGGIO ISCRITTI ---
+// --- SALVATAGGIO ISCRITTI INDIVIDUALI ---
 async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
@@ -218,13 +209,18 @@ async function salvaIscrizione(e) {
         return el ? el.value.trim() : '';
     };
 
-    // 1. Validazione Sesso
+    // CONTROLLO BLOCCANTE SUL SESSO VUOTO
     let genderVal = getValoreCampo('gender');
-    if (!genderVal || genderVal.includes('--')) {
-        return alert("Errore: Seleziona il sesso dell'atleta prima di salvare.");
+    if (!genderVal) {
+        return alert("ATTENZIONE: Devi selezionare obbligatoriamente il sesso dell'atleta.");
     }
+    
+    // Per far contenta la tabella del database, convertiamo in M o F se il check constraint lo richiede
+    // (Se il DB accetta "Maschio" per esteso, puoi rimuovere queste 2 righe, ma di solito è più sicuro M/F)
+    if (genderVal === "Maschio") genderVal = "M";
+    if (genderVal === "Femmina") genderVal = "F";
 
-    // 2. Validazione Anno di Nascita e conversione ISO
+    // GENERAZIONE DATA DA ANNO
     let annoInserito = getValoreCampo('anno') || getValoreCampo('annoNascita') || getValoreCampo('birthdate') || getValoreCampo('birthYear');
     if (!annoInserito) {
         return alert("Errore: L'anno di nascita è obbligatorio.");
@@ -234,13 +230,6 @@ async function salvaIscrizione(e) {
         dataFormattata = `${annoInserito}-01-01`; 
     }
 
-    // 3. Controllo Categoria Peso e Cintura (Se siamo in un campo select, blocca le scelte vuote)
-    let pesoVal = getValoreCampo('weightCategory') || getValoreCampo('weight_category');
-    if (pesoVal.includes('--')) return alert("Errore: Seleziona una categoria di peso valida.");
-
-    let beltVal = getValoreCampo('belt');
-    if (beltVal.includes('--')) return alert("Errore: Seleziona la cintura dell'atleta.");
-
     const payload = {
         event_id: idGaraCorrente,
         society_id: idSocietaCorrente,
@@ -249,13 +238,11 @@ async function salvaIscrizione(e) {
         gender: genderVal,
         classe: getValoreCampo('classe'),
         specialty: getValoreCampo('specialty') || 'Individuale',
-        belt: beltVal || 'Base',
-        weight_category: pesoVal || 'Open',
+        belt: getValoreCampo('belt') || 'Base',
+        weight_category: getValoreCampo('weightCategory') || getValoreCampo('weight_category') || 'Open',
         birthdate: dataFormattata
     };
     
-    console.log("Invio definitivo payload a Supabase:", payload);
-
     const { error } = await sb.from('atleti').insert([payload]);
     if (error) {
         alert("Errore nell'inserimento: " + error.message);
@@ -263,12 +250,13 @@ async function salvaIscrizione(e) {
         const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
         if (form) form.reset();
         
-        // Se c'è il menu a cascata del Judo, dopo il reset lo riportiamo allo stato iniziale disabilitato
+        // Forza il reset dei menu a tendina
+        const selGender = document.getElementById('regGender') || document.getElementById('gender');
+        if(selGender) selGender.value = "";
+        
         const selClasse = document.getElementById('regClasse') || document.getElementById('classe');
-        const selPeso = document.getElementById('regWeightCategory') || document.getElementById('weight_category');
-        if (selClasse) { selClasse.innerHTML = '<option value="">-- Scegli prima il Sesso --</option>'; selClasse.disabled = true; }
-        if (selPeso && selPeso.tagName === 'SELECT') { selPeso.innerHTML = '<option value="">-- Scegli prima la Classe --</option>'; selPeso.disabled = true; }
-
+        if(selClasse) { selClasse.innerHTML = '<option value="" disabled selected>-- Seleziona --</option>'; selClasse.disabled = true; }
+        
         alert("Atleta registrato correttamente!");
         popolaTabellaIscritti();
     }
@@ -292,10 +280,15 @@ async function popolaTabellaIscritti() {
     }
 
     data.forEach(a => {
+        // Riconverte M/F in parole per la visualizzazione a schermo
+        let stampaSesso = a.gender;
+        if (stampaSesso === "M") stampaSesso = "Maschio";
+        if (stampaSesso === "F") stampaSesso = "Femmina";
+
         tbody.innerHTML += `<tr>
             <td><strong>${a.last_name} ${a.first_name}</strong></td>
             <td>${a.classe}</td>
-            <td>${a.gender}</td>
+            <td>${stampaSesso}</td>
             <td>${a.specialty || '-'}</td>
             <td>${a.belt || '-'}</td>
             <td>${a.weight_category || '-'}</td>
@@ -313,7 +306,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (path.includes("scelta-evento")) {
         caricaEventiScelta();
     } else if (path.includes("judo") || path.includes("fitarco")) {
-        const form = document.getElementById('registrationForm') || document.getElementById('registerForm') || document.getElementById('athleteForm');
+        const form = document.getElementById('registrationForm') || document.getElementById('registerForm');
         if (form) form.addEventListener('submit', salvaIscrizione);
         
         initDashboardSemplice();
