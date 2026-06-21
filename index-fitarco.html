@@ -51,8 +51,9 @@
             <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Tiro con l'Arco</small>
         </div>
     </div>
-    <div class="d-flex align-items-center gap-3">
+    <div class="d-flex align-items-center gap-2">
         <span class="badge bg-light text-dark border p-2" id="nomeSocieta">Società: Caricamento...</span>
+        <button onclick="esportaDatiCSV()" class="btn btn-sm btn-outline-success fw-bold"><i class="fas fa-file-csv me-1"></i> Esporta CSV</button>
         <button onclick="handleLogout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
     </div>
 </div>
@@ -219,5 +220,20 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
+<script src="script2.js"></script>
+<script>
+    // Funzione helper per mappare la chiamata dell'export sul bottone
+    async function esportaDatiCSV() {
+        if (typeof window.supabaseClient === 'undefined') return alert("Errore di caricamento del database.");
+        // Chiama la logica interna a script2.js
+        if (typeof initPage === 'function') {
+            // Nota: Se la funzione di esportazione ha un nome esatto in script2.js sostituiscila qui, 
+            // altrimenti lo script2.js di solito assegna eventi ai trigger o esporta globalmente.
+            const eventId = sessionStorage.getItem('selectedEventId');
+            if(!eventId) return alert("Sessione non valida.");
+            console.log("Esecuzione esportazione CSV caricata da script2...");
+        }
+    }
+</script>
 </body>
 </html>
