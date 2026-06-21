@@ -2,7 +2,6 @@
 // SCRIPT.JS - ARCHITETTURA SEPARATA (atleti / teams)
 // ==========================================================================
 
-// Controllo di sicurezza per evitare il blocco se Supabase non è ancora pronto
 if (!window.supabase) {
     console.error("Supabase CDN non caricato! Verifica l'ordine degli script nell'HTML.");
 }
@@ -20,6 +19,10 @@ let idGaraCorrente = null;
 let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
 let contatoreComponentiTeam = 0;
+
+// Variabili di stato per la modifica
+let idAtletaInModifica = null;
+let idSquadraInModifica = null;
 
 // --- 1. AUTHENTICATION ---
 async function signIn(email, password) {
@@ -207,7 +210,7 @@ function setupCascateSemplici(sportId) {
     }
 }
 
-// --- 4. SALVATAGGIO INDIVIDUALI ---
+// --- 4. SALVATAGGIO / AGGIORNAMENTO INDIVIDUALI ---
 async function salvaIscrizione(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Sessione società non valida.");
@@ -222,7 +225,7 @@ async function salvaIscrizione(e) {
     const weightCategoryEl = document.getElementById('regWeightCategory');
     const specialtyEl = document.getElementById('regSpecialty');
 
-    const dbGender = (genderInput === "Maschio") ? "M" : "F";
+    const dbGender = (genderInput === "Maschio" || genderInput === "M") ? "M" : "F";
 
     const payload = {
         event_id: idGaraCorrente,
@@ -237,19 +240,79 @@ async function salvaIscrizione(e) {
         birthdate: `${birthYear}-01-01`
     };
     
-    const { error } = await sb.from('atleti').insert([payload]);
-    if (error) {
-        alert("Errore inserimento: " + error.message);
+    let risultato;
+    if (idAtletaInModifica) {
+        // Logica di Modifica (UPDATE)
+        risultato = await sb.from('atleti').update(payload).eq('id', idAtletaInModifica);
     } else {
-        alert("Atleta registrato!");
-        document.getElementById('registrationForm').reset();
-        if(document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
-        if(document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
+        // Logica di Inserimento (INSERT)
+        risultato = await sb.from('atleti').insert([payload]);
+    }
+
+    if (risultato.error) {
+        alert("Errore nel salvataggio: " + risultato.error.message);
+    } else {
+        alert(idAtletaInModifica ? "Iscrizione Atleta Aggiornata!" : "Atleta registrato con successo!");
+        annullaModificaAtleta();
         aggiornaTabelleEStatistiche();
     }
 }
 
-// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Tabella 'teams' con Array Nativo) ---
+window.avviaModificaAtleta = async function(idAtleta) {
+    try {
+        const { data: a, error } = await sb.from('atleti').select('*').eq('id', idAtleta).single();
+        if (error || !a) return alert("Impossibile recuperare i dati dell'atleta.");
+
+        idAtletaInModifica = idAtleta;
+        
+        document.getElementById('regLastName').value = a.last_name;
+        document.getElementById('regFirstName').value = a.first_name;
+        document.getElementById('regGender').value = (a.gender === 'M') ? "Maschio" : "Femmina";
+        document.getElementById('regBirthYear').value = a.birthdate ? a.birthdate.substring(0, 4) : '';
+        document.getElementById('regBelt').value = a.belt || 'Bianca';
+
+        // Forza trigger cascata classi e pesi/divisioni
+        const sportId = sessionStorage.getItem('selectedSportId') || 'judo';
+        const selGender = document.getElementById('regGender');
+        const selClasse = document.getElementById('regClasse');
+        const selPeso = document.getElementById('regWeightCategory');
+        const selSpecialty = document.getElementById('regSpecialty');
+
+        if (sportId === 'judo') {
+            if (selGender) selGender.dispatchEvent(new Event('change'));
+            if (selClasse) { selClasse.value = a.classe; selClasse.dispatchEvent(new Event('change')); }
+            if (selPeso) selPeso.value = a.weight_category;
+        } else if (sportId === 'fitarco') {
+            if (selSpecialty) { selSpecialty.value = a.specialty; selSpecialty.dispatchEvent(new Event('change')); }
+            if (selClasse) selClasse.value = a.classe;
+        }
+
+        // Cambia lo stile del bottone del Form in modalità modifica
+        const btnSubmit = document.querySelector('#registrationForm button[type="submit"]');
+        if(btnSubmit) {
+            btnSubmit.innerText = "AGGIORNA DATI ATLETA";
+            btnSubmit.className = "btn btn-warning w-100 fw-bold py-2 shadow-sm text-dark";
+        }
+        
+        // Scorri la pagina verso il form
+        document.getElementById('registrationForm').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) { console.error(err); }
+};
+
+function annullaModificaAtleta() {
+    idAtletaInModifica = null;
+    document.getElementById('registrationForm').reset();
+    if(document.getElementById('regClasse')) document.getElementById('regClasse').disabled = true;
+    if(document.getElementById('regWeightCategory')) document.getElementById('regWeightCategory').disabled = true;
+    
+    const btnSubmit = document.querySelector('#registrationForm button[type="submit"]');
+    if(btnSubmit) {
+        btnSubmit.innerText = "REGISTRA ATLETA";
+        btnSubmit.className = "btn btn-primary w-100 fw-bold py-2 shadow-sm";
+    }
+}
+
+// --- 5. GESTIONE E SALVATAGGIO SQUADRE (Con Modifica Dinamica incorporata) ---
 function inizializzaGestioneComponentiTeam() {
     const container = document.getElementById('teamMembersContainer');
     const btnAdd = document.getElementById('btnAddTeamMember');
@@ -260,19 +323,24 @@ function inizializzaGestioneComponentiTeam() {
 
     btnAdd.onclick = function(e) {
         e.preventDefault();
-        if (contatoreComponentiTeam >= 10) return alert("Massimo componenti raggiunto.");
-        contatoreComponentiTeam++;
-        
-        const row = document.createElement('div');
-        row.className = "row g-2 mb-2 align-items-center team-member-row";
-        row.id = `teamMemberRow_${contatoreComponentiTeam}`;
-        row.innerHTML = `
-            <div class="col-5"><input type="text" class="form-control form-control-sm member-lastname" placeholder="Cognome" required></div>
-            <div class="col-5"><input type="text" class="form-control form-control-sm member-firstname" placeholder="Nome" required></div>
-            <div class="col-2 text-end"><button type="button" class="btn btn-danger btn-sm" onclick="rimuoviComponenteTeam(${contatoreComponentiTeam})">✕</button></div>
-        `;
-        container.appendChild(row);
+        aggiungiRigaComponente("", "");
     };
+}
+
+function aggiungiRigaComponente(cognome = "", nome = "") {
+    const container = document.getElementById('teamMembersContainer');
+    if (!container || contatoreComponentiTeam >= 10) return;
+    contatoreComponentiTeam++;
+    
+    const row = document.createElement('div');
+    row.className = "row g-2 mb-2 align-items-center team-member-row";
+    row.id = `teamMemberRow_${contatoreComponentiTeam}`;
+    row.innerHTML = `
+        <div class="col-5"><input type="text" class="form-control form-control-sm member-lastname" placeholder="Cognome" value="${cognome}" required></div>
+        <div class="col-5"><input type="text" class="form-control form-control-sm member-firstname" placeholder="Nome" value="${nome}" required></div>
+        <div class="col-2 text-end"><button type="button" class="btn btn-danger btn-sm" onclick="rimuoviComponenteTeam(${contatoreComponentiTeam})">✕</button></div>
+    `;
+    container.appendChild(row);
 }
 
 window.rimuoviComponenteTeam = function(rowId) {
@@ -308,17 +376,74 @@ async function salvaSquadraSemplice(e) {
         classe: teamClasse,
         belt: teamBelt,
         weight_category: 'Open',
-        members: componenti  // Array nativo JSON/text[] salvato correttamente sin da prima
+        members: componenti
     };
 
-    const { error } = await sb.from('teams').insert([payload]);
-    if (error) {
-        alert("Errore registrazione Squadra: " + error.message);
+    let risultato;
+    if (idSquadraInModifica) {
+        risultato = await sb.from('teams').update(payload).eq('id', idSquadraInModifica);
     } else {
-        alert("Squadra registrata correttamente!");
-        document.getElementById('teamForm').reset();
-        inizializzaGestioneComponentiTeam();
+        risultato = await sb.from('teams').insert([payload]);
+    }
+
+    if (risultato.error) {
+        alert("Errore registrazione Squadra: " + risultato.error.message);
+    } else {
+        alert(idSquadraInModifica ? "Squadra Aggiornata!" : "Squadra registrata correttamente!");
+        annullaModificaSquadra();
         aggiornaTabelleEStatistiche();
+    }
+}
+
+window.avviaModificaSquadra = async function(idTeam) {
+    try {
+        const { data: t, error } = await sb.from('teams').select('*').eq('id', idTeam).single();
+        if (error || !t) return alert("Impossibile recuperare i dati della squadra.");
+
+        idSquadraInModifica = idTeam;
+
+        document.getElementById('teamName').value = t.name;
+        document.getElementById('teamGender').value = t.gender;
+        document.getElementById('teamClasse').value = t.classe || '';
+        document.getElementById('teamBelt').value = t.belt || 'Libera';
+        document.getElementById('teamAnno').value = "2026"; // Fallback anno standard
+
+        // Rigenera i componenti nel form sussidiario
+        const container = document.getElementById('teamMembersContainer');
+        container.innerHTML = "";
+        contatoreComponentiTeam = 0;
+
+        let arrMembri = [];
+        if (t.members) {
+            arrMembri = Array.isArray(t.members) ? t.members : t.members.split(', ');
+        }
+
+        arrMembri.forEach(m => {
+            const blocchi = m.split(' ');
+            const cognome = blocchi[0] || "";
+            const nome = blocchi.slice(1).join(' ') || "";
+            aggiungiRigaComponente(cognome, nome);
+        });
+
+        const btnSubmit = document.querySelector('#teamForm button[type="submit"]');
+        if(btnSubmit) {
+            btnSubmit.innerText = "AGGIORNA DATI SQUADRA";
+            btnSubmit.className = "btn btn-warning w-100 fw-bold py-2 shadow-sm text-dark";
+        }
+
+        document.getElementById('teamForm').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) { console.error(err); }
+};
+
+function annullaModificaSquadra() {
+    idSquadraInModifica = null;
+    document.getElementById('teamForm').reset();
+    inizializzaGestioneComponentiTeam();
+
+    const btnSubmit = document.querySelector('#teamForm button[type="submit"]');
+    if(btnSubmit) {
+        btnSubmit.innerText = "REGISTRA SQUADRA";
+        btnSubmit.className = "btn btn-success w-100 fw-bold py-2 shadow-sm";
     }
 }
 
@@ -354,7 +479,10 @@ async function aggiornaTabelleEStatistiche() {
                     <td>${a.belt || '-'}</td>
                     <td>${a.weight_category || '-'}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaAtleta('${a.id}')" title="Elimina iscrizione">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="avviaModificaAtleta('${a.id}')" title="Modifica">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaAtleta('${a.id}')" title="Elimina">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
@@ -390,7 +518,10 @@ async function aggiornaTabelleEStatistiche() {
                     <td>${t.belt || 'Libera'}</td>
                     <td>${t.weight_category || 'Open'}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaSquadra('${t.id}')" title="Elimina Squadra">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="avviaModificaSquadra('${t.id}')" title="Modifica">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="eliminaSquadra('${t.id}')" title="Elimina">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
@@ -411,6 +542,7 @@ async function aggiornaTabelleEStatistiche() {
 window.eliminaAtleta = async function(idAtleta) {
     if (!confirm("Vuoi cancellare definitivamente questo atleta dall'evento?")) return;
     try {
+        if(idAtletaInModifica === idAtleta) annullaModificaAtleta();
         const { error } = await sb.from('atleti').delete().eq('id', idAtleta);
         if (error) throw error;
         aggiornaTabelleEStatistiche();
@@ -420,6 +552,7 @@ window.eliminaAtleta = async function(idAtleta) {
 window.eliminaSquadra = async function(idTeam) {
     if (!confirm("Vuoi cancellare definitivamente questa squadra dall'evento?")) return;
     try {
+        if(idSquadraInModifica === idTeam) annullaModificaSquadra();
         const { error } = await sb.from('teams').delete().eq('id', idTeam);
         if (error) throw error;
         aggiornaTabelleEStatistiche();
