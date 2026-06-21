@@ -1,5 +1,5 @@
 // ==========================================================================
-// SCRIPT.JS - MOTORE BASE, GESTIONE COMPLETA DI JUDO E FITARCO (VERSIONE TOTALE)
+// SCRIPT.JS - MOTORE COMPLETO CON RIPRISTINO SELEZIONE EVENTI, JUDO E FITARCO
 // ==========================================================================
 
 const { createClient } = window.supabase;
@@ -17,7 +17,83 @@ let idSocietaCorrente = null;
 let configurazioneSportCorrente = null;
 let contatoreComponentiTeam = 0;
 
-// --- INIZIALIZZAZIONE DASHBOARD (JUDO / FITARCO) ---
+// ==========================================================================
+// 1. FUNZIONE RIPRISTINATA: CARICAMENTO EVENTI (Per scelta-evento.html)
+// ==========================================================================
+async function caricaListaEventi() {
+    const container = document.getElementById('eventsContainer') || document.getElementById('listaEventi');
+    if (!container) return; // Non siamo nella pagina di scelta evento
+
+    container.innerHTML = '<div class="text-center text-muted py-3">Caricamento eventi in corso...</div>';
+
+    try {
+        const { data: eventi, error } = await sb.from('eventi')
+            .select('*')
+            .order('data_evento', { ascending: true });
+
+        if (error) throw error;
+
+        container.innerHTML = "";
+        if (!eventi || eventi.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">Nessun evento disponibile al momento.</div>';
+            return;
+        }
+
+        eventi.forEach(ev => {
+            // Formattazione data leggibile
+            const dataOpzioni = { year: 'numeric', month: 'long', day: 'numeric' };
+            const dataGara = new Date(ev.data_evento).toLocaleDateString('it-IT', dataOpzioni);
+            
+            // Determina il badge dello sport
+            let badgeColor = "bg-primary";
+            if (ev.sport_id === "karate") badgeColor = "bg-danger";
+            if (ev.sport_id === "fitarco") badgeColor = "bg-warning text-dark";
+
+            const card = document.createElement('div');
+            card.className = "col-md-6 col-lg-4 mb-4";
+            card.innerHTML = `
+                <div class="card h-100 shadow-sm border-0">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge ${badgeColor} text-uppercase fw-bold">${ev.sport_id}</span>
+                            <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i> ${dataGara}</small>
+                        </div>
+                        <h5 class="card-title fw-bold text-dark mb-1">${ev.titolo}</h5>
+                        <p class="card-text text-muted small flex-grow-1"><i class="fas fa-map-marker-alt me-1"></i> ${ev.luogo || 'Sede da definire'}</p>
+                        <button onclick="selezionaEvento('${ev.id}', '${ev.titolo.replace(/'/g, "\\'")}', '${ev.sport_id}')" class="btn btn-outline-primary btn-sm w-100 fw-bold mt-3">
+                            Gestisci Iscrizioni <i class="fas fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (e) {
+        console.error("Errore caricamento eventi:", e);
+        container.innerHTML = '<div class="alert alert-danger">Errore durante il recupero degli eventi. Ricarica la pagina.</div>';
+    }
+}
+
+// Funzione globale al click sulla card dell'evento
+window.selezionaEvento = function(id, titolo, sportId) {
+    sessionStorage.setItem('selectedEventId', id);
+    sessionStorage.setItem('selectedEventName', titolo);
+    sessionStorage.setItem('selectedSportId', sportId);
+
+    // Reindirizzamento dinamico alla pagina dello sport corretto
+    if (sportId === 'karate') {
+        window.location.href = "index-karate.html";
+    } else if (sportId === 'fitarco') {
+        window.location.href = "index-fitarco.html";
+    } else {
+        window.location.href = "index-judo.html"; // Default Judo
+    }
+};
+
+// ==========================================================================
+// 2. GESTIONE DASHBOARD DI GARA (JUDO / FITARCO)
+// ==========================================================================
 async function initDashboardSemplice() {
     idGaraCorrente = sessionStorage.getItem('selectedEventId');
     const nomeGara = sessionStorage.getItem('selectedEventName');
@@ -25,14 +101,12 @@ async function initDashboardSemplice() {
 
     if (!idGaraCorrente) return window.location.href = "scelta-evento.html";
 
-    // Impostazione del titolo della gara
     const targetGaraIDs = ['nomeGaraTitolo', 'eventNameDisplay', 'nomeGara', 'titoloGara'];
     targetGaraIDs.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerText = nomeGara;
     });
 
-    // Iniezione controllata dei valori testuali esatti per il Sesso Singolo
     const selGender = document.getElementById('regGender');
     if (selGender) {
         selGender.innerHTML = `
@@ -42,7 +116,6 @@ async function initDashboardSemplice() {
         `;
     }
 
-    // Iniezione controllata dei valori testuali esatti per il Sesso Squadra
     const selTeamGender = document.getElementById('teamGender');
     if (selTeamGender) {
         selTeamGender.innerHTML = `
@@ -53,7 +126,6 @@ async function initDashboardSemplice() {
         `;
     }
 
-    // Autenticazione utente e recupero Società
     try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) {
@@ -71,12 +143,9 @@ async function initDashboardSemplice() {
         }
     } catch (e) { console.error("Errore autenticazione utente:", e); }
 
-    // Caricamento Regole Dinamiche da Database (Classi d'età e Pesi)
     try {
         const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
-        if (config) {
-            configurazioneSportCorrente = config;
-        }
+        if (config) { configurazioneSportCorrente = config; }
     } catch (e) { console.error("Errore configurazione sport:", e); }
 
     setupCascateSemplici(sportId);
@@ -84,7 +153,6 @@ async function initDashboardSemplice() {
     popolaTabellaIscritti();
 }
 
-// --- LOGICA AGGIUNTA ATLETI SQUADRA DINAMICA CON TASTO + (MODELLO KARATE) ---
 function inizializzaGestioneComponentiTeam() {
     const container = document.getElementById('teamMembersContainer');
     const btnAdd = document.getElementById('btnAddTeamMember');
@@ -127,7 +195,6 @@ window.rimuoviComponenteTeam = function(rowId) {
     }
 };
 
-// --- LOGICA DEI MENU A CASCATA (SELEZIONE CLASSE E PESI) ---
 function setupCascateSemplici(sportId) {
     const selGender = document.getElementById('regGender');
     const selClasse = document.getElementById('regClasse');
@@ -174,10 +241,9 @@ function setupCascateSemplici(sportId) {
     }
 }
 
-// --- SALVATAGGIO ISCRITTI INDIVIDUALI ---
 async function salvaIscrizione(e) {
     e.preventDefault();
-    if (!idSocietaCorrente) return alert("Errore: Impossibile associare l'iscrizione alla tua società.");
+    if (!idSocietaCorrente) return alert("Errore: Impossibile associare la tua società.");
 
     const lastName = document.getElementById('regLastName')?.value.trim();
     const firstName = document.getElementById('regFirstName')?.value.trim();
@@ -192,38 +258,29 @@ async function salvaIscrizione(e) {
         return alert("Tutti i campi obbligatori del singolo devono essere compilati.");
     }
 
-    const dataFormattata = `${birthYear}-01-01`;
-
     const payload = {
         event_id: idGaraCorrente,
         society_id: idSocietaCorrente,
         first_name: firstName,
         last_name: lastName,
-        gender: gender, // Salva "Maschio" o "Femmina"
+        gender: gender,
         classe: classe,
         specialty: specialty,
         belt: belt,
         weight_category: weightCategory,
-        birthdate: dataFormattata
+        birthdate: `${birthYear}-01-01`
     };
     
     const { error } = await sb.from('atleti').insert([payload]);
     if (error) {
-        alert("Errore nell'inserimento dell'atleta: " + error.message);
+        alert("Errore inserimento atleta: " + error.message);
     } else {
         alert("Atleta registrato correttamente!");
         document.getElementById('registrationForm')?.reset();
-        
-        const selClasse = document.getElementById('regClasse');
-        if (selClasse) { selClasse.innerHTML = '<option value="" disabled selected>-- Scegli prima il sesso --</option>'; selClasse.disabled = true; }
-        const selPeso = document.getElementById('regWeightCategory');
-        if (selPeso) { selPeso.innerHTML = '<option value="" disabled selected>-- Scegli prima la classe --</option>'; selPeso.disabled = true; }
-        
         popolaTabellaIscritti();
     }
 }
 
-// --- SALVATAGGIO SQUADRE ---
 async function salvaSquadraSemplice(e) {
     e.preventDefault();
     if (!idSocietaCorrente) return alert("Errore: Sessione società non valida.");
@@ -237,37 +294,30 @@ async function salvaSquadraSemplice(e) {
     const teamWeightCategory = document.getElementById('teamWeightCategory')?.value || 'Open';
 
     if (!teamName || !teamGender || !teamAnno || !teamClasse) {
-        return alert("Inserisci Nome Squadra, Sesso, Anno di Riferimento e Classe.");
+        return alert("Compila tutti i campi richiesti per la squadra.");
     }
 
     const rows = document.querySelectorAll('.team-member-row');
-    if (rows.length === 0) {
-        return alert("Devi inserire almeno un componente nella squadra col tasto +.");
-    }
+    if (rows.length === 0) return alert("Devi inserire almeno un componente col tasto +.");
 
     let arrayNomi = [];
     rows.forEach(r => {
         const cognome = r.querySelector('.member-lastname').value.trim();
         const nome = r.querySelector('.member-firstname').value.trim();
-        if (cognome && nome) {
-            arrayNomi.push(`${cognome} ${nome}`);
-        }
+        if (cognome && nome) arrayNomi.push(`${cognome} ${nome}`);
     });
-
-    let stringaAtleti = arrayNomi.join(', ');
-    let dataFormattataTeam = `${teamAnno}-01-01`;
 
     const payload = {
         event_id: idGaraCorrente,
         society_id: idSocietaCorrente,
-        first_name: stringaAtleti, 
+        first_name: arrayNomi.join(', '), 
         last_name: teamName,
-        gender: teamGender, // Salva "Maschile", "Femminile", "Mista (Mix)"
+        gender: teamGender,
         classe: teamClasse,
         specialty: teamSpecialty,
         belt: teamBelt,
         weight_category: teamWeightCategory,
-        birthdate: dataFormattataTeam
+        birthdate: `${teamAnno}-01-01`
     };
 
     const { error } = await sb.from('atleti').insert([payload]);
@@ -281,12 +331,10 @@ async function salvaSquadraSemplice(e) {
     }
 }
 
-// --- POPOLAMENTO RIGHE E CALCOLO REALE CONTATORI STATISTICHE ---
 async function popolaTabellaIscritti() {
     const tbody = document.getElementById('iscrittiGaraList');
     if (!tbody) return;
 
-    // Elementi grafici dei contatori presenti nell'HTML
     const elTotale = document.getElementById('totalAthleteCountDisplay');
     const elMaschi = document.getElementById('maleAthleteCountDisplay');
     const elFemmine = document.getElementById('femaleAthleteCountDisplay');
@@ -308,15 +356,10 @@ async function popolaTabellaIscritti() {
         return;
     }
 
-    let contatoreTotale = 0;
-    let contatoreMaschi = 0;
-    let contatoreFemmine = 0;
-    let contatoreSquadre = 0;
+    let contatoreTotale = 0, contatoreMaschi = 0, contatoreFemmine = 0, contatoreSquadre = 0;
 
     data.forEach(a => {
-        // Incremento contatori statistici in base ai parametri salvati
         contatoreTotale++;
-        
         if (a.specialty === 'Squadre' || a.belt === 'Squadra') {
             contatoreSquadre++;
         } else {
@@ -324,7 +367,6 @@ async function popolaTabellaIscritti() {
             if (a.gender === 'Femmina') contatoreFemmine++;
         }
 
-        // Renderizzazione dinamica in tabella
         tbody.innerHTML += `<tr>
             <td><strong>${a.last_name}</strong> ${a.first_name}</td>
             <td>${a.classe}</td>
@@ -335,7 +377,6 @@ async function popolaTabellaIscritti() {
         </tr>`;
     });
 
-    // Aggiornamento grafico delle box superiori
     if (elTotale) elTotale.innerText = contatoreTotale.toString();
     if (elMaschi) elMaschi.innerText = contatoreMaschi.toString();
     if (elFemmine) elFemmine.innerText = contatoreFemmine.toString();
@@ -347,11 +388,18 @@ window.logout = async function() {
     window.location.href = "login.html";
 };
 
-// --- EVENT DISPATCHER AUTOMATICO ---
+// ==========================================================================
+// 3. EVENT DISPATCHER INTELLIGENTE (Rileva automaticamente la pagina)
+// ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
     const path = window.location.pathname.toLowerCase();
     
-    if (path.includes("judo") || path.includes("fitarco")) {
+    // Se siamo nella pagina di scelta dell'evento, esegui il caricamento
+    if (path.includes("scelta-evento") || document.getElementById('eventsContainer') || document.getElementById('listaEventi')) {
+        caricaListaEventi();
+    } 
+    // Se siamo in una pagina di gara Judo o Fitarco, esegui l'init della dashboard
+    else if (path.includes("judo") || path.includes("fitarco")) {
         const formInd = document.getElementById('registrationForm');
         if (formInd) formInd.addEventListener('submit', salvaIscrizione);
 
