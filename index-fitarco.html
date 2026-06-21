@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iscrizioni Gare | Tiro con l'Arco</title>
+    <title>Iscrizioni Gare | Fitarco</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { 
-            --primary-color: #b02a37; 
-            --bg-accent: #fdf2f2; 
-            --bg-gradient: linear-gradient(135deg, #b02a37 0%, #dc3545 100%);
+            --primary-color: #0a58ca; 
+            --bg-accent: #f0f4fc; 
+            --bg-gradient: linear-gradient(135deg, #0a58ca 0%, #1e90ff 100%);
         }
         body { font-family: 'Inter', sans-serif; background: #f4f7f9; margin: 0; padding-bottom: 50px; }
         
@@ -48,20 +48,20 @@
         <a href="scelta-evento.html" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left me-1"></i> Indietro</a>
         <div>
             <h5 class="m-0 fw-bold text-dark" id="nomeGara">Caricamento Gara...</h5>
-            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Tiro con l'Arco</small>
+            <small class="text-muted text-uppercase fw-bold" style="font-size: 0.75rem; letter-spacing: 0.5px;">Disciplina: Fitarco</small>
         </div>
     </div>
     <div class="d-flex align-items-center gap-2">
         <span class="badge bg-light text-dark border p-2" id="nomeSocieta">Società: Caricamento...</span>
         <button onclick="esportaDatiCSV()" class="btn btn-sm btn-outline-success fw-bold"><i class="fas fa-file-csv me-1"></i> Esporta CSV</button>
-        <button onclick="handleLogout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
+        <button onclick="window.logout()" class="btn btn-sm btn-danger px-3 fw-bold"><i class="fas fa-sign-out-alt me-1"></i> Esci</button>
     </div>
 </div>
 
 <div class="main-container">
     
     <div class="stats-grid">
-        <div class="stat-box"><span>Arcieri Iscritti</span><span id="totalAthleteCountDisplay">0</span></div>
+        <div class="stat-box"><span>Iscritti Totali</span><span id="totalAthleteCountDisplay">0</span></div>
         <div class="stat-box"><span>Maschi</span><span id="maleAthleteCountDisplay">0</span></div>
         <div class="stat-box"><span>Femmine</span><span id="femaleAthleteCountDisplay">0</span></div>
         <div class="stat-box"><span>In Squadra</span><span id="teamAthleteCountDisplay">0</span></div>
@@ -73,7 +73,7 @@
                 
                 <ul class="nav nav-pills mb-4 justify-content-center" id="formSelector" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active fw-bold btn-sm" id="indiv-tab" data-bs-toggle="tab" data-bs-target="#panelIndividuale" type="button" role="tab"><i class="fas fa-bullseye me-1"></i> Arciere</button>
+                        <button class="nav-link active fw-bold btn-sm" id="indiv-tab" data-bs-toggle="tab" data-bs-target="#panelIndividuale" type="button" role="tab"><i class="fas fa-user me-1"></i> Singolo</button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link fw-bold btn-sm" id="team-tab" data-bs-toggle="tab" data-bs-target="#panelSquadra" type="button" role="tab"><i class="fas fa-users me-1"></i> Squadra</button>
@@ -82,85 +82,85 @@
 
                 <div class="tab-content">
                     <div class="tab-pane fade show active" id="panelIndividuale" role="tabpanel">
-                        <h5 class="fw-bold text-dark mb-3"><i class="fas fa-user-plus text-danger me-2"></i>Nuova Iscrizione</h5>
+                        <h5 class="fw-bold text-dark mb-3"><i class="fas fa-user-plus text-primary me-2"></i>Nuovo Arciere</h5>
                         <form id="registrationForm">
                             <div class="mb-3">
-                                <label class="form-label">Cognome Arciere</label>
-                                <input type="text" id="regLastName" class="form-control" placeholder="es. Neri" required>
+                                <label class="form-label">Cognome Atleta</label>
+                                <input type="text" id="regLastName" class="form-control" placeholder="es. Rossi" required>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Nome Arciere</label>
-                                <input type="text" id="regFirstName" class="form-control" placeholder="es. Luca" required>
+                                <label class="form-label">Nome Atleta</label>
+                                <input type="text" id="regFirstName" class="form-control" placeholder="es. Mario" required>
                             </div>
                             <div class="row">
                                 <div class="col-6 mb-3">
                                     <label class="form-label">Sesso</label>
                                     <select id="regGender" class="form-select" required>
-                                        <option value="M">Maschio (M)</option>
-                                        <option value="F">Femmina (F)</option>
-                                    </select>
+                                        </select>
                                 </div>
                                 <div class="col-6 mb-3">
                                     <label class="form-label">Anno Nascita</label>
-                                    <input type="number" id="regBirthYear" class="form-control" placeholder="es. 1995" min="1930" max="2026" required>
+                                    <input type="number" id="regBirthYear" class="form-control" placeholder="es. 2010" min="1930" max="2026" required>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Divisione / Specialità</label>
                                 <select id="regSpecialty" class="form-select" required>
-                                    <option value="">-- Seleziona Divisione --</option>
+                                    <option value="" disabled selected>-- Seleziona Divisione --</option>
+                                    <option value="Arco Olimpico">Arco Olimpico (OL)</option>
+                                    <option value="Compound">Compound (CO)</option>
+                                    <option value="Arco Nudo">Arco Nudo (AN)</option>
                                 </select>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Classe d'Età</label>
-                                <select id="regClasse" class="form-select" required>
-                                    <option value="">-- Seleziona Classe --</option>
+                                <select id="regClasse" class="form-select" required disabled>
+                                    <option value="" disabled selected>-- Scegli prima la divisione --</option>
                                 </select>
                             </div>
-
-                            <input type="hidden" id="regWeightCategory" value="Standard Fitarco">
-                            <input type="hidden" id="regBelt" value="Atleta Nazionale">
-                            <button type="submit" class="btn btn-danger w-100 fw-bold py-2 shadow-sm">REGISTRA ARCIERE</button>
+                            <input type="hidden" id="regBelt" value="Base">
+                            <input type="hidden" id="regWeightCategory" value="Open">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold py-2 shadow-sm">REGISTRA ARCIERE</button>
                         </form>
                     </div>
 
                     <div class="tab-pane fade" id="panelSquadra" role="tabpanel">
-                        <h5 class="fw-bold text-success mb-3"><i class="fas fa-users text-success me-2"></i>Nuova Squadra Fitarco</h5>
+                        <h5 class="fw-bold text-success mb-3"><i class="fas fa-users text-success me-2"></i>Nuovo Team / Squadra</h5>
                         <form id="teamForm">
                             <div class="mb-3">
-                                <label class="form-label">Nome Squadra / Club</label>
-                                <input type="text" id="teamName" class="form-control" placeholder="es. Arcieri del Sole Team A" required>
+                                <label class="form-label">Nome Squadra</label>
+                                <input type="text" id="teamName" class="form-control" placeholder="es. Arcieri del Lazio A" required>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Componenti (Separati da virgola)</label>
-                                <textarea id="teamMembers" class="form-control" rows="2" placeholder="es. Guido Neri, Gianni Rossi, Fabio Verdi" required></textarea>
+                            
+                            <div class="border p-3 rounded bg-light mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <label class="form-label m-0">Componenti Squadra</label>
+                                    <button type="button" id="btnAddTeamMember" class="btn btn-success btn-sm fw-bold">
+                                        <i class="fas fa-plus"></i> + Arciere
+                                    </button>
+                                </div>
+                                <div id="teamMembersContainer">
+                                    </div>
                             </div>
+
                             <div class="row">
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Sesso</label>
+                                    <label class="form-label">Sesso Squadra</label>
                                     <select id="teamGender" class="form-select" required>
-                                        <option value="M">Maschile (M)</option>
-                                        <option value="F">Femminile (F)</option>
-                                        <option value="Misto">Misto (X)</option>
-                                    </select>
+                                        </select>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label class="form-label">Classe d'Età</label>
-                                    <select id="teamClasse" class="form-select" required>
-                                        <option value="">-- Seleziona --</option>
-                                    </select>
+                                    <label class="form-label">Anno di Riferimento</label>
+                                    <input type="number" id="teamAnno" class="form-control" placeholder="es. 2012" min="1930" max="2026" required>
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Divisione Arco</label>
-                                <select id="teamSpecialty" class="form-select" required>
-                                    <option value="Arco Olimpico (Ricurvo)">Arco Olimpico</option>
-                                    <option value="Arco Compound">Arco Compound</option>
-                                    <option value="Arco Nudo">Arco Nudo</option>
-                                </select>
+                                <label class="form-label">Classe Squadra / Divisione</label>
+                                <input type="text" id="teamClasse" class="form-control" placeholder="es. Ragazzi OL o Senior AN" required>
                             </div>
-                            <input type="hidden" id="teamWeightCategory" value="Standard Fitarco">
-                            <input type="hidden" id="teamBelt" value="Team Nazionale">
+                            <input type="hidden" id="teamSpecialty" value="Squadre">
+                            <input type="hidden" id="teamBelt" value="Squadra">
+                            <input type="hidden" id="teamWeightCategory" value="Open">
                             <button type="submit" class="btn btn-success w-100 fw-bold py-2 shadow-sm">REGISTRA SQUADRA</button>
                         </form>
                     </div>
@@ -171,48 +171,25 @@
 
         <div class="col-lg-8">
             <div class="table-container m-0">
-                <div class="section-title"><i class="fas fa-user text-danger"></i> Arcieri Iscritti Individuali</div>
+                <div class="section-title"><i class="fas fa-list text-primary"></i> Elenco Iscritti Competizione (Singoli e Squadre)</div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead>
                             <tr>
-                                <th>Arciere</th>
-                                <th>Divisione</th>
-                                <th>Classe</th>
+                                <th>Arciere / Squadra</th>
+                                <th>Classe d'Età / Divisione</th>
                                 <th>Sesso</th>
-                                <th>Nota Categoria</th>
-                                <th class="text-end">Azione</th>
+                                <th>Specialità / Tipo</th>
+                                <th>Grado</th>
+                                <th>Dettaglio</th>
                             </tr>
                         </thead>
                         <tbody id="iscrittiGaraList">
-                            <tr><td colspan="6" class="text-center text-muted py-3">Nessun arciere registrato.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-3">Nessun iscritto trovato.</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
-
-            <div class="table-container">
-                <div class="section-title text-success"><i class="fas fa-users"></i> Riepilogo Squadre / Team</div>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                            <tr>
-                                <th>Nome Squadra</th>
-                                <th>Classe</th>
-                                <th>Sesso</th>
-                                <th>Spec.</th>
-                                <th>Cintura</th>
-                                <th>Peso</th>
-                                <th class="text-end">Azione</th>
-                            </tr>
-                        </thead>
-                        <tbody id="teamList">
-                            <tr><td colspan="7" class="text-center text-muted py-3">Nessuna squadra registrata.</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
         </div>
     </div>
 </div>
@@ -220,20 +197,5 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="script.js"></script>
-<script src="script2.js"></script>
-<script>
-    // Funzione helper per mappare la chiamata dell'export sul bottone
-    async function esportaDatiCSV() {
-        if (typeof window.supabaseClient === 'undefined') return alert("Errore di caricamento del database.");
-        // Chiama la logica interna a script2.js
-        if (typeof initPage === 'function') {
-            // Nota: Se la funzione di esportazione ha un nome esatto in script2.js sostituiscila qui, 
-            // altrimenti lo script2.js di solito assegna eventi ai trigger o esporta globalmente.
-            const eventId = sessionStorage.getItem('selectedEventId');
-            if(!eventId) return alert("Sessione non valida.");
-            console.log("Esecuzione esportazione CSV caricata da script2...");
-        }
-    }
-</script>
 </body>
 </html>
