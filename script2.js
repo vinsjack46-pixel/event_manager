@@ -1,5 +1,5 @@
 // ==========================================================================
-// SCRIPT2.JS - MOTORE KARATE COMPLETO (CON COMPONENTI DEFAULT E STILE UNIFORMATO)
+// SCRIPT2.JS - MOTORE KARATE COMPLETO (STILE UNIFORMATO, COMPONENTI E STRUTTURA LOGICA NATURALE)
 // ==========================================================================
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
@@ -67,6 +67,9 @@ async function initKarateDashboard() {
     document.getElementById('team_gender')?.addEventListener('change', handleSpecialtyChange);
     document.getElementById('specialty')?.addEventListener('change', handleSpecialtyChange);
     document.getElementById('athleteForm')?.addEventListener('submit', addEntity);
+
+    // Inizializza i 3 campi vuoti fin dall'avvio
+    toggleRegMode();
 }
 
 function toggleRegMode() {
@@ -74,6 +77,7 @@ function toggleRegMode() {
     document.getElementById('individualFields').style.display = isTeam ? 'none' : 'block';
     document.getElementById('teamFields').style.display = isTeam ? 'block' : 'none';
     
+    // Gestione campi richiesti principali
     document.getElementById('first_name').required = !isTeam;
     document.getElementById('last_name').required = !isTeam;
     document.getElementById('birthdate').required = !isTeam;
@@ -89,6 +93,12 @@ function toggleRegMode() {
             }
         }
     }
+
+    // Risoluzione errore "not focusable": l'attributo required segue la visibilità della scheda team
+    const memberInputs = document.querySelectorAll('.member-input');
+    memberInputs.forEach(input => {
+        input.required = isTeam;
+    });
 }
 
 window.addMemberField = function(val = "") {
@@ -96,9 +106,13 @@ window.addMemberField = function(val = "") {
     if (!cont) return;
     const c = cont.children.length;
     if (c >= 6) return alert("Massimo 6 componenti per squadra.");
+    
+    const isTeam = document.querySelector('input[name="regType"]:checked')?.value === 'team';
+    const isRequired = isTeam ? "required" : "";
+
     const d = document.createElement('div');
     d.className = "col-md-4 mb-2";
-    d.innerHTML = `<div class="input-group input-group-sm"><span class="input-group-text">${c+1}</span><input type="text" class="form-control member-input" value="${val}" required><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button></div>`;
+    d.innerHTML = `<div class="input-group input-group-sm"><span class="input-group-text">${c+1}</span><input type="text" class="form-control member-input" value="${val}" ${isRequired}><button type="button" class="btn btn-outline-danger" onclick="this.parentElement.parentElement.remove()">×</button></div>`;
     cont.appendChild(d);
 };
 
@@ -153,7 +167,6 @@ function handleSpecialtyChange() {
     }
 }
 
-// TABELLE E CONTEGGI ATLETI IN TEMPO REALE
 async function fetchAthletes() {
     const ev = sessionStorage.getItem('selectedEventId');
     const { data } = await sb.from('atleti').select('*').eq('society_id', window.currentSocietyId).eq('event_id', ev);
@@ -173,8 +186,8 @@ async function fetchAthletes() {
             <td>${a.belt}</td>
             <td>${a.weight_category}</td>
             <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editAthlete('${a.id}')"><i class="fas fa-edit"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="delA('${a.id}')"><i class="fas fa-trash"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editAthlete('${a.id}')"><i class="fas fa-edit"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="delA('${a.id}')"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>`;
     });
@@ -192,21 +205,20 @@ async function fetchTeams() {
     tbody.innerHTML = "";
     data?.forEach(t => {
         tbody.innerHTML += `<tr>
-            <td><strong>${t.team_name}</strong><br><small class="text-muted">${t.members.join(", ")}</small></td>
+            <td><strong class="text-success"><i class="fas fa-users me-1"></i> ${t.team_name}</strong><br><small class="text-muted">Componenti: ${t.members.join(", ")}</small></td>
             <td>${t.classe}</td>
             <td>${t.gender}</td>
             <td>${t.specialty}</td>
             <td>${t.belt}</td>
             <td>${t.weight_category||'-'}</td>
             <td class="text-end">
-                <button type="button" class="btn btn-sm btn-outline-warning border-0 me-1" onclick="editTeam('${t.id}')"><i class="fas fa-edit"></i></button>
-                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="delT('${t.id}')"><i class="fas fa-trash"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-primary me-1" onclick="editTeam('${t.id}')"><i class="fas fa-edit"></i></button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="delT('${t.id}')"><i class="fas fa-trash-alt"></i></button>
             </td>
         </tr>`;
     });
 }
 
-// COMPILAZIONE DEL FORM IN MODALITÀ MODIFICA
 window.editAthlete = async function(id) {
     editingTeamId = null;
     const { data: a } = await sb.from('atleti').select('*').eq('id', id).single();
@@ -239,12 +251,12 @@ window.editAthlete = async function(id) {
 
     editingAthleteId = id;
     
-    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
+    const btn = document.getElementById('submitBtn');
     if(btn) {
-        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE ATLETA';
-        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3"; 
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>AGGIORNA DATI ATLETA';
+        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3 text-dark"; 
     }
+    document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
 };
 
 window.editTeam = async function(id) {
@@ -282,18 +294,17 @@ window.editTeam = async function(id) {
 
     editingTeamId = id;
     
-    // --- CAMBIO COLORE IN GIALLO (btn-warning) ---
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
+    const btn = document.getElementById('submitBtn');
     if(btn) {
-        btn.innerHTML = '<i class="fas fa-save me-2"></i>SALVA MODIFICHE SQUADRA';
-        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3";
+        btn.innerHTML = '<i class="fas fa-save me-2"></i>AGGIORNA DATI SQUADRA';
+        btn.className = "btn btn-warning w-100 fw-bold py-3 shadow-sm rounded-3 text-dark";
     }
+    document.getElementById('athleteForm').scrollIntoView({ behavior: 'smooth' });
 };
 
 window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
 window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
 
-// GESTIONE SCRITTURA (INSERIMENTO O AGGIORNAMENTO)
 async function addEntity(e) {
     e.preventDefault();
     const ev = sessionStorage.getItem('selectedEventId');
@@ -329,10 +340,10 @@ async function addEntity(e) {
         }
     }
     
-    // Ripristino stato iniziale del form e del colore del pulsante
     editingAthleteId = null;
     editingTeamId = null;
-    const btn = document.querySelector('#athleteForm button[type="submit"]');
+    
+    const btn = document.getElementById('submitBtn');
     if(btn) {
         btn.innerHTML = '<i class="fas fa-save me-2"></i>CONFERMA E REGISTRA';
         btn.className = "btn btn-primary w-100 fw-bold py-3 shadow-sm rounded-3"; 
@@ -341,13 +352,7 @@ async function addEntity(e) {
     document.getElementById('athleteForm').reset();
     document.getElementById('membersContainer').innerHTML = "";
     
-    // Rigenera i 3 campi di default per la squadra se l'utente si trovava già sul tab squadra
-    if (document.querySelector('input[name="regType"]:checked').value === 'team') {
-        for (let i = 0; i < 3; i++) {
-            window.addMemberField("");
-        }
-    }
-    
+    toggleRegMode();
     fetchAthletes(); fetchTeams();
 }
 
