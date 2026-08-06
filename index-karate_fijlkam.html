@@ -8,8 +8,16 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --primary-color: #1e90ff; --bg-gradient: linear-gradient(135deg, #00ced1 0%, #1e90ff 100%); }
-        body { font-family: 'Inter', sans-serif; background: #f4f7f9; margin: 0; padding-bottom: 50px; }
+        :root { 
+            --primary-color: #dc3545; /* Rosso Karate (Allineato a bg-danger) */
+            --primary-dark: #bd2130;  /* Rosso scuro per stati hover */
+        }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background: #f4f7f9; 
+            margin: 0; 
+            padding-bottom: 50px; 
+        }
         
         .top-bar { 
             background: white; 
@@ -65,6 +73,13 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             margin-top: 25px;
         }
+
+        /* Outline e stati personalizzati per i radio bottoni di selezione modalità */
+        .btn-check:checked + .btn-outline-danger {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -74,7 +89,7 @@
         <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary rounded-pill">
             <i class="fas fa-arrow-left"></i>
         </a>
-        <h4 id="societyNameDisplay" class="m-0 text-primary fw-bold" style="font-size: 1.1rem;">Caricamento...</h4>
+        <h4 id="societyNameDisplay" class="m-0 text-danger fw-bold" style="font-size: 1.1rem;">Caricamento...</h4>
     </div>
 
     <div class="text-center" style="flex: 1;">
@@ -90,7 +105,7 @@
 
 <div class="container">
     <div class="main-form-card">
-        <h3 class="fw-bold mb-1"><i class="fas fa-edit text-primary me-2"></i>Iscrizione</h3>
+        <h3 class="fw-bold mb-1"><i class="fas fa-edit text-danger me-2"></i>Iscrizione</h3>
         <p class="text-muted mb-4 small">Evento: <span id="eventNameDisplay" class="fw-bold text-dark">---</span></p>
         
         <form id="athleteForm">
@@ -100,12 +115,12 @@
                 <div class="col-12">
                     <div class="btn-group w-100" role="group">
                         <input type="radio" class="btn-check" name="regType" id="typeIndividual" value="individual" checked onchange="toggleRegMode()">
-                        <label class="btn btn-outline-primary py-2 fw-semibold" for="typeIndividual">
+                        <label class="btn btn-outline-danger py-2 fw-semibold" for="typeIndividual">
                             <i class="fas fa-user me-2"></i>Atleta Singolo
                         </label>
 
                         <input type="radio" class="btn-check" name="regType" id="typeTeam" value="team" onchange="toggleRegMode()">
-                        <label class="btn btn-outline-primary py-2 fw-semibold" for="typeTeam">
+                        <label class="btn btn-outline-danger py-2 fw-semibold" for="typeTeam">
                             <i class="fas fa-users me-2"></i>Team / Squadra
                         </label>
                     </div>
@@ -142,8 +157,8 @@
                 <div id="teamFields" style="display: none;">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-bold text-primary small text-uppercase">Nome della Squadra</label>
-                            <input type="text" id="team_name" class="form-control form-control-lg border-primary" placeholder="Es: Ken Zen Ichiro Squadra A">
+                            <label class="form-label fw-bold text-danger small text-uppercase">Nome della Squadra</label>
+                            <input type="text" id="team_name" class="form-control form-control-lg border-danger" placeholder="Es: Ken Zen Ichiro Squadra A">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label small fw-bold text-secondary text-uppercase">Genere Squadra</label>
@@ -202,7 +217,7 @@
 
                 <div class="row mt-5">
                     <div class="col-12">
-                        <button type="submit" id="submitBtn" class="btn btn-primary w-100 fw-bold py-3 shadow-sm rounded-3">
+                        <button type="submit" id="submitBtn" class="btn btn-danger w-100 fw-bold py-3 shadow-sm rounded-3">
                             <i class="fas fa-save me-2"></i>CONFERMA E REGISTRA
                         </button>
                     </div>
@@ -219,7 +234,7 @@
     </div>
 
     <div class="table-container">
-        <div class="section-title"><i class="fas fa-user text-primary"></i> Atleti Iscritti</div>
+        <div class="section-title text-danger"><i class="fas fa-user"></i> Atleti Iscritti</div>
         <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead class="table-light">
