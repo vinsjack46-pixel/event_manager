@@ -71,7 +71,7 @@ async function caricaListaEventi() {
             let htmlDest = "index-judo.html";
             if (sportId === "karate") { badgeColor = "bg-danger"; htmlDest = "index-karate.html"; }
             if (sportId === "fitarco") { badgeColor = "bg-success text-white"; htmlDest = "index-fitarco.html"; }
-            if (sportId === "karate_fijlkam") { badgeColor = "bg-warning"; htmlDest = "index-karate_fijlkam.html"; }
+            if (sportId === "karate_fijlkam") { badgeColor = "bg-danger"; htmlDest = "index-karate_fijlkam.html"; }
 
             const card = document.createElement('div');
             card.className = "col-md-6 col-lg-4 mb-4";
