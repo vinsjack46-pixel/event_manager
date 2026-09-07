@@ -7,17 +7,16 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
     <style>
         :root {
-            --primary-color: #0a58ca;
+            --primary-color: #0a58ca; /* Allineato perfettamente a Judo */
             --bg-accent: #f0f4fc;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #f4f7f9;
+            background: #f4f7f9; /* Rimosso il gradiente, ora è lo stesso sfondo pulito della dashboard */
             margin: 0;
             padding-bottom: 50px;
         }
@@ -44,6 +43,7 @@
             margin-bottom: 5px;
         }
 
+        /* Stile Card Evento Grid - Uguale a quello che genera lo script */
         .event-card {
             background: white;
             border: 1px solid #eef2f5;
@@ -80,13 +80,14 @@
         <a href="admin.html" id="btnAdmin" class="btn btn-sm btn-outline-warning fw-bold d-none">
             <i class="bi bi-shield-lock me-1"></i> Area Admin
         </a>
-        <button onclick="logout()" class="btn btn-sm btn-danger px-3 fw-bold">
+        <button onclick="window.logout()" class="btn btn-sm btn-danger px-3 fw-bold">
             <i class="fas fa-sign-out-alt me-1"></i> Esci
         </button>
     </div>
 </div>
 
 <div class="main-container">
+    
     <div class="mb-4 text-center text-md-start">
         <h2 class="page-header-title">Seleziona Competizione</h2>
         <p class="text-muted m-0">Scegli l'evento attivo in programma per gestire le iscrizioni dei tuoi atleti e dei team.</p>
@@ -100,6 +101,7 @@
             <p class="text-muted mt-2">Ricerca competizioni attive in corso...</p>
         </div>
     </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -191,14 +193,6 @@
             console.error("Errore caricamento eventi:", err);
             container.innerHTML = `<div class="col-12 text-center py-5 text-danger">Errore nel caricamento degli eventi. Prova a ricaricare la pagina.</div>`;
         }
-    }
-
-    async function logout() {
-        const client = window.sb || window.supabaseClient || window.supabase;
-        if (client) {
-            await client.auth.signOut();
-        }
-        window.location.href = 'login.html';
     }
 
     document.addEventListener('DOMContentLoaded', initPage);
