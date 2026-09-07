@@ -6,7 +6,7 @@
     <title>Caricamento in corso...</title>
     <style>
         body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f8f9fa; margin: 0; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #0d6efd; border-radius: 50%; width: 35px; height: 35px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -14,6 +14,30 @@
     <div class="loader"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        // Inserisci qui l'URL e la Key presi dal tuo script.js
+        const SUPABASE_URL = 'INSERISCI_QUI_IL_TUO_SUPABASE_URL';
+        const SUPABASE_KEY = 'INSERISCI_QUI_LA_TUA_ANON_KEY';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function checkAuthAndRedirect() {
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (session) {
+                    window.location.replace('scelta-evento.html');
+                } else {
+                    window.location.replace('login.html');
+                }
+            } catch (error) {
+                console.error("Errore sessione:", error);
+                window.location.replace('login.html');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', checkAuthAndRedirect);
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
