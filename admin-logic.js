@@ -19,7 +19,7 @@ async function checkAdminAccess() {
     try {
         const client = getSupabaseClient();
         const { data: { user }, error } = await client.auth.getUser();
-        const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"]; 
+        const authorizedAdmins = [ "19vincenzo89@gmail.com"]; 
 
         if (error || !user || !authorizedAdmins.includes(user.email)) {
             alert("Accesso negato: Non sei autorizzato a vedere questa pagina.");
