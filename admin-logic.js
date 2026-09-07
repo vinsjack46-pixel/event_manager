@@ -252,7 +252,6 @@ async function fetchGlobalData() {
     }
 }
 
-// RENDER TABELLE SANIFICATO (Protezione XSS)
 function renderTables(atleti, teams) {
     const listInd = document.getElementById('adminAthleteList');
     const listTeam = document.getElementById('adminTeamList');
