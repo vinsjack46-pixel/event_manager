@@ -13,29 +13,34 @@
 <body>
     <div class="loader"></div>
 
-    <script type="module">
-        // Importa l'istanza Supabase già configurata da script.js
-        import { supabase } from './script.js';
+    <!-- 1. Carica la libreria di Supabase da CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- 2. Carica il tuo script.js dove viene definita l'istanza di supabase -->
+    <script src="script.js"></script>
 
+    <!-- 3. Controlla lo stato della sessione e reindirizza -->
+    <script>
         async function checkAuthAndRedirect() {
             try {
-                // Recupera la sessione corrente dell'utente
+                // Recupera la sessione dal client supabase creato dentro script.js
                 const { data: { session } } = await supabase.auth.getSession();
 
                 if (session) {
-                    // Utente autenticato -> vai a scelta evento
+                    // Utente già autenticato -> invia alla scelta evento
                     window.location.replace('scelta-evento.html');
                 } else {
-                    // Utente NON autenticato -> vai al login
+                    // Utente NON autenticato -> invia al login
                     window.location.replace('login.html');
                 }
             } catch (error) {
-                console.error("Errore durante il reindirizzamento:", error);
+                console.error("Errore durante il controllo sessione:", error);
                 window.location.replace('login.html');
             }
         }
 
-        checkAuthAndRedirect();
+        // Avvia il controllo subito dopo il caricamento della pagina
+        window.addEventListener('DOMContentLoaded', checkAuthAndRedirect);
     </script>
 </body>
 </html>
