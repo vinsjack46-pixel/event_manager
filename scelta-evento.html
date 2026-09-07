@@ -121,7 +121,7 @@
                     window.location.href = 'login.html';
                 } else {
                     // MODIFICA INIZIO: Mostra il pulsante solo se l'utente risulta tra gli admin autorizzati
-                    const authorizedAdmins = ["19vincenzo89@gmail.com"];
+                    const authorizedAdmins = ["vinsjack46@gmail.com","19vincenzo89@gmail.com"];
                     if (user.email && authorizedAdmins.includes(user.email.toLowerCase())) {
                         const btnAdmin = document.getElementById('btnAdmin');
                         if (btnAdmin) btnAdmin.classList.remove('d-none');
