@@ -77,9 +77,11 @@
         </div>
     </div>
     <div class="d-flex align-items-center gap-2">
+        <!-- MODIFICA INIZIO: Pulsante nascosto di default tramite id="btnAdmin" e classe "d-none" -->
         <a href="admin.html" id="btnAdmin" class="btn btn-sm btn-outline-warning fw-bold d-none">
-            <i class="bi bi-shield-lock me-1"></i> Area Admin
+            <i class="fas fa-user-shield me-1"></i> Area Admin
         </a>
+        <!-- MODIFICA FINE -->
         <button onclick="window.logout()" class="btn btn-sm btn-danger px-3 fw-bold">
             <i class="fas fa-sign-out-alt me-1"></i> Esci
         </button>
@@ -109,93 +111,26 @@
 <script src="script.js"></script>
 
 <script>
-    const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
-
-    function escapeHTML(str) {
-        if (typeof str !== 'string') return str || '';
-        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-    }
-
-    async function initPage() {
-        const client = window.sb || window.supabaseClient || window.supabase;
-
-        if (!client) {
-            setTimeout(initPage, 200);
-            return;
-        }
-
-        try {
-            const { data: { user }, error } = await client.auth.getUser();
-
-            if (error || !user) {
-                window.location.href = 'login.html';
-                return;
+    // Controllo di sicurezza rapido integrato con l'istanza globale 'sb' di script.js
+    document.addEventListener('DOMContentLoaded', async () => {
+        setTimeout(async () => {
+            const client = window.sb || window.supabaseClient || window.supabase;
+            if (client) {
+                const { data: { user } } = await client.auth.getUser();
+                if (!user) {
+                    window.location.href = 'login.html';
+                } else {
+                    // MODIFICA INIZIO: Mostra il pulsante solo se l'utente risulta tra gli admin autorizzati
+                    const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+                    if (user.email && authorizedAdmins.includes(user.email.toLowerCase())) {
+                        const btnAdmin = document.getElementById('btnAdmin');
+                        if (btnAdmin) btnAdmin.classList.remove('d-none');
+                    }
+                    // MODIFICA FINE
+                }
             }
-
-            const btnAdmin = document.getElementById('btnAdmin');
-            if (btnAdmin && authorizedAdmins.includes(user.email)) {
-                btnAdmin.classList.remove('d-none');
-            }
-
-            loadActiveEvents(client);
-
-        } catch (err) {
-            console.error("Errore durante l'inizializzazione:", err);
-            window.location.href = 'login.html';
-        }
-    }
-
-    async function loadActiveEvents(client) {
-        const container = document.getElementById('eventListContainer');
-        
-        try {
-            const { data: eventi, error } = await client.from('eventi').select('*').order('data_evento', { ascending: true });
-
-            if (error) throw error;
-
-            if (!eventi || eventi.length === 0) {
-                container.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <i class="fas fa-calendar-times text-muted fs-1 mb-3"></i>
-                        <h5>Nessun evento attivo</h5>
-                        <p class="text-muted">Al momento non ci sono competizioni disponibili.</p>
-                    </div>`;
-                return;
-            }
-
-            container.innerHTML = "";
-            eventi.forEach(ev => {
-                const safeName = escapeHTML(ev.nome);
-                const safeLocation = escapeHTML(ev.luogo || 'Sede da definire');
-                const safeSport = escapeHTML(ev.sport_id ? ev.sport_id.toUpperCase() : 'KARATE');
-                const safeDate = escapeHTML(ev.data_evento);
-                const safeId = escapeHTML(ev.id);
-
-                container.innerHTML += `
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card event-card h-100 p-3 d-flex flex-column justify-content-between">
-                            <div>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-primary-subtle text-primary badge-sport">${safeSport}</span>
-                                    <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>${safeDate}</small>
-                                </div>
-                                <h5 class="fw-bold text-dark mb-1">${safeName}</h5>
-                                <p class="text-muted small mb-3"><i class="fas fa-map-marker-alt me-1"></i>${safeLocation}</p>
-                            </div>
-                            <a href="dashboard.html?event_id=${safeId}" class="btn btn-primary w-100 fw-bold">
-                                Gestisci Iscrizioni <i class="fas fa-arrow-right ms-1"></i>
-                            </a>
-                        </div>
-                    </div>`;
-            });
-
-        } catch (err) {
-            console.error("Errore caricamento eventi:", err);
-            container.innerHTML = `<div class="col-12 text-center py-5 text-danger">Errore nel caricamento degli eventi. Prova a ricaricare la pagina.</div>`;
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', initPage);
+        }, 500); // Piccolo delay per essere sicuri che Supabase sia agganciato a window
+    });
 </script>
 </body>
 </html>
