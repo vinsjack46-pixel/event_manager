@@ -6,20 +6,9 @@ let allAthletes = [], allTeams = [];
 let isCreatingNewSport = false;
 let istanzaModale = null; // Memorizza l'oggetto della modale a comparsa
 
-// Funzione di utilità per sanificare gli input ed evitare vulnerabilità XSS
-function escapeHTML(str) {
-    if (typeof str !== 'string') return str || '';
-    return str
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
 // Funzione di utilità per recuperare in modo sicuro il client Supabase globale
 function getSupabaseClient() {
-    const client = window.supabaseClient || window.sb || window.supabase;
+    const client = window.supabaseClient || window.sb;
     if (!client) {
         throw new Error("Il client di Supabase non è ancora pronto o non è stato inizializzato in script.js");
     }
@@ -40,7 +29,6 @@ async function checkAdminAccess() {
         return true;
     } catch (err) {
         console.error("Errore di autenticazione critica:", err.message);
-        window.location.href = "login.html";
         return false;
     }
 }
@@ -48,7 +36,8 @@ async function checkAdminAccess() {
 async function initAdmin() {
     console.log("Verifica autorizzazione in corso...");
     
-    if (!window.supabaseClient && !window.sb && !window.supabase) {
+    // Se script.js impiega qualche millisecondo in più ad inizializzare Supabase, lo attendiamo
+    if (!window.supabaseClient && !window.sb) {
         console.warn("Supabase non pronto. Attesa modulo di inizializzazione...");
         setTimeout(initAdmin, 200);
         return;
@@ -57,10 +46,12 @@ async function initAdmin() {
     const isAuthorized = await checkAdminAccess();
     if (!isAuthorized) return;
     
+    // Inizializza l'istanza dell'oggetto Modale se l'elemento esiste
     if (document.getElementById('modalEditor')) {
         istanzaModale = new bootstrap.Modal(document.getElementById('modalEditor'));
     }
     
+    // Caricamento iniziale dei dati
     await refreshSportDropdowns();
     await loadFilterEvents();
     await fetchGlobalData();
@@ -86,8 +77,7 @@ async function refreshSportDropdowns() {
         if (selettoreJson) selettoreJson.innerHTML = "";
 
         sports?.forEach(s => {
-            const safeSportId = escapeHTML(s.sport_id);
-            const opt = `<option value="${safeSportId}">${safeSportId.toUpperCase()}</option>`;
+            const opt = `<option value="${s.sport_id}">${s.sport_id.toUpperCase()}</option>`;
             if (configSelect) configSelect.innerHTML += opt;
             if (eventSelect) eventSelect.innerHTML += opt;
             if (selettoreJson) selettoreJson.innerHTML += opt;
@@ -258,49 +248,26 @@ function renderTables(atleti, teams) {
     if(!listInd || !listTeam) return;
 
     listInd.innerHTML = ""; listTeam.innerHTML = "";
-    
     atleti.forEach(a => {
-        const lastName = escapeHTML(a.last_name);
-        const firstName = escapeHTML(a.first_name);
-        const eventName = escapeHTML(a.eventi?.nome || '-');
-        const societaNome = escapeHTML(a.societa?.nome || '-');
-        const classe = escapeHTML(a.classe);
-        const specialty = escapeHTML(a.specialty);
-        const belt = escapeHTML(a.belt);
-        const gender = escapeHTML(a.gender);
-        const weightCategory = escapeHTML(a.weight_category);
-
         listInd.innerHTML += `<tr>
-            <td><strong>${lastName} ${firstName}</strong><br><small class="text-muted">${eventName}</small></td>
-            <td>${societaNome}</td>
-            <td>${classe}<br><small class="text-primary">${specialty}</small></td>
-            <td><span class="badge bg-light text-dark border">${belt}</span></td>
-            <td>${gender} / ${weightCategory}</td>
-            <td class="text-end"><button onclick="deleteRecord('atleti','${escapeHTML(a.id)}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
+            <td><strong>${a.last_name} ${a.first_name}</strong><br><small class="text-muted">${a.eventi?.nome || '-'}</small></td>
+            <td>${a.societa?.nome || '-'}</td>
+            <td>${a.classe}<br><small class="text-primary">${a.specialty}</small></td>
+            <td><span class="badge bg-light text-dark border">${a.belt}</span></td>
+            <td>${a.gender} / ${a.weight_category}</td>
+            <td class="text-end"><button onclick="deleteRecord('atleti','${a.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     });
-
     teams.forEach(t => {
-        const teamName = escapeHTML(t.team_name);
-        const membersFormatted = (t.members || []).map(m => escapeHTML(m)).join(" • ");
-        const eventName = escapeHTML(t.eventi?.nome || '-');
-        const societaNome = escapeHTML(t.societa?.nome || '-');
-        const classe = escapeHTML(t.classe);
-        const specialty = escapeHTML(t.specialty);
-        const gender = escapeHTML(t.gender);
-        const belt = escapeHTML(t.belt || '-');
-        const weightCategory = escapeHTML(t.weight_category || '-');
-
         listTeam.innerHTML += `<tr class="table-success-light">
-            <td><div class="fw-bold text-success">${teamName}</div><small class="text-muted">${membersFormatted}</small><br><small class="text-muted">${eventName}</small></td>
-            <td>${societaNome}</td>
-            <td>${classe}<br><small class="text-primary">${specialty}</small></td>
-            <td>${gender}</td>
-            <td><small>${belt} / ${weightCategory}</small></td>
-            <td class="text-end"><button onclick="deleteRecord('teams','${escapeHTML(t.id)}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
+            <td><div class="fw-bold text-success">${t.team_name}</div><small class="text-muted">${t.members?.join(" • ")}</small><br><small class="text-muted">${t.eventi?.nome || '-'}</small></td>
+            <td>${t.societa?.nome || '-'}</td>
+            <td>${t.classe}<br><small class="text-primary">${t.specialty}</small></td>
+            <td>${t.gender}</td>
+            <td><small>${t.belt || '-'} / ${t.weight_category || '-'}</small></td>
+            <td class="text-end"><button onclick="deleteRecord('teams','${t.id}')" class="btn btn-sm text-danger"><i class="fas fa-trash"></i></button></td>
         </tr>`;
     });
-
     if (document.getElementById('countInd')) document.getElementById('countInd').innerText = atleti.length;
     if (document.getElementById('countTeam')) document.getElementById('countTeam').innerText = teams.length;
     if (document.getElementById('totalCounter')) document.getElementById('totalCounter').innerText = `${atleti.length + teams.length} Totali`;
@@ -335,17 +302,11 @@ async function loadFilterEvents() {
         
         if(select) select.innerHTML = '<option value="">Tutti gli Eventi</option>';
         if(scroll) scroll.innerHTML = "";
-
         eventi?.forEach(e => {
-            const safeName = escapeHTML(e.nome);
-            const safeSportId = escapeHTML(e.sport_id ? e.sport_id.toUpperCase() : 'KARATE');
-            const safeDate = escapeHTML(e.data_evento);
-            const safeId = escapeHTML(e.id);
-
-            if(select) select.innerHTML += `<option value="${safeId}">${safeName}</option>`;
+            if(select) select.innerHTML += `<option value="${e.id}">${e.nome}</option>`;
             if(scroll) scroll.innerHTML += `<div class="p-2 border-bottom d-flex justify-content-between align-items-center bg-white">
-                <small><strong>${safeName}</strong> (${safeSportId})<br>${safeDate}</small>
-                <button onclick="deleteEvent('${safeId}')" class="btn btn-sm text-danger p-0"><i class="fas fa-times"></i></button>
+                <small><strong>${e.nome}</strong> (${e.sport_id ? e.sport_id.toUpperCase() : 'KARATE'})<br>${e.data_evento}</small>
+                <button onclick="deleteEvent('${e.id}')" class="btn btn-sm text-danger p-0"><i class="fas fa-times"></i></button>
             </div>`;
         });
     } catch (err) {
