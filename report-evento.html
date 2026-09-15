@@ -3,17 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Selezione Evento | Gestione Gare</title>
+    <title>Report Iscritti Evento | Gestione Gare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root {
-            --primary-color: #0a58ca;
-            --bg-accent: #f0f4fc;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
             background: #f4f7f9;
@@ -28,40 +23,42 @@
             position: sticky; 
             top: 0; 
             z-index: 1000; 
-            margin-bottom: 40px;
+            margin-bottom: 30px;
         }
 
         .main-container { 
-            max-width: 1200px; 
+            max-width: 1300px; 
             margin: 0 auto; 
             padding: 0 20px; 
         }
 
-        .page-header-title {
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 5px;
-        }
-
-        .event-card {
+        .card-custom {
             background: white;
             border: 1px solid #eef2f5;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-            transition: all 0.25s ease;
+            margin-bottom: 25px;
+            padding: 20px;
         }
 
-        .event-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 25px rgba(10, 88, 202, 0.08);
-            border-color: var(--primary-color);
+        .table-responsive {
+            background: white;
+            border-radius: 8px;
         }
 
-        .badge-sport {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            font-weight: 700;
-            letter-spacing: 0.5px;
+        .access-denied {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .column-filter {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+            margin-top: 5px;
+            width: 100%;
         }
     </style>
 </head>
@@ -69,36 +66,135 @@
 
 <div class="top-bar d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center gap-2">
-        <i class="fas fa-trophy text-primary fs-4"></i>
+        <i class="fas fa-file-invoice text-primary fs-4"></i>
         <div>
-            <h5 class="m-0 fw-bold text-dark">Pannello Federale</h5>
-            <small class="text-muted" style="font-size: 0.75rem;">Selezione Competizioni</small>
+            <h5 class="m-0 fw-bold text-dark" id="headerEventTitle">Report Competizione</h5>
+            <small class="text-muted" id="userEmailBadge">Verifica utente...</small>
         </div>
     </div>
-    <div class="d-flex align-items-center gap-2">
-        <a href="admin.html" id="btnAdmin" class="btn btn-sm btn-outline-warning fw-bold d-none">
-            <i class="fas fa-user-shield me-1"></i> Area Admin
+    <div class="d-flex gap-2">
+        <a href="scelta-evento.html" class="btn btn-sm btn-outline-secondary fw-bold">
+            <i class="fas fa-arrow-left me-1"></i> Seleziona Eventi
         </a>
-        <button onclick="window.logout()" class="btn btn-sm btn-danger px-3 fw-bold">
+        <button onclick="window.logout ? window.logout() : location.href='login.html'" class="btn btn-sm btn-danger px-3 fw-bold">
             <i class="fas fa-sign-out-alt me-1"></i> Esci
         </button>
     </div>
 </div>
 
 <div class="main-container">
-    
-    <div class="mb-4 text-center text-md-start">
-        <h2 class="page-header-title">Seleziona Competizione</h2>
-        <p class="text-muted m-0">Scegli l'evento attivo in programma per gestire le iscrizioni o visualizzarne il report.</p>
+
+    <!-- Messaggio Accesso Negato -->
+    <div id="accessDeniedBlock" class="card-custom access-denied">
+        <i class="fas fa-lock text-danger fs-1 mb-3"></i>
+        <h4 class="fw-bold text-dark">Accesso Non Autorizzato</h4>
+        <p class="text-muted">Non disponi dei permessi necessari per visualizzare gli iscritti di questo evento.</p>
+        <a href="scelta-evento.html" class="btn btn-primary mt-2">Torna alla Selezione Eventi</a>
     </div>
 
-    <div class="row" id="eventListContainer">
-        <div class="col-12 text-center py-5">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Caricamento...</span>
+    <!-- Contenuto Report -->
+    <div id="reportContent" style="display: none;">
+        
+        <div class="card-custom d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div>
+                <span class="badge bg-primary mb-2" id="eventSportBadge">SPORT</span>
+                <h3 class="fw-bold m-0" id="eventName">Nome Evento</h3>
+                <p class="text-muted m-0 small" id="eventSubDetails"><i class="far fa-calendar-alt me-1"></i> Data | <i class="fas fa-map-marker-alt me-1"></i> Luogo</p>
             </div>
-            <p class="text-muted mt-2">Ricerca competizioni attive in corso...</p>
+            <div class="d-flex gap-2">
+                <div class="bg-light p-3 rounded text-center border">
+                    <span class="d-block text-muted small fw-bold">ATLETI INDIVIDUALI</span>
+                    <span class="fs-4 fw-bold text-primary" id="countAthletes">0</span>
+                </div>
+                <div class="bg-light p-3 rounded text-center border">
+                    <span class="d-block text-muted small fw-bold">SQUADRE / TEAM</span>
+                    <span class="fs-4 fw-bold text-success" id="countTeams">0</span>
+                </div>
+            </div>
         </div>
+
+        <!-- Tabella Atleti Individuali -->
+        <div class="card-custom">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0"><i class="fas fa-user me-2 text-primary"></i>Iscritti Individuali</h5>
+                <button onclick="clearAthleteFilters()" class="btn btn-sm btn-link text-decoration-none">
+                    <i class="fas fa-undo me-1"></i> Reset Filtri
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <!-- MODIFICA INIZIO: Intestazioni con barre di ricerca per colonna -->
+                        <tr>
+                            <th>
+                                Atleta
+                                <input type="text" id="filterAthleteName" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca atleta...">
+                            </th>
+                            <th>
+                                Società
+                                <input type="text" id="filterAthleteSociety" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca società...">
+                            </th>
+                            <th>
+                                Categoria / Specialità
+                                <input type="text" id="filterAthleteCategory" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca cat/spec...">
+                            </th>
+                            <th>
+                                Grado
+                                <input type="text" id="filterAthleteBelt" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca grado...">
+                            </th>
+                            <th>
+                                Sesso / Peso
+                                <input type="text" id="filterAthleteGenderWeight" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca sesso/peso...">
+                            </th>
+                        </tr>
+                        <!-- MODIFICA FINE -->
+                    </thead>
+                    <tbody id="athleteList">
+                        <tr><td colspan="5" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Tabella Team -->
+        <div class="card-custom">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold m-0"><i class="fas fa-users me-2 text-success"></i>Iscritti Team / Squadre</h5>
+                <button onclick="clearTeamFilters()" class="btn btn-sm btn-link text-decoration-none">
+                    <i class="fas fa-undo me-1"></i> Reset Filtri
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <!-- MODIFICA INIZIO: Intestazioni con barre di ricerca per colonna -->
+                        <tr>
+                            <th>
+                                Nome Team
+                                <input type="text" id="filterTeamName" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca team...">
+                            </th>
+                            <th>
+                                Società
+                                <input type="text" id="filterTeamSociety" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca società...">
+                            </th>
+                            <th>
+                                Categoria / Specialità
+                                <input type="text" id="filterTeamCategory" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca cat/spec...">
+                            </th>
+                            <th>
+                                Componenti
+                                <input type="text" id="filterTeamMembers" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca componente...">
+                            </th>
+                        </tr>
+                        <!-- MODIFICA FINE -->
+                    </thead>
+                    <tbody id="teamList">
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
 </div>
@@ -108,121 +204,205 @@
 <script src="script.js"></script>
 
 <script>
-    const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+    const globalAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+    let cachedAtleti = [];
+    let cachedTeams = [];
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return str || '';
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    async function initPage() {
+    async function initReport() {
         const client = window.sb || window.supabaseClient || window.supabase;
-
         if (!client) {
-            setTimeout(initPage, 150);
+            setTimeout(initReport, 150);
+            return;
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const eventId = urlParams.get('event_id');
+
+        if (!eventId) {
+            showAccessDenied();
             return;
         }
 
         try {
-            const { data: { session }, error } = await client.auth.getSession();
-
-            if (error || !session || !session.user) {
+            const { data: { session }, error: sessionErr } = await client.auth.getSession();
+            if (sessionErr || !session || !session.user) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const userEmail = session.user.email ? session.user.email.toLowerCase() : '';
+            const userEmail = session.user.email ? session.user.email.toLowerCase() : "";
+            document.getElementById('userEmailBadge').innerText = userEmail;
 
-            // Visibilità pulsante Admin
-            const btnAdmin = document.getElementById('btnAdmin');
-            if (btnAdmin && authorizedAdmins.includes(userEmail)) {
-                btnAdmin.classList.remove('d-none');
+            let isAuthorized = globalAdmins.includes(userEmail);
+
+            if (!isAuthorized) {
+                const { data: perm, error: permErr } = await client
+                    .from('permessi_eventi')
+                    .select('id')
+                    .eq('user_email', userEmail)
+                    .eq('event_id', eventId)
+                    .maybeSingle();
+
+                if (perm && !permErr) {
+                    isAuthorized = true;
+                }
             }
 
-            // Caricamento eventi e verifica permessi per i Report
-            await loadActiveEvents(client, userEmail);
-
-        } catch (err) {
-            console.error("Errore durante l'inizializzazione:", err);
-            window.location.href = 'login.html';
-        }
-    }
-
-    async function loadActiveEvents(client, userEmail) {
-        const container = document.getElementById('eventListContainer');
-        if (!container) return;
-        
-        try {
-            const { data: eventi, error } = await client.from('eventi').select('*').order('data_evento', { ascending: true });
-            if (error) throw error;
-
-            if (!eventi || eventi.length === 0) {
-                container.innerHTML = `
-                    <div class="col-12 text-center py-5">
-                        <i class="fas fa-calendar-times text-muted fs-1 mb-3"></i>
-                        <h5>Nessun evento attivo</h5>
-                    </div>`;
+            if (!isAuthorized) {
+                showAccessDenied();
                 return;
             }
 
-            // Recupera gli ID degli eventi autorizzati dalla tabella permessi_eventi
-            let allowedEventIds = [];
-            const isAdmin = authorizedAdmins.includes(userEmail);
-
-            if (!isAdmin) {
-                const { data: permData } = await client
-                    .from('permessi_eventi')
-                    .select('event_id')
-                    .eq('user_email', userEmail);
-                
-                allowedEventIds = (permData || []).map(p => p.event_id);
-            }
-
-            container.innerHTML = "";
-            eventi.forEach(ev => {
-                const safeName = escapeHTML(ev.nome);
-                const safeLocation = escapeHTML(ev.luogo || 'Sede da definire');
-                const safeSport = escapeHTML(ev.sport_id ? ev.sport_id.toUpperCase() : 'KARATE');
-                const safeDate = escapeHTML(ev.data_evento);
-                const safeId = escapeHTML(ev.id);
-
-                const hasReportAccess = isAdmin || allowedEventIds.includes(ev.id);
-
-                <!-- MODIFICA INIZIO: Pulsante Report visibile solo agli utenti autorizzati per lo specifico evento -->
-                const reportButtonHTML = hasReportAccess ? `
-                    <a href="report-evento.html?event_id=${safeId}" class="btn btn-outline-info w-100 fw-bold mt-2">
-                        <i class="fas fa-file-invoice me-1"></i> Visualizza Report
-                    </a>` : '';
-                <!-- MODIFICA FINE -->
-
-                container.innerHTML += `
-                    <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card event-card h-100 p-3 d-flex flex-column justify-content-between">
-                            <div>
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <span class="badge bg-primary-subtle text-primary badge-sport">${safeSport}</span>
-                                    <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>${safeDate}</small>
-                                </div>
-                                <h5 class="fw-bold text-dark mb-1">${safeName}</h5>
-                                <p class="text-muted small mb-3"><i class="fas fa-map-marker-alt me-1"></i>${safeLocation}</p>
-                            </div>
-                            <div>
-                                <a href="dashboard.html?event_id=${safeId}" class="btn btn-primary w-100 fw-bold">
-                                    Gestisci Iscrizioni <i class="fas fa-arrow-right ms-1"></i>
-                                </a>
-                                ${reportButtonHTML}
-                            </div>
-                        </div>
-                    </div>`;
-            });
+            document.getElementById('reportContent').style.display = 'block';
+            await loadEventDetails(client, eventId);
+            await loadEventParticipants(client, eventId);
 
         } catch (err) {
-            console.error("Errore caricamento eventi:", err);
-            container.innerHTML = `<div class="col-12 text-center py-5 text-danger">Errore nel caricamento degli eventi.</div>`;
+            console.error("Errore report:", err);
+            showAccessDenied();
         }
     }
 
-    document.addEventListener('DOMContentLoaded', initPage);
+    function showAccessDenied() {
+        document.getElementById('reportContent').style.display = 'none';
+        document.getElementById('accessDeniedBlock').style.display = 'block';
+    }
+
+    async function loadEventDetails(client, eventId) {
+        const { data: ev, error } = await client.from('eventi').select('*').eq('id', eventId).single();
+        if (error || !ev) return;
+
+        document.getElementById('headerEventTitle').innerText = ev.nome;
+        document.getElementById('eventName').innerText = ev.nome;
+        document.getElementById('eventSportBadge').innerText = (ev.sport_id || 'SPORT').toUpperCase();
+        document.getElementById('eventSubDetails').innerHTML = `<i class="far fa-calendar-alt me-1"></i> ${escapeHTML(ev.data_evento)} | <i class="fas fa-map-marker-alt me-1"></i> ${escapeHTML(ev.luogo || 'Sede N.D.')}`;
+    }
+
+    async function loadEventParticipants(client, eventId) {
+        const { data: atleti } = await client.from('atleti').select('*, societa(nome)').eq('event_id', eventId);
+        const { data: teams } = await client.from('teams').select('*, societa(nome)').eq('event_id', eventId);
+
+        cachedAtleti = atleti || [];
+        cachedTeams = teams || [];
+
+        renderAtleti(cachedAtleti);
+        renderTeams(cachedTeams);
+    }
+
+    <!-- MODIFICA INIZIO: Logica di filtraggio per colonna (Atleti e Squadre) -->
+    function applyAthleteFilters() {
+        const fName = document.getElementById('filterAthleteName').value.toLowerCase();
+        const fSoc = document.getElementById('filterAthleteSociety').value.toLowerCase();
+        const fCat = document.getElementById('filterAthleteCategory').value.toLowerCase();
+        const fBelt = document.getElementById('filterAthleteBelt').value.toLowerCase();
+        const fGw = document.getElementById('filterAthleteGenderWeight').value.toLowerCase();
+
+        const filtered = cachedAtleti.filter(a => {
+            const fullName = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase();
+            const society = (a.societa?.nome || '-').toLowerCase();
+            const category = `${a.classe || ''} ${a.specialty || ''}`.toLowerCase();
+            const belt = (a.belt || '').toLowerCase();
+            const genderWeight = `${a.gender || ''} ${a.weight_category || ''}`.toLowerCase();
+
+            return fullName.includes(fName) &&
+                   society.includes(fSoc) &&
+                   category.includes(fCat) &&
+                   belt.includes(fBelt) &&
+                   genderWeight.includes(fGw);
+        });
+
+        renderAtleti(filtered);
+    }
+
+    function applyTeamFilters() {
+        const fName = document.getElementById('filterTeamName').value.toLowerCase();
+        const fSoc = document.getElementById('filterTeamSociety').value.toLowerCase();
+        const fCat = document.getElementById('filterTeamCategory').value.toLowerCase();
+        const fMem = document.getElementById('filterTeamMembers').value.toLowerCase();
+
+        const filtered = cachedTeams.filter(t => {
+            const teamName = (t.team_name || '').toLowerCase();
+            const society = (t.societa?.nome || '-').toLowerCase();
+            const category = `${t.classe || ''} ${t.specialty || ''}`.toLowerCase();
+            const members = (t.members || []).join(' ').toLowerCase();
+
+            return teamName.includes(fName) &&
+                   society.includes(fSoc) &&
+                   category.includes(fCat) &&
+                   members.includes(fMem);
+        });
+
+        renderTeams(filtered);
+    }
+
+    function clearAthleteFilters() {
+        document.getElementById('filterAthleteName').value = '';
+        document.getElementById('filterAthleteSociety').value = '';
+        document.getElementById('filterAthleteCategory').value = '';
+        document.getElementById('filterAthleteBelt').value = '';
+        document.getElementById('filterAthleteGenderWeight').value = '';
+        renderAtleti(cachedAtleti);
+    }
+
+    function clearTeamFilters() {
+        document.getElementById('filterTeamName').value = '';
+        document.getElementById('filterTeamSociety').value = '';
+        document.getElementById('filterTeamCategory').value = '';
+        document.getElementById('filterTeamMembers').value = '';
+        renderTeams(cachedTeams);
+    }
+    <!-- MODIFICA FINE -->
+
+    function renderAtleti(atleti) {
+        const container = document.getElementById('athleteList');
+        document.getElementById('countAthletes').innerText = atleti.length;
+
+        if (atleti.length === 0) {
+            container.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Nessun atleta corrisponde ai filtri impostati.</td></tr>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        atleti.forEach(a => {
+            container.innerHTML += `
+                <tr>
+                    <td class="fw-bold">${escapeHTML(a.last_name)} ${escapeHTML(a.first_name)}</td>
+                    <td>${escapeHTML(a.societa?.nome || '-')}</td>
+                    <td>${escapeHTML(a.classe)} <br><small class="text-primary">${escapeHTML(a.specialty)}</small></td>
+                    <td><span class="badge bg-light text-dark border">${escapeHTML(a.belt)}</span></td>
+                    <td>${escapeHTML(a.gender)} / ${escapeHTML(a.weight_category)}</td>
+                </tr>`;
+        });
+    }
+
+    function renderTeams(teams) {
+        const container = document.getElementById('teamList');
+        document.getElementById('countTeams').innerText = teams.length;
+
+        if (teams.length === 0) {
+            container.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">Nessuna squadra corrisponde ai filtri impostati.</td></tr>`;
+            return;
+        }
+
+        container.innerHTML = "";
+        teams.forEach(t => {
+            const members = (t.members || []).map(m => escapeHTML(m)).join(' • ');
+            container.innerHTML += `
+                <tr>
+                    <td class="fw-bold text-success">${escapeHTML(t.team_name)}</td>
+                    <td>${escapeHTML(t.societa?.nome || '-')}</td>
+                    <td>${escapeHTML(t.classe)} <br><small class="text-primary">${escapeHTML(t.specialty)}</small></td>
+                    <td><small class="text-muted">${members || '-'}</small></td>
+                </tr>`;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', initReport);
 </script>
 </body>
 </html>
