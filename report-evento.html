@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Report Iscritti Evento | Gestione Gare</title>
+    <title>Selezione Evento | Gestione Gare</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
+        :root {
+            --primary-color: #0a58ca;
+            --bg-accent: #f0f4fc;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: #f4f7f9;
@@ -23,7 +28,7 @@
             position: sticky; 
             top: 0; 
             z-index: 1000; 
-            margin-bottom: 30px;
+            margin-bottom: 40px;
         }
 
         .main-container { 
@@ -32,24 +37,31 @@
             padding: 0 20px; 
         }
 
-        .card-custom {
+        .page-header-title {
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .event-card {
             background: white;
             border: 1px solid #eef2f5;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-            margin-bottom: 25px;
-            padding: 20px;
+            transition: all 0.25s ease;
         }
 
-        .table-responsive {
-            background: white;
-            border-radius: 8px;
+        .event-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(10, 88, 202, 0.08);
+            border-color: var(--primary-color);
         }
 
-        .access-denied {
-            display: none;
-            text-align: center;
-            padding: 60px 20px;
+        .badge-sport {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            letter-spacing: 0.5px;
         }
     </style>
 </head>
@@ -57,91 +69,36 @@
 
 <div class="top-bar d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center gap-2">
-        <i class="fas fa-file-invoice text-primary fs-4"></i>
+        <i class="fas fa-trophy text-primary fs-4"></i>
         <div>
-            <h5 class="m-0 fw-bold text-dark" id="headerEventTitle">Report Competizione</h5>
-            <small class="text-muted" id="userEmailBadge">Verifica utente...</small>
+            <h5 class="m-0 fw-bold text-dark">Pannello Federale</h5>
+            <small class="text-muted" style="font-size: 0.75rem;">Selezione Competizioni</small>
         </div>
     </div>
-    <div>
-        <button onclick="window.logout ? window.logout() : location.href='login.html'" class="btn btn-sm btn-danger px-3 fw-bold">
+    <div class="d-flex align-items-center gap-2">
+        <a href="admin.html" id="btnAdmin" class="btn btn-sm btn-outline-warning fw-bold d-none">
+            <i class="fas fa-user-shield me-1"></i> Area Admin
+        </a>
+        <button onclick="window.logout()" class="btn btn-sm btn-danger px-3 fw-bold">
             <i class="fas fa-sign-out-alt me-1"></i> Esci
         </button>
     </div>
 </div>
 
 <div class="main-container">
-
-    <!-- Messaggio Accesso Negato -->
-    <div id="accessDeniedBlock" class="card-custom access-denied">
-        <i class="fas fa-lock text-danger fs-1 mb-3"></i>
-        <h4 class="fw-bold text-dark">Accesso Non Autorizzato</h4>
-        <p class="text-muted">Non disponi dei permessi necessari per visualizzare gli iscritti di questo evento.</p>
-        <a href="scelta-evento.html" class="btn btn-primary mt-2">Torna alla Selezione Eventi</a>
+    
+    <div class="mb-4 text-center text-md-start">
+        <h2 class="page-header-title">Seleziona Competizione</h2>
+        <p class="text-muted m-0">Scegli l'evento attivo in programma per gestire le iscrizioni o visualizzarne il report.</p>
     </div>
 
-    <!-- Contenuto Report -->
-    <div id="reportContent" style="display: none;">
-        
-        <div class="card-custom d-flex justify-content-between align-items-center flex-wrap gap-3">
-            <div>
-                <span class="badge bg-primary mb-2" id="eventSportBadge">SPORT</span>
-                <h3 class="fw-bold m-0" id="eventName">Nome Evento</h3>
-                <p class="text-muted m-0 small" id="eventSubDetails"><i class="far fa-calendar-alt me-1"></i> Data | <i class="fas fa-map-marker-alt me-1"></i> Luogo</p>
+    <div class="row" id="eventListContainer">
+        <div class="col-12 text-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Caricamento...</span>
             </div>
-            <div class="d-flex gap-2">
-                <div class="bg-light p-3 rounded text-center border">
-                    <span class="d-block text-muted small fw-bold">ATLETI INDIVIDUALI</span>
-                    <span class="fs-4 fw-bold text-primary" id="countAthletes">0</span>
-                </div>
-                <div class="bg-light p-3 rounded text-center border">
-                    <span class="d-block text-muted small fw-bold">SQUADRE / TEAM</span>
-                    <span class="fs-4 fw-bold text-success" id="countTeams">0</span>
-                </div>
-            </div>
+            <p class="text-muted mt-2">Ricerca competizioni attive in corso...</p>
         </div>
-
-        <!-- Tabella Atleti Individuali -->
-        <div class="card-custom">
-            <h5 class="fw-bold mb-3"><i class="fas fa-user me-2 text-primary"></i>Iscritti Individuali</h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Atleta</th>
-                            <th>Società</th>
-                            <th>Categoria / Specialità</th>
-                            <th>Grado</th>
-                            <th>Sesso / Peso</th>
-                        </tr>
-                    </thead>
-                    <tbody id="athleteList">
-                        <tr><td colspan="5" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Tabella Team -->
-        <div class="card-custom">
-            <h5 class="fw-bold mb-3"><i class="fas fa-users me-2 text-success"></i>Iscritti Team / Squadre</h5>
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Nome Team</th>
-                            <th>Società</th>
-                            <th>Categoria / Specialità</th>
-                            <th>Componenti</th>
-                        </tr>
-                    </thead>
-                    <tbody id="teamList">
-                        <tr><td colspan="4" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
     </div>
 
 </div>
@@ -151,148 +108,121 @@
 <script src="script.js"></script>
 
 <script>
-    const globalAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+    const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return str || '';
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    async function initReport() {
+    async function initPage() {
         const client = window.sb || window.supabaseClient || window.supabase;
+
         if (!client) {
-            setTimeout(initReport, 150);
-            return;
-        }
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const eventId = urlParams.get('event_id');
-
-        if (!eventId) {
-            showAccessDenied();
+            setTimeout(initPage, 150);
             return;
         }
 
         try {
-            // 1. Verifica Sessione
-            const { data: { session }, error: sessionErr } = await client.auth.getSession();
-            if (sessionErr || !session || !session.user) {
+            const { data: { session }, error } = await client.auth.getSession();
+
+            if (error || !session || !session.user) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const userEmail = session.user.email ? session.user.email.toLowerCase() : "";
-            document.getElementById('userEmailBadge').innerText = userEmail;
+            const userEmail = session.user.email ? session.user.email.toLowerCase() : '';
 
-            // 2. Controllo Permessi (Senza RLS)
-            let isAuthorized = globalAdmins.includes(userEmail);
-
-            if (!isAuthorized) {
-                const { data: perm, error: permErr } = await client
-                    .from('permessi_eventi')
-                    .select('id')
-                    .eq('user_email', userEmail)
-                    .eq('event_id', eventId)
-                    .maybeSingle();
-
-                if (perm && !permErr) {
-                    isAuthorized = true;
-                }
+            // Visibilità pulsante Admin
+            const btnAdmin = document.getElementById('btnAdmin');
+            if (btnAdmin && authorizedAdmins.includes(userEmail)) {
+                btnAdmin.classList.remove('d-none');
             }
 
-            if (!isAuthorized) {
-                showAccessDenied();
+            // Caricamento eventi e verifica permessi per i Report
+            await loadActiveEvents(client, userEmail);
+
+        } catch (err) {
+            console.error("Errore durante l'inizializzazione:", err);
+            window.location.href = 'login.html';
+        }
+    }
+
+    async function loadActiveEvents(client, userEmail) {
+        const container = document.getElementById('eventListContainer');
+        if (!container) return;
+        
+        try {
+            const { data: eventi, error } = await client.from('eventi').select('*').order('data_evento', { ascending: true });
+            if (error) throw error;
+
+            if (!eventi || eventi.length === 0) {
+                container.innerHTML = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-calendar-times text-muted fs-1 mb-3"></i>
+                        <h5>Nessun evento attivo</h5>
+                    </div>`;
                 return;
             }
 
-            // 3. Caricamento Dati Evento e Iscritti
-            document.getElementById('reportContent').style.display = 'block';
-            await loadEventDetails(client, eventId);
-            await loadEventParticipants(client, eventId);
+            // Recupera gli ID degli eventi autorizzati dalla tabella permessi_eventi
+            let allowedEventIds = [];
+            const isAdmin = authorizedAdmins.includes(userEmail);
+
+            if (!isAdmin) {
+                const { data: permData } = await client
+                    .from('permessi_eventi')
+                    .select('event_id')
+                    .eq('user_email', userEmail);
+                
+                allowedEventIds = (permData || []).map(p => p.event_id);
+            }
+
+            container.innerHTML = "";
+            eventi.forEach(ev => {
+                const safeName = escapeHTML(ev.nome);
+                const safeLocation = escapeHTML(ev.luogo || 'Sede da definire');
+                const safeSport = escapeHTML(ev.sport_id ? ev.sport_id.toUpperCase() : 'KARATE');
+                const safeDate = escapeHTML(ev.data_evento);
+                const safeId = escapeHTML(ev.id);
+
+                const hasReportAccess = isAdmin || allowedEventIds.includes(ev.id);
+
+                <!-- MODIFICA INIZIO: Pulsante Report visibile solo agli utenti autorizzati per lo specifico evento -->
+                const reportButtonHTML = hasReportAccess ? `
+                    <a href="report-evento.html?event_id=${safeId}" class="btn btn-outline-info w-100 fw-bold mt-2">
+                        <i class="fas fa-file-invoice me-1"></i> Visualizza Report
+                    </a>` : '';
+                <!-- MODIFICA FINE -->
+
+                container.innerHTML += `
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card event-card h-100 p-3 d-flex flex-column justify-content-between">
+                            <div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="badge bg-primary-subtle text-primary badge-sport">${safeSport}</span>
+                                    <small class="text-muted"><i class="far fa-calendar-alt me-1"></i>${safeDate}</small>
+                                </div>
+                                <h5 class="fw-bold text-dark mb-1">${safeName}</h5>
+                                <p class="text-muted small mb-3"><i class="fas fa-map-marker-alt me-1"></i>${safeLocation}</p>
+                            </div>
+                            <div>
+                                <a href="dashboard.html?event_id=${safeId}" class="btn btn-primary w-100 fw-bold">
+                                    Gestisci Iscrizioni <i class="fas fa-arrow-right ms-1"></i>
+                                </a>
+                                ${reportButtonHTML}
+                            </div>
+                        </div>
+                    </div>`;
+            });
 
         } catch (err) {
-            console.error("Errore report:", err);
-            showAccessDenied();
+            console.error("Errore caricamento eventi:", err);
+            container.innerHTML = `<div class="col-12 text-center py-5 text-danger">Errore nel caricamento degli eventi.</div>`;
         }
     }
 
-    function showAccessDenied() {
-        document.getElementById('reportContent').style.display = 'none';
-        document.getElementById('accessDeniedBlock').style.display = 'block';
-    }
-
-    async function loadEventDetails(client, eventId) {
-        const { data: ev, error } = await client.from('eventi').select('*').eq('id', eventId).single();
-        if (error || !ev) return;
-
-        document.getElementById('headerEventTitle').innerText = ev.nome;
-        document.getElementById('eventName').innerText = ev.nome;
-        document.getElementById('eventSportBadge').innerText = (ev.sport_id || 'SPORT').toUpperCase();
-        document.getElementById('eventSubDetails').innerHTML = `<i class="far fa-calendar-alt me-1"></i> ${escapeHTML(ev.data_evento)} | <i class="fas fa-map-marker-alt me-1"></i> ${escapeHTML(ev.luogo || 'Sede N.D.')}`;
-    }
-
-    async function loadEventParticipants(client, eventId) {
-        // Fetch Atleti
-        const { data: atleti } = await client
-            .from('atleti')
-            .select('*, societa(nome)')
-            .eq('event_id', eventId);
-
-        // Fetch Squadre
-        const { data: teams } = await client
-            .from('teams')
-            .select('*, societa(nome)')
-            .eq('event_id', eventId);
-
-        renderAtleti(atleti || []);
-        renderTeams(teams || []);
-    }
-
-    function renderAtleti(atleti) {
-        const container = document.getElementById('athleteList');
-        document.getElementById('countAthletes').innerText = atleti.length;
-
-        if (atleti.length === 0) {
-            container.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Nessun atleta individuale iscritto.</td></tr>`;
-            return;
-        }
-
-        container.innerHTML = "";
-        atleti.forEach(a => {
-            container.innerHTML += `
-                <tr>
-                    <td class="fw-bold">${escapeHTML(a.last_name)} ${escapeHTML(a.first_name)}</td>
-                    <td>${escapeHTML(a.societa?.nome || '-')}</td>
-                    <td>${escapeHTML(a.classe)} <br><small class="text-primary">${escapeHTML(a.specialty)}</small></td>
-                    <td><span class="badge bg-light text-dark border">${escapeHTML(a.belt)}</span></td>
-                    <td>${escapeHTML(a.gender)} / ${escapeHTML(a.weight_category)}</td>
-                </tr>`;
-        });
-    }
-
-    function renderTeams(teams) {
-        const container = document.getElementById('teamList');
-        document.getElementById('countTeams').innerText = teams.length;
-
-        if (teams.length === 0) {
-            container.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">Nessuna squadra iscritta.</td></tr>`;
-            return;
-        }
-
-        container.innerHTML = "";
-        teams.forEach(t => {
-            const members = (t.members || []).map(m => escapeHTML(m)).join(' • ');
-            container.innerHTML += `
-                <tr>
-                    <td class="fw-bold text-success">${escapeHTML(t.team_name)}</td>
-                    <td>${escapeHTML(t.societa?.nome || '-')}</td>
-                    <td>${escapeHTML(t.classe)} <br><small class="text-primary">${escapeHTML(t.specialty)}</small></td>
-                    <td><small class="text-muted">${members || '-'}</small></td>
-                </tr>`;
-        });
-    }
-
-    document.addEventListener('DOMContentLoaded', initReport);
+    document.addEventListener('DOMContentLoaded', initPage);
 </script>
 </body>
 </html>
