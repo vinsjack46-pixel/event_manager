@@ -111,7 +111,7 @@
 <script src="script.js"></script>
 
 <script>
-    // Controllo di sicurezza rapido integrato con l'istanza globale 'sb' di script.js
+    // Controllo di sicurezza rapido e gestione permessi Report
     document.addEventListener('DOMContentLoaded', async () => {
         setTimeout(async () => {
             const client = window.sb || window.supabaseClient || window.supabase;
@@ -119,17 +119,61 @@
                 const { data: { user } } = await client.auth.getUser();
                 if (!user) {
                     window.location.href = 'login.html';
-                } else {
-                    // MODIFICA INIZIO: Mostra il pulsante solo se l'utente risulta tra gli admin autorizzati
-                    const authorizedAdmins = ["vinsjack46@gmail.com","19vincenzo89@gmail.com"];
-                    if (user.email && authorizedAdmins.includes(user.email.toLowerCase())) {
-                        const btnAdmin = document.getElementById('btnAdmin');
-                        if (btnAdmin) btnAdmin.classList.remove('d-none');
+                    return;
+                }
+
+                const userEmail = user.email ? user.email.toLowerCase() : '';
+                const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+                const isAdmin = authorizedAdmins.includes(userEmail);
+
+                // Mostra il pulsante Area Admin se utente admin globale
+                if (userEmail && isAdmin) {
+                    const btnAdmin = document.getElementById('btnAdmin');
+                    if (btnAdmin) btnAdmin.classList.remove('d-none');
+                }
+
+                // Recupera gli ID evento autorizzati per l'utente corrente
+                let allowedEventIds = [];
+                if (!isAdmin) {
+                    const { data: permData } = await client
+                        .from('permessi_eventi')
+                        .select('event_id')
+                        .eq('user_email', userEmail);
+                    if (permData) {
+                        allowedEventIds = permData.map(p => p.event_id);
                     }
-                    // MODIFICA FINE
+                }
+
+                // Funzione dinamica per agganciare il pulsante Report alle Card caricate da script.js
+                const injectReportButtons = () => {
+                    const links = document.querySelectorAll('#eventListContainer a[href*="event_id="]');
+                    links.forEach(link => {
+                        if (link.dataset.reportInjected) return;
+
+                        const urlParams = new URLSearchParams(link.href.split('?')[1]);
+                        const eventId = urlParams.get('event_id');
+
+                        if (eventId && (isAdmin || allowedEventIds.includes(eventId))) {
+                            const btnReport = document.createElement('a');
+                            btnReport.href = `report-evento.html?event_id=${eventId}`;
+                            btnReport.className = 'btn btn-outline-info w-100 fw-bold mt-2';
+                            btnReport.innerHTML = '<i class="fas fa-file-invoice me-1"></i> Visualizza Report';
+                            
+                            link.after(btnReport);
+                            link.dataset.reportInjected = "true";
+                        }
+                    });
+                };
+
+                // Esegue l'iniezione e osserva il container per caricamenti asincroni
+                injectReportButtons();
+                const container = document.getElementById('eventListContainer');
+                if (container) {
+                    const observer = new MutationObserver(injectReportButtons);
+                    observer.observe(container, { childList: true, subtree: true });
                 }
             }
-        }, 500); // Piccolo delay per essere sicuri che Supabase sia agganciato a window
+        }, 500); // Piccolo delay per assicurarsi che Supabase sia agganciato
     });
 </script>
 </body>
