@@ -77,6 +77,12 @@
         </div>
     </div>
     <div class="d-flex align-items-center gap-2">
+        <!-- MODIFICA INIZIO: Tasto Report mostrato solo agli utenti autorizzati -->
+        <a href="#" id="btnTopReport" class="btn btn-sm btn-outline-info fw-bold d-none">
+            <i class="fas fa-file-invoice me-1"></i> Report Gare
+        </a>
+        <!-- MODIFICA FINE -->
+
         <!-- MODIFICA INIZIO: Pulsante nascosto di default tramite id="btnAdmin" e classe "d-none" -->
         <a href="admin.html" id="btnAdmin" class="btn btn-sm btn-outline-warning fw-bold d-none">
             <i class="fas fa-user-shield me-1"></i> Area Admin
@@ -132,7 +138,7 @@
                     if (btnAdmin) btnAdmin.classList.remove('d-none');
                 }
 
-                // Recupera gli ID evento autorizzati per l'utente corrente
+                // Recupera gli ID evento autorizzati per l'utente corrente dalla tabella Supabase 'permessi_eventi'
                 let allowedEventIds = [];
                 if (!isAdmin) {
                     const { data: permData } = await client
@@ -141,6 +147,23 @@
                         .eq('user_email', userEmail);
                     if (permData) {
                         allowedEventIds = permData.map(p => p.event_id);
+                    }
+                }
+
+                // Attivazione e collegamento del tasto "Report Gare" nella Top-Bar per gli utenti autorizzati
+                const btnTopReport = document.getElementById('btnTopReport');
+                if (btnTopReport) {
+                    if (isAdmin) {
+                        const { data: firstEvent } = await client.from('eventi').select('id').limit(1).maybeSingle();
+                        if (firstEvent) {
+                            btnTopReport.href = `report-evento.html?event_id=${firstEvent.id}`;
+                        } else {
+                            btnTopReport.href = `report-evento.html`;
+                        }
+                        btnTopReport.classList.remove('d-none');
+                    } else if (allowedEventIds.length > 0) {
+                        btnTopReport.href = `report-evento.html?event_id=${allowedEventIds[0]}`;
+                        btnTopReport.classList.remove('d-none');
                     }
                 }
 
