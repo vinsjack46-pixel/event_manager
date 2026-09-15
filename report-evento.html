@@ -4,383 +4,211 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Report Evento | Gestione Gare</title>
-    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        :root {
-            --primary-color: #1e90ff;
-            --bg-color: #f4f7fe;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
-            min-height: 100vh;
-            margin: 0;
-            padding-bottom: 40px;
-        }
-
-        .navbar-custom {
-            background: white;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            padding: 15px 30px;
-        }
-
-        .card-stat {
-            background: white;
-            border: none;
-            border-radius: 16px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.04);
-            padding: 20px;
-            transition: transform 0.2s ease;
-        }
-
-        .card-stat:hover {
-            transform: translateY(-3px);
-        }
-
-        .icon-shape {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 22px;
-        }
-
-        .table-container {
-            background: white;
-            border-radius: 16px;
-            padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.04);
-            margin-top: 25px;
-        }
-
-        .table thead th {
             background-color: #f8f9fa;
-            color: #555;
-            font-weight: 600;
-            border-bottom: 2px solid #edf2f7;
-            padding: 12px 15px;
         }
-
-        .table tbody td {
-            padding: 14px 15px;
-            vertical-align: middle;
+        .navbar-custom {
+            background-color: #ffffff;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
         }
-
-        .badge-status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        .main-container {
+            padding: 30px 20px;
+        }
+        .card-custom {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            background: white;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
 
-    <!-- Top Bar Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-custom sticky-top">
-        <div class="container-fluid">
-            <a class="navbar-brand fw-bold text-primary d-flex align-items-center gap-2" href="admin.html">
-                <i class="fas fa-trophy text-warning"></i>
-                <span>Gestionale Gare</span>
+    <!-- Top Bar con Navigazione e Selettore Evento -->
+    <nav class="navbar-custom d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div class="d-flex align-items-center gap-3">
+            <a href="scelta-evento.html" class="btn btn-outline-secondary btn-sm fw-bold">
+                <i class="fas fa-arrow-left me-1"></i>Torna a Scelta Evento
             </a>
+            <h4 class="mb-0 fw-bold text-dark" id="titoloPagina">Report Evento</h4>
+        </div>
 
-            <div class="d-flex align-items-center gap-3 ms-auto">
-                <!-- Selettore dinamico evento autorizzato -->
-                <div class="d-flex align-items-center gap-2">
-                    <label for="eventSelector" class="fw-bold text-secondary mb-0 small text-nowrap d-none d-sm-inline">
-                        <i class="fas fa-filter me-1"></i>Evento:
-                    </label>
-                    <select id="eventSelector" class="form-select form-select-sm shadow-sm" style="min-width: 220px; border-radius: 8px;">
-                        <option value="">Caricamento eventi...</option>
-                    </select>
-                </div>
-
-                <a href="admin.html" class="btn btn-outline-secondary btn-sm rounded-3">
-                    <i class="fas fa-arrow-left me-1"></i> Dashboard
-                </a>
-            </div>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <label for="eventSelector" class="fw-bold text-dark mb-0 small">Seleziona Evento:</label>
+            <select id="eventSelector" class="form-select form-select-sm" style="min-width: 220px;">
+                <option value="">Caricamento eventi...</option>
+            </select>
         </div>
     </nav>
 
-    <!-- Main Content Container -->
-    <div class="container-fluid px-4 mt-4">
-        
-        <!-- Header Evento -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 id="eventTitle" class="fw-bold mb-1">Seleziona un evento</h3>
-                <p id="eventSubtitle" class="text-muted mb-0">Riepilogo e statistiche delle iscrizioni</p>
-            </div>
-            <button id="btnPrint" class="btn btn-primary rounded-3 shadow-sm" onclick="window.print()">
-                <i class="fas fa-print me-2"></i>Stampa Report
-            </button>
-        </div>
-
-        <!-- KPI Cards -->
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card-stat d-flex align-items-center gap-3">
-                    <div class="icon-shape bg-primary bg-opacity-10 text-primary">
-                        <i class="fas fa-user-ninja"></i>
-                    </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Totale Atleti Iscritti</span>
-                        <h3 id="statTotalAtleti" class="fw-bold mb-0">0</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card-stat d-flex align-items-center gap-3">
-                    <div class="icon-shape bg-success bg-opacity-10 text-success">
-                        <i class="fas fa-building"></i>
-                    </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Società Partecipanti</span>
-                        <h3 id="statTotalSocieta" class="fw-bold mb-0">0</h3>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card-stat d-flex align-items-center gap-3">
-                    <div class="icon-shape bg-warning bg-opacity-10 text-warning">
-                        <i class="fas fa-list-ol"></i>
-                    </div>
-                    <div>
-                        <span class="text-muted small fw-semibold">Categorie Attive</span>
-                        <h3 id="statTotalCategorie" class="fw-bold mb-0">0</h3>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Table Data Section -->
-        <div class="table-container">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold mb-0">Elenco Iscritti</h5>
-                <input type="text" id="searchInput" class="form-control form-control-sm w-auto" placeholder="Cerca atleta o società...">
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0" id="reportTable">
-                    <thead>
-                        <tr>
-                            <th>Atleta</th>
-                            <th>Società</th>
-                            <th>Categoria</th>
-                            <th>Sesso</th>
-                            <th>Peso</th>
-                            <th class="text-center">Stato</th>
-                        </tr>
-                    </thead>
-                    <tbody id="reportTableBody">
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
-                                <span class="spinner-border spinner-border-sm me-2"></span>Caricamento report in corso...
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+    <!-- Contenuto Principale Report -->
+    <div class="container-fluid main-container">
+        <div class="card-custom">
+            <div id="reportContent">
+                <p class="text-muted text-center py-4">Seleziona un evento dal menu in alto per visualizzare i dettagli.</p>
             </div>
         </div>
     </div>
 
-    <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
-
-    <!-- Application Logic -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // Avvio del processo disaccoppiato dal thread principale
-            setTimeout(async () => {
-                await inizializzaReport();
-            }, 0);
-        });
-
-        async function inizializzaReport() {
+        document.addEventListener('DOMContentLoaded', async () => {
             const client = window.supabaseClient || window.sb || window.supabase;
             if (!client) {
                 alert("Errore di connessione a Supabase.");
                 return;
             }
 
-            // 1. Controllo Autenticazione Utente
-            const { data: { user }, error: authError } = await client.auth.getUser();
-            if (authError || !user) {
+            // 1. Verifica utente connesso
+            const { data: { user } } = await client.auth.getUser();
+            if (!user) {
                 window.location.href = 'login.html';
                 return;
             }
 
-            const userEmail = user.email ? user.email.toLowerCase() : '';
+            const userEmail = (user.email || '').toLowerCase().trim();
             const authorizedAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
             const isAdmin = authorizedAdmins.includes(userEmail);
 
-            // 2. Lettura parametri URL
             const urlParams = new URLSearchParams(window.location.search);
             let currentEventId = urlParams.get('event_id');
+            let eventi = [];
 
-            // 3. Estrazione Eventi Autorizzati in base ai Permessi
-            let eventiAutorizzati = [];
+            // 2. Caricamento Eventi con Filtro Permessi Rigido
+            try {
+                if (isAdmin) {
+                    const { data, error } = await client.from('eventi').select('id, titolo, nome');
+                    if (error) throw error;
+                    eventi = data || [];
+                } else {
+                    // Lettura permessi associati alla mail dell'utente
+                    const { data: permessi, error: errPermessi } = await client
+                        .from('permessi_eventi')
+                        .select('event_id')
+                        .ilike('user_email', userEmail);
 
-            if (isAdmin) {
-                const { data: tuttiEventi, error } = await client
-                    .from('eventi')
-                    .select('id, nome, data_evento')
-                    .order('created_at', { ascending: false });
-                
-                if (!error && tuttiEventi) eventiAutorizzati = tuttiEventi;
-            } else {
-                const { data: permessi, error: permError } = await client
-                    .from('permessi_eventi')
-                    .select('event_id, eventi(id, nome, data_evento)')
-                    .eq('user_email', userEmail);
+                    if (errPermessi) throw errPermessi;
 
-                if (!permError && permessi) {
-                    eventiAutorizzati = permessi
-                        .filter(p => p.eventi)
-                        .map(p => p.eventi);
+                    const allowedIds = permessi ? permessi.map(p => p.event_id) : [];
+
+                    if (allowedIds.length === 0) {
+                        alert("Non disponi dei permessi per visualizzare i report di alcun evento.");
+                        window.location.href = 'scelta-evento.html';
+                        return;
+                    }
+
+                    const { data, error } = await client
+                        .from('eventi')
+                        .select('id, titolo, nome')
+                        .in('id', allowedIds);
+
+                    if (error) throw error;
+                    eventi = data || [];
                 }
-            }
-
-            // Gestione del caso senza autorizzazioni
-            if (eventiAutorizzati.length === 0) {
-                document.getElementById('reportTableBody').innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-danger py-4">
-                            <i class="fas fa-lock fa-2x mb-2 d-block"></i>
-                            Non disponi dei permessi per visualizzare i report di alcun evento.
-                        </td>
-                    </tr>`;
-                document.getElementById('eventSelector').innerHTML = '<option value="">Nessun evento disponibile</option>';
+            } catch (err) {
+                console.error("Errore recupero eventi:", err);
+                alert("Si è verificato un errore durante la verifica dei permessi.");
+                window.location.href = 'scelta-evento.html';
                 return;
             }
 
-            // Se nessun evento è selezionato nell'URL, imposta il primo disponibile
-            if (!currentEventId || !eventiAutorizzati.some(e => String(e.id) === String(currentEventId))) {
-                currentEventId = eventiAutorizzati[0].id;
+            if (eventi.length === 0) {
+                alert("Nessun evento disponibile.");
+                window.location.href = 'scelta-evento.html';
+                return;
             }
 
-            // 4. Popolamento Selettore Dropdown
+            // 3. Selezione evento attivo
+            if (!currentEventId || !eventi.some(e => String(e.id) === String(currentEventId))) {
+                currentEventId = eventi[0].id;
+            }
+
+            // 4. Popolamento Selettore
             const select = document.getElementById('eventSelector');
-            select.innerHTML = '';
-            eventiAutorizzati.forEach(ev => {
-                const opt = document.createElement('option');
-                opt.value = ev.id;
-                opt.textContent = ev.nome || `Evento #${ev.id}`;
-                if (String(ev.id) === String(currentEventId)) {
-                    opt.selected = true;
-                }
-                select.appendChild(opt);
-            });
+            if (select) {
+                select.innerHTML = '';
+                eventi.forEach(ev => {
+                    const opt = document.createElement('option');
+                    opt.value = ev.id;
+                    opt.textContent = ev.titolo || ev.nome || `Evento #${ev.id}`;
+                    if (String(ev.id) === String(currentEventId)) {
+                        opt.selected = true;
+                    }
+                    select.appendChild(opt);
+                });
 
-            // Gestione Cambio Selezione Evento
-            select.addEventListener('change', (e) => {
-                const selectedId = e.target.value;
-                if (selectedId) {
-                    window.location.href = `report-evento.html?event_id=${selectedId}`;
-                }
-            });
-
-            // 5. Caricamento Dati dell'Evento Selezionato
-            await caricaDatiReport(client, currentEventId, eventiAutorizzati);
-        }
-
-        async function caricaDatiReport(client, eventId, listaEventi) {
-            const eventoCorrente = listaEventi.find(e => String(e.id) === String(eventId));
-            
-            if (eventoCorrente) {
-                document.getElementById('eventTitle').innerText = eventoCorrente.nome || `Evento #${eventoCorrente.id}`;
-                document.getElementById('eventSubtitle').innerText = eventoCorrente.data_evento 
-                    ? `Data svolgimento: ${new Date(eventoCorrente.data_evento).toLocaleDateString('it-IT')}` 
-                    : 'Report dettagliato iscrizioni';
+                select.addEventListener('change', (e) => {
+                    const selectedId = e.target.value;
+                    if (selectedId) {
+                        window.location.href = `report-evento.html?event_id=${selectedId}`;
+                    }
+                });
             }
 
-            // Recupero iscrizioni dell'evento selezionato
-            const { data: iscrizioni, error } = await client
-                .from('iscrizioni')
+            // 5. Invocazione funzione di popolamento dati report
+            caricaDatiReport(currentEventId);
+        });
+
+        // Funzione per caricare le statistiche/dati dell'evento selezionato
+        async function caricaDatiReport(eventId) {
+            const container = document.getElementById('reportContent');
+            if (!container) return;
+
+            container.innerHTML = `<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Caricamento dati report in corso...</div>`;
+
+            const client = window.supabaseClient || window.sb || window.supabase;
+            
+            const { data: atleti, error } = await client
+                .from('atleti')
                 .select('*')
                 .eq('event_id', eventId);
 
-            const tbody = document.getElementById('reportTableBody');
-
             if (error) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-danger py-4">
-                            Errore nel recupero dati: ${error.message}
-                        </td>
-                    </tr>`;
+                container.innerHTML = `<div class="alert alert-danger">Errore nel caricamento del report: ${error.message}</div>`;
                 return;
             }
 
-            if (!iscrizioni || iscrizioni.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
-                            Nessun atleta iscritto a questo evento.
-                        </td>
-                    </tr>`;
-                aggiornaKPI([]);
+            if (!atleti || atleti.length === 0) {
+                container.innerHTML = `<div class="alert alert-info text-center">Nessun atleta o squadra presente per questo evento.</div>`;
                 return;
             }
 
-            // Rendering Tabella Dati
-            renderTabella(iscrizioni);
-            aggiornaKPI(iscrizioni);
-            abilitaRicercaFiltro(iscrizioni);
-        }
-
-        function renderTabella(data) {
-            const tbody = document.getElementById('reportTableBody');
-            tbody.innerHTML = '';
-
-            data.forEach(item => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td class="fw-semibold">${item.nome_atleta || item.atleta || 'N/D'} ${item.cognome_atleta || ''}</td>
-                    <td><i class="fas fa-building text-muted me-1"></i>${item.societa || 'N/D'}</td>
-                    <td><span class="badge bg-light text-dark border">${item.categoria || 'N/D'}</span></td>
-                    <td>${item.sesso || '-'}</td>
-                    <td>${item.peso ? item.peso + ' kg' : '-'}</td>
-                    <td class="text-center">
-                        <span class="badge-status bg-success bg-opacity-10 text-success">Confermato</span>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
-
-        function aggiornaKPI(iscrizioni) {
-            const totaleAtleti = iscrizioni.length;
-            const societaUniche = new Set(iscrizioni.map(i => i.societa).filter(Boolean)).size;
-            const categorieUniche = new Set(iscrizioni.map(i => i.categoria).filter(Boolean)).size;
-
-            document.getElementById('statTotalAtleti').innerText = totaleAtleti;
-            document.getElementById('statTotalSocieta').innerText = societaUniche;
-            document.getElementById('statTotalCategorie').innerText = categorieUniche;
-        }
-
-        function abilitaRicercaFiltro(iscrizioni) {
-            const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                const query = e.target.value.toLowerCase();
-                const filtrati = iscrizioni.filter(i => {
-                    const nomeCompleto = `${i.nome_atleta || ''} ${i.cognome_atleta || ''} ${i.atleta || ''}`.toLowerCase();
-                    const societa = (i.societa || '').toLowerCase();
-                    const categoria = (i.categoria || '').toLowerCase();
-                    return nomeCompleto.includes(query) || societa.includes(query) || categoria.includes(query);
-                });
-                renderTabella(filtrati);
-            });
+            container.innerHTML = `
+                <h5 class="fw-bold mb-3">Riepilogo Iscritti (${atleti.length})</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead>
+                            <tr>
+                                <th>Atleta / Squadra</th>
+                                <th>Classe</th>
+                                <th>Sesso</th>
+                                <th>Specialità</th>
+                                <th>Categoria</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${atleti.map(a => `
+                                <tr>
+                                    <td><strong>${a.last_name || ''}</strong> ${a.first_name || ''}</td>
+                                    <td>${a.classe || '-'}</td>
+                                    <td>${a.gender || '-'}</td>
+                                    <td>${a.specialty || '-'}</td>
+                                    <td>${a.weight_category || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
     </script>
 </body>
