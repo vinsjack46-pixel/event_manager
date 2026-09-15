@@ -52,13 +52,25 @@
             padding: 60px 20px;
         }
 
-        .column-filter {
+        /* Stile Intestazioni Ordinabili */
+        .sortable-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .sortable-header:hover {
+            background-color: #e9ecef !important;
+        }
+
+        .sort-icon {
             font-size: 0.8rem;
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid #ced4da;
-            margin-top: 5px;
-            width: 100%;
+            margin-left: 5px;
+            color: #a0aec0;
+        }
+
+        .sort-icon.active {
+            color: #0a58ca;
         }
     </style>
 </head>
@@ -113,41 +125,42 @@
             </div>
         </div>
 
-        <!-- Tabella Atleti Individuali -->
-        <div class="card-custom">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold m-0"><i class="fas fa-user me-2 text-primary"></i>Iscritti Individuali</h5>
-                <button onclick="clearAthleteFilters()" class="btn btn-sm btn-link text-decoration-none">
-                    <i class="fas fa-undo me-1"></i> Reset Filtri
+        <!-- Barra di Ricerca Unica Globale -->
+        <div class="card-custom py-3">
+            <div class="input-group input-group-lg">
+                <span class="input-group-text bg-white border-end-0 text-primary">
+                    <i class="fas fa-search"></i>
+                </span>
+                <input type="text" id="globalSearchInput" oninput="handleGlobalSearch()" class="form-control border-start-0" placeholder="Cerca in tutti i campi (nome, cognome, società, categoria, grado, componenti...)...">
+                <button class="btn btn-outline-secondary" type="button" onclick="clearGlobalSearch()">
+                    <i class="fas fa-times me-1"></i> Pulisci
                 </button>
             </div>
+        </div>
+
+        <!-- Tabella Atleti Individuali -->
+        <div class="card-custom">
+            <h5 class="fw-bold mb-3"><i class="fas fa-user me-2 text-primary"></i>Iscritti Individuali</h5>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
-                        <!-- MODIFICA INIZIO: Intestazioni con barre di ricerca per colonna -->
                         <tr>
-                            <th>
-                                Atleta
-                                <input type="text" id="filterAthleteName" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca atleta...">
+                            <th class="sortable-header" onclick="sortAthletes('name')">
+                                Atleta <i id="sortIconAth_name" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Società
-                                <input type="text" id="filterAthleteSociety" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca società...">
+                            <th class="sortable-header" onclick="sortAthletes('societa')">
+                                Società <i id="sortIconAth_societa" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Categoria / Specialità
-                                <input type="text" id="filterAthleteCategory" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca cat/spec...">
+                            <th class="sortable-header" onclick="sortAthletes('categoria')">
+                                Categoria / Specialità <i id="sortIconAth_categoria" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Grado
-                                <input type="text" id="filterAthleteBelt" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca grado...">
+                            <th class="sortable-header" onclick="sortAthletes('belt')">
+                                Grado <i id="sortIconAth_belt" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Sesso / Peso
-                                <input type="text" id="filterAthleteGenderWeight" oninput="applyAthleteFilters()" class="form-control column-filter" placeholder="Cerca sesso/peso...">
+                            <th class="sortable-header" onclick="sortAthletes('genderWeight')">
+                                Sesso / Peso <i id="sortIconAth_genderWeight" class="fas fa-sort sort-icon"></i>
                             </th>
                         </tr>
-                        <!-- MODIFICA FINE -->
                     </thead>
                     <tbody id="athleteList">
                         <tr><td colspan="5" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
@@ -158,35 +171,24 @@
 
         <!-- Tabella Team -->
         <div class="card-custom">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="fw-bold m-0"><i class="fas fa-users me-2 text-success"></i>Iscritti Team / Squadre</h5>
-                <button onclick="clearTeamFilters()" class="btn btn-sm btn-link text-decoration-none">
-                    <i class="fas fa-undo me-1"></i> Reset Filtri
-                </button>
-            </div>
+            <h5 class="fw-bold mb-3"><i class="fas fa-users me-2 text-success"></i>Iscritti Team / Squadre</h5>
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead class="table-light">
-                        <!-- MODIFICA INIZIO: Intestazioni con barre di ricerca per colonna -->
                         <tr>
-                            <th>
-                                Nome Team
-                                <input type="text" id="filterTeamName" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca team...">
+                            <th class="sortable-header" onclick="sortTeams('name')">
+                                Nome Team <i id="sortIconTeam_name" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Società
-                                <input type="text" id="filterTeamSociety" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca società...">
+                            <th class="sortable-header" onclick="sortTeams('societa')">
+                                Società <i id="sortIconTeam_societa" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Categoria / Specialità
-                                <input type="text" id="filterTeamCategory" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca cat/spec...">
+                            <th class="sortable-header" onclick="sortTeams('categoria')">
+                                Categoria / Specialità <i id="sortIconTeam_categoria" class="fas fa-sort sort-icon"></i>
                             </th>
-                            <th>
-                                Componenti
-                                <input type="text" id="filterTeamMembers" oninput="applyTeamFilters()" class="form-control column-filter" placeholder="Cerca componente...">
+                            <th class="sortable-header" onclick="sortTeams('members')">
+                                Componenti <i id="sortIconTeam_members" class="fas fa-sort sort-icon"></i>
                             </th>
                         </tr>
-                        <!-- MODIFICA FINE -->
                     </thead>
                     <tbody id="teamList">
                         <tr><td colspan="4" class="text-center py-4 text-muted">Caricamento in corso...</td></tr>
@@ -205,8 +207,14 @@
 
 <script>
     const globalAdmins = ["vinsjack46@gmail.com", "19vincenzo89@gmail.com"];
+    
+    // Cache dei dati originali
     let cachedAtleti = [];
     let cachedTeams = [];
+
+    // Stato di ordinamento
+    let athSortState = { col: null, asc: true };
+    let teamSortState = { col: null, asc: true };
 
     function escapeHTML(str) {
         if (typeof str !== 'string') return str || '';
@@ -290,80 +298,123 @@
         cachedAtleti = atleti || [];
         cachedTeams = teams || [];
 
-        renderAtleti(cachedAtleti);
-        renderTeams(cachedTeams);
+        renderAll();
     }
 
-    <!-- MODIFICA INIZIO: Logica di filtraggio per colonna (Atleti e Squadre) -->
-    function applyAthleteFilters() {
-        const fName = document.getElementById('filterAthleteName').value.toLowerCase();
-        const fSoc = document.getElementById('filterAthleteSociety').value.toLowerCase();
-        const fCat = document.getElementById('filterAthleteCategory').value.toLowerCase();
-        const fBelt = document.getElementById('filterAthleteBelt').value.toLowerCase();
-        const fGw = document.getElementById('filterAthleteGenderWeight').value.toLowerCase();
+    // Ricerca Unificata Globale
+    function handleGlobalSearch() {
+        renderAll();
+    }
 
-        const filtered = cachedAtleti.filter(a => {
-            const fullName = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase();
-            const society = (a.societa?.nome || '-').toLowerCase();
-            const category = `${a.classe || ''} ${a.specialty || ''}`.toLowerCase();
-            const belt = (a.belt || '').toLowerCase();
-            const genderWeight = `${a.gender || ''} ${a.weight_category || ''}`.toLowerCase();
+    function clearGlobalSearch() {
+        document.getElementById('globalSearchInput').value = '';
+        renderAll();
+    }
 
-            return fullName.includes(fName) &&
-                   society.includes(fSoc) &&
-                   category.includes(fCat) &&
-                   belt.includes(fBelt) &&
-                   genderWeight.includes(fGw);
+    // Gestione Ordinamento Atleti
+    function sortAthletes(column) {
+        if (athSortState.col === column) {
+            athSortState.asc = !athSortState.asc;
+        } else {
+            athSortState.col = column;
+            athSortState.asc = true;
+        }
+        updateSortIcons('ath', column, athSortState.asc);
+        renderAll();
+    }
+
+    // Gestione Ordinamento Team
+    function sortTeams(column) {
+        if (teamSortState.col === column) {
+            teamSortState.asc = !teamSortState.asc;
+        } else {
+            teamSortState.col = column;
+            teamSortState.asc = true;
+        }
+        updateSortIcons('team', column, teamSortState.asc);
+        renderAll();
+    }
+
+    function updateSortIcons(prefix, activeColumn, isAsc) {
+        const icons = document.querySelectorAll(`[id^="sortIcon${prefix === 'ath' ? 'Ath' : 'Team'}_"]`);
+        icons.forEach(icon => {
+            icon.className = 'fas fa-sort sort-icon';
         });
 
-        renderAtleti(filtered);
+        const targetIcon = document.getElementById(`sortIcon${prefix === 'ath' ? 'Ath' : 'Team'}_${activeColumn}`);
+        if (targetIcon) {
+            targetIcon.className = `fas ${isAsc ? 'fa-sort-up' : 'fa-sort-down'} sort-icon active`;
+        }
     }
 
-    function applyTeamFilters() {
-        const fName = document.getElementById('filterTeamName').value.toLowerCase();
-        const fSoc = document.getElementById('filterTeamSociety').value.toLowerCase();
-        const fCat = document.getElementById('filterTeamCategory').value.toLowerCase();
-        const fMem = document.getElementById('filterTeamMembers').value.toLowerCase();
+    // Render Generale (Filtro + Ordine)
+    function renderAll() {
+        const searchTerm = document.getElementById('globalSearchInput').value.toLowerCase().trim();
 
-        const filtered = cachedTeams.filter(t => {
-            const teamName = (t.team_name || '').toLowerCase();
-            const society = (t.societa?.nome || '-').toLowerCase();
-            const category = `${t.classe || ''} ${t.specialty || ''}`.toLowerCase();
-            const members = (t.members || []).join(' ').toLowerCase();
-
-            return teamName.includes(fName) &&
-                   society.includes(fSoc) &&
-                   category.includes(fCat) &&
-                   members.includes(fMem);
+        // 1. Filtro Globale Atleti
+        let filteredAtleti = cachedAtleti.filter(a => {
+            if (!searchTerm) return true;
+            const fullStr = `${a.last_name || ''} ${a.first_name || ''} ${a.societa?.nome || ''} ${a.classe || ''} ${a.specialty || ''} ${a.belt || ''} ${a.gender || ''} ${a.weight_category || ''}`.toLowerCase();
+            return fullStr.includes(searchTerm);
         });
 
-        renderTeams(filtered);
+        // 2. Ordine Atleti
+        if (athSortState.col) {
+            filteredAtleti.sort((a, b) => {
+                let valA = getAthValue(a, athSortState.col);
+                let valB = getAthValue(b, athSortState.col);
+                return athSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+        }
+
+        // 3. Filtro Globale Team
+        let filteredTeams = cachedTeams.filter(t => {
+            if (!searchTerm) return true;
+            const membersStr = (t.members || []).join(' ');
+            const fullStr = `${t.team_name || ''} ${t.societa?.nome || ''} ${t.classe || ''} ${t.specialty || ''} ${membersStr}`.toLowerCase();
+            return fullStr.includes(searchTerm);
+        });
+
+        // 4. Ordine Team
+        if (teamSortState.col) {
+            filteredTeams.sort((a, b) => {
+                let valA = getTeamValue(a, teamSortState.col);
+                let valB = getTeamValue(b, teamSortState.col);
+                return teamSortState.asc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+            });
+        }
+
+        renderAtletiTable(filteredAtleti);
+        renderTeamsTable(filteredTeams);
     }
 
-    function clearAthleteFilters() {
-        document.getElementById('filterAthleteName').value = '';
-        document.getElementById('filterAthleteSociety').value = '';
-        document.getElementById('filterAthleteCategory').value = '';
-        document.getElementById('filterAthleteBelt').value = '';
-        document.getElementById('filterAthleteGenderWeight').value = '';
-        renderAtleti(cachedAtleti);
+    function getAthValue(a, col) {
+        switch (col) {
+            case 'name': return `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase();
+            case 'societa': return (a.societa?.nome || '').toLowerCase();
+            case 'categoria': return `${a.classe || ''} ${a.specialty || ''}`.toLowerCase();
+            case 'belt': return (a.belt || '').toLowerCase();
+            case 'genderWeight': return `${a.gender || ''} ${a.weight_category || ''}`.toLowerCase();
+            default: return '';
+        }
     }
 
-    function clearTeamFilters() {
-        document.getElementById('filterTeamName').value = '';
-        document.getElementById('filterTeamSociety').value = '';
-        document.getElementById('filterTeamCategory').value = '';
-        document.getElementById('filterTeamMembers').value = '';
-        renderTeams(cachedTeams);
+    function getTeamValue(t, col) {
+        switch (col) {
+            case 'name': return (t.team_name || '').toLowerCase();
+            case 'societa': return (t.societa?.nome || '').toLowerCase();
+            case 'categoria': return `${t.classe || ''} ${t.specialty || ''}`.toLowerCase();
+            case 'members': return (t.members || []).join(' ').toLowerCase();
+            default: return '';
+        }
     }
-    <!-- MODIFICA FINE -->
 
-    function renderAtleti(atleti) {
+    function renderAtletiTable(atleti) {
         const container = document.getElementById('athleteList');
         document.getElementById('countAthletes').innerText = atleti.length;
 
         if (atleti.length === 0) {
-            container.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Nessun atleta corrisponde ai filtri impostati.</td></tr>`;
+            container.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">Nessun atleta corrisponde ai criteri di ricerca.</td></tr>`;
             return;
         }
 
@@ -380,12 +431,12 @@
         });
     }
 
-    function renderTeams(teams) {
+    function renderTeamsTable(teams) {
         const container = document.getElementById('teamList');
         document.getElementById('countTeams').innerText = teams.length;
 
         if (teams.length === 0) {
-            container.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">Nessuna squadra corrisponde ai filtri impostati.</td></tr>`;
+            container.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-muted">Nessuna squadra corrisponde ai criteri di ricerca.</td></tr>`;
             return;
         }
 
