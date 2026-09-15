@@ -83,14 +83,13 @@
             let currentEventId = urlParams.get('event_id');
             let eventi = [];
 
-            // 2. Caricamento Eventi con Filtro Permessi Rigido
+            // 2. Caricamento Eventi (uso di select('*') per evitare errori sulle colonne)
             try {
                 if (isAdmin) {
-                    const { data, error } = await client.from('eventi').select('id, titolo, nome');
+                    const { data, error } = await client.from('eventi').select('*');
                     if (error) throw error;
                     eventi = data || [];
                 } else {
-                    // Lettura permessi associati alla mail dell'utente
                     const { data: permessi, error: errPermessi } = await client
                         .from('permessi_eventi')
                         .select('event_id')
@@ -108,7 +107,7 @@
 
                     const { data, error } = await client
                         .from('eventi')
-                        .select('id, titolo, nome')
+                        .select('*')
                         .in('id', allowedIds);
 
                     if (error) throw error;
@@ -116,7 +115,7 @@
                 }
             } catch (err) {
                 console.error("Errore recupero eventi:", err);
-                alert("Si è verificato un errore durante la verifica dei permessi.");
+                alert("Si è verificato un errore durante il recupero degli eventi.");
                 window.location.href = 'scelta-evento.html';
                 return;
             }
@@ -139,7 +138,7 @@
                 eventi.forEach(ev => {
                     const opt = document.createElement('option');
                     opt.value = ev.id;
-                    opt.textContent = ev.titolo || ev.nome || `Evento #${ev.id}`;
+                    opt.textContent = ev.nome || ev.titolo || ev.nome_evento || `Evento #${ev.id}`;
                     if (String(ev.id) === String(currentEventId)) {
                         opt.selected = true;
                     }
@@ -158,7 +157,6 @@
             caricaDatiReport(currentEventId);
         });
 
-        // Funzione per caricare le statistiche/dati dell'evento selezionato
         async function caricaDatiReport(eventId) {
             const container = document.getElementById('reportContent');
             if (!container) return;
