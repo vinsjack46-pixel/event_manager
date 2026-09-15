@@ -146,32 +146,42 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
-        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+        document.getElementById('resetForm').addEventListener('submit', (e) => {
+            // Blocco immediato dell'evento nativo
             e.preventDefault();
+
             const btn = e.target.querySelector('button');
             const email = document.getElementById('resetEmail').value;
             
-            // UI Feedback
+            // Aggiornamento interfaccia istantaneo
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Invio in corso...';
 
-            try {
-                // Usiamo supabaseClient (il nome che hai definito in script.js)
-                const { error } = await window.supabaseClient.auth.resetPasswordForEmail(email, {
-                   redirectTo: 'https://event-manager-pearl-five.vercel.app/update-password.html',
-                });
+            // Esecuzione asincrona fuori dal thread sincrono del gestore di eventi
+            setTimeout(async () => {
+                try {
+                    const client = window.supabaseClient || window.sb || window.supabase;
+                    
+                    if (!client) {
+                        throw new Error("Impossibile connettersi al servizio di autenticazione.");
+                    }
 
-                if (error) {
-                    alert("Errore: " + error.message);
-                } else {
-                    alert("Email inviata! Controlla la tua posta in arrivo (anche la cartella Spam).");
+                    const { error } = await client.auth.resetPasswordForEmail(email, {
+                       redirectTo: 'https://event-manager-pearl-five.vercel.app/update-password.html',
+                    });
+
+                    if (error) {
+                        alert("Errore: " + error.message);
+                    } else {
+                        alert("Email inviata! Controlla la tua posta in arrivo (anche la cartella Spam).");
+                    }
+                } catch (err) {
+                    alert("Si è verificato un errore: " + err.message);
+                } finally {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Invia Link di Ripristino';
                 }
-            } catch (err) {
-                alert("Si è verificato un errore inaspettato.");
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Invia Link di Ripristino';
-            }
+            }, 0);
         });
     </script>
 </body>
