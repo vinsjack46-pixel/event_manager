@@ -26,15 +26,30 @@
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             background: white;
-            padding: 20px;
+            padding: 24px;
         }
-        .th-sortable {
+        .sort-header {
             cursor: pointer;
             user-select: none;
+            white-space: nowrap;
             transition: background-color 0.2s;
         }
-        .th-sortable:hover {
-            background-color: #e9ecef;
+        .sort-header:hover {
+            background-color: rgba(0,0,0,0.03);
+        }
+        .search-box {
+            position: relative;
+            max-width: 400px;
+        }
+        .search-box i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6c757d;
+        }
+        .search-box input {
+            padding-left: 36px;
         }
     </style>
 </head>
@@ -69,10 +84,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
-        // Stato globale della tabella per ricerca e ordinamento
-        let atletiCorrenti = [];
-        let currentSortCol = 'last_name';
-        let currentSortAsc = true;
+        // Stato Globale per Filtraggio e Ordinamento
+        let atletiGaraData = [];
+        let sortColonnaCorrente = 'fullName';
+        let sortAscendente = true;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const client = window.supabaseClient || window.sb || window.supabase;
@@ -166,11 +181,11 @@
                 });
             }
 
-            // 5. Caricamento Dati
+            // 5. Invocazione caricamento dati report
             caricaDatiReport(currentEventId);
         });
 
-        // Caricamento Dati e Rendering Struttura Principale
+        // Carica dati atleti e società per l'evento selezionato
         async function caricaDatiReport(eventId) {
             const container = document.getElementById('reportContent');
             if (!container) return;
@@ -179,140 +194,191 @@
 
             const client = window.supabaseClient || window.sb || window.supabase;
             
-            const { data: atleti, error } = await client
-                .from('atleti')
-                .select('*')
-                .eq('event_id', eventId);
+            try {
+                // Recupero atleti e lista società in parallelo per mappare i nomi società
+                const [resAtleti, resSocieta] = await Promise.all([
+                    client.from('atleti').select('*').eq('event_id', eventId),
+                    client.from('societa').select('id, nome')
+                ]);
 
-            if (error) {
-                container.innerHTML = `<div class="alert alert-danger">Errore nel caricamento del report: ${error.message}</div>`;
-                return;
+                if (resAtleti.error) throw resAtleti.error;
+
+                const atletiRaw = resAtleti.data || [];
+                const socMap = {};
+
+                if (resSocieta.data) {
+                    resSocieta.data.forEach(s => {
+                        socMap[s.id] = s.nome;
+                    });
+                }
+
+                if (atletiRaw.length === 0) {
+                    container.innerHTML = `<div class="alert alert-info text-center">Nessun atleta o squadra presente per questo evento.</div>`;
+                    return;
+                }
+
+                // Normalizzazione dati per ricerca e ordinamento agevoli
+                atletiGaraData = atletiRaw.map(a => {
+                    const cognome = (a.last_name || '').trim();
+                    const nome = (a.first_name || '').trim();
+                    const nomeCompleto = `${cognome} ${nome}`.trim() || 'Senza Nome';
+                    
+                    let sessoFormatted = a.gender || '-';
+                    if (a.gender === 'M' || a.gender === 'Maschio') sessoFormatted = 'Maschio';
+                    if (a.gender === 'F' || a.gender === 'Femmina') sessoFormatted = 'Femmina';
+
+                    const nomeSocieta = a.societa || a.nome_societa || socMap[a.society_id] || socMap[a.societa_id] || '-';
+
+                    return {
+                        id: a.id,
+                        fullName: nomeCompleto,
+                        societa: nomeSocieta,
+                        classe: a.classe || '-',
+                        sesso: sessoFormatted,
+                        specialty: a.specialty || '-',
+                        weightCategory: a.weight_category || '-'
+                    };
+                });
+
+                // Rendering dell'interfaccia con Barra di Ricerca e Tabella Ordinabile
+                renderInterfacciaReport();
+
+            } catch (err) {
+                console.error("Errore caricamento report:", err);
+                container.innerHTML = `<div class="alert alert-danger">Errore nel caricamento del report: ${err.message || err}</div>`;
             }
+        }
 
-            if (!atleti || atleti.length === 0) {
-                container.innerHTML = `<div class="alert alert-info text-center">Nessun atleta o squadra presente per questo evento.</div>`;
-                return;
-            }
-
-            // Memorizza gli atleti recuperati per consentire filtri/ordinamenti istantanei
-            atletiCorrenti = atleti;
-
-            // Genera la UI con Barra di Ricerca e Struttura Tabella
+        // Costruisce la struttura HTML con la barra di ricerca
+        function renderInterfacciaReport() {
+            const container = document.getElementById('reportContent');
+            
             container.innerHTML = `
-                <div class="row align-items-center mb-3 g-2">
-                    <div class="col-md-6">
-                        <h5 class="fw-bold mb-0">Riepilogo Iscritti <span id="counterBadge" class="badge bg-primary ms-2">${atleti.length}</span></h5>
+                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                    <div>
+                        <h5 class="fw-bold mb-1">Riepilogo Iscritti</h5>
+                        <span class="badge bg-primary rounded-pill" id="badgeCount">Totale: ${atletiGaraData.length}</span>
                     </div>
-                    <div class="col-md-6">
-                        <div class="input-group">
-                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
-                            <input type="text" id="searchInput" class="form-control" placeholder="Cerca atleta, squadra, classe, sesso, specialità, categoria..." oninput="applicaFiltriEOrdinamento()">
-                        </div>
+
+                    <!-- Barra di Ricerca Unica -->
+                    <div class="search-box w-100">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cerca per Atleta, Società, Classe, Categoria...">
                     </div>
                 </div>
 
+                <!-- Tabella Dati -->
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle border">
+                    <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
-                                <th class="th-sortable" onclick="cambiaOrdinamento('last_name')">Atleta / Squadra <i id="sortIcon_last_name" class="fas fa-sort ms-1"></i></th>
-                                <th class="th-sortable" onclick="cambiaOrdinamento('classe')">Classe <i id="sortIcon_classe" class="fas fa-sort ms-1"></i></th>
-                                <th class="th-sortable" onclick="cambiaOrdinamento('gender')">Sesso <i id="sortIcon_gender" class="fas fa-sort ms-1"></i></th>
-                                <th class="th-sortable" onclick="cambiaOrdinamento('specialty')">Specialità <i id="sortIcon_specialty" class="fas fa-sort ms-1"></i></th>
-                                <th class="th-sortable" onclick="cambiaOrdinamento('weight_category')">Categoria <i id="sortIcon_weight_category" class="fas fa-sort ms-1"></i></th>
+                                <th class="sort-header" onclick="ordinaPer('fullName')">
+                                    Atleta / Squadra <i class="fas fa-sort ms-1 text-muted" id="sort-fullName"></i>
+                                </th>
+                                <th class="sort-header" onclick="ordinaPer('societa')">
+                                    Società <i class="fas fa-sort ms-1 text-muted" id="sort-societa"></i>
+                                </th>
+                                <th class="sort-header" onclick="ordinaPer('classe')">
+                                    Classe <i class="fas fa-sort ms-1 text-muted" id="sort-classe"></i>
+                                </th>
+                                <th class="sort-header" onclick="ordinaPer('sesso')">
+                                    Sesso <i class="fas fa-sort ms-1 text-muted" id="sort-sesso"></i>
+                                </th>
+                                <th class="sort-header" onclick="ordinaPer('specialty')">
+                                    Specialità <i class="fas fa-sort ms-1 text-muted" id="sort-specialty"></i>
+                                </th>
+                                <th class="sort-header" onclick="ordinaPer('weightCategory')">
+                                    Categoria <i class="fas fa-sort ms-1 text-muted" id="sort-weightCategory"></i>
+                                </th>
                             </tr>
                         </thead>
-                        <tbody id="tableBody">
+                        <tbody id="tbodyAtleti">
                         </tbody>
                     </table>
                 </div>
             `;
 
-            applicaFiltriEOrdinamento();
+            // Listener per la ricerca in tempo reale
+            document.getElementById('searchInput').addEventListener('input', aggiornaTabella);
+
+            // Primo popolamento tabella (con ordinamento di default)
+            aggiornaTabella();
         }
 
-        // Cambio di colonna o direzione ordinamento
-        function cambiaOrdinamento(colonna) {
-            if (currentSortCol === colonna) {
-                currentSortAsc = !currentSortAsc;
+        // Funzione per gestire l'ordinamento al click sull'intestazione di colonna
+        function ordinaPer(colonna) {
+            if (sortColonnaCorrente === colonna) {
+                sortAscendente = !sortAscendente;
             } else {
-                currentSortCol = colonna;
-                currentSortAsc = true;
+                sortColonnaCorrente = colonna;
+                sortAscendente = true;
             }
-            applicaFiltriEOrdinamento();
+            aggiornaTabella();
         }
 
-        // Filtro Globale + Ordinamento e Rendering Righe
-        function applicaFiltriEOrdinamento() {
-            const tbody = document.getElementById('tableBody');
-            const counterBadge = document.getElementById('counterBadge');
-            const searchInput = document.getElementById('searchInput');
-            if (!tbody) return;
+        // Filtra, ordina e renderizza le righe della tabella
+        function aggiornaTabella() {
+            const query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
 
-            const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
-
-            // 1. Filtro globale su tutti i campi visibili
-            let filtrati = atletiCorrenti.filter(a => {
-                const nomeCompleto = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase();
-                const classe = (a.classe || '').toLowerCase();
-                const gender = (a.gender || '').toLowerCase();
-                const specialty = (a.specialty || '').toLowerCase();
-                const category = (a.weight_category || '').toLowerCase();
-
-                return nomeCompleto.includes(term) ||
-                       classe.includes(term) ||
-                       gender.includes(term) ||
-                       specialty.includes(term) ||
-                       category.includes(term);
+            // 1. Filtraggio globale su tutti i campi visibili
+            let atletiFiltrati = atletiGaraData.filter(item => {
+                if (!query) return true;
+                return (
+                    item.fullName.toLowerCase().includes(query) ||
+                    item.societa.toLowerCase().includes(query) ||
+                    item.classe.toLowerCase().includes(query) ||
+                    item.sesso.toLowerCase().includes(query) ||
+                    item.specialty.toLowerCase().includes(query) ||
+                    item.weightCategory.toLowerCase().includes(query)
+                );
             });
 
-            // 2. Ordinamento alfabetico
-            filtrati.sort((a, b) => {
-                let valA = (getFieldValue(a, currentSortCol) || '').toString();
-                let valB = (getFieldValue(b, currentSortCol) || '').toString();
-
-                let cmp = valA.localeCompare(valB, 'it', { sensitivity: 'base', numeric: true });
-                return currentSortAsc ? cmp : -cmp;
+            // 2. Ordinamento Alfabetico
+            atletiFiltrati.sort((a, b) => {
+                const valA = (a[sortColonnaCorrente] || '').toString().toLowerCase();
+                const valB = (b[sortColonnaCorrente] || '').toString().toLowerCase();
+                
+                const comp = valA.localeCompare(valB, 'it', { numeric: true, sensitivity: 'base' });
+                return sortAscendente ? comp : -comp;
             });
 
-            // 3. Aggiorna contatore
-            if (counterBadge) counterBadge.innerText = `${filtrati.length} / ${atletiCorrenti.length}`;
-
-            // 4. Aggiorna Icone di Ordinamento
-            ['last_name', 'classe', 'gender', 'specialty', 'weight_category'].forEach(col => {
-                const icon = document.getElementById(`sortIcon_${col}`);
+            // 3. Aggiornamento Icone di Ordinamento
+            ['fullName', 'societa', 'classe', 'sesso', 'specialty', 'weightCategory'].forEach(col => {
+                const icon = document.getElementById(`sort-${col}`);
                 if (icon) {
-                    if (col === currentSortCol) {
-                        icon.className = currentSortAsc ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
+                    if (col === sortColonnaCorrente) {
+                        icon.className = sortAscendente ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
                     } else {
                         icon.className = 'fas fa-sort ms-1 text-muted';
                     }
                 }
             });
 
-            // 5. Renderizzazione HTML righe
-            if (filtrati.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nessun iscritto corrisponde ai criteri di ricerca.</td></tr>`;
+            // 4. Aggiornamento Badge Contatore
+            const badge = document.getElementById('badgeCount');
+            if (badge) {
+                badge.textContent = `Mostrati: ${atletiFiltrati.length} di ${atletiGaraData.length}`;
+            }
+
+            // 5. Generazione HTML Righe
+            const tbody = document.getElementById('tbodyAtleti');
+            if (!tbody) return;
+
+            if (atletiFiltrati.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nessun iscritto corrisponde alla ricerca.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = filtrati.map(a => `
+            tbody.innerHTML = atletiFiltrati.map(a => `
                 <tr>
-                    <td><strong>${a.last_name || ''}</strong> ${a.first_name || ''}</td>
-                    <td>${a.classe || '-'}</td>
-                    <td><span class="badge bg-light text-dark border">${a.gender || '-'}</span></td>
-                    <td>${a.specialty || '-'}</td>
-                    <td>${a.weight_category || '-'}</td>
+                    <td><strong>${a.fullName}</strong></td>
+                    <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
+                    <td>${a.classe}</td>
+                    <td>${a.sesso}</td>
+                    <td>${a.specialty}</td>
+                    <td>${a.weightCategory}</td>
                 </tr>
             `).join('');
-        }
-
-        // Helper estrazione valore colonna
-        function getFieldValue(atleta, field) {
-            if (field === 'last_name') {
-                return `${atleta.last_name || ''} ${atleta.first_name || ''}`.trim();
-            }
-            return atleta[field] || '';
         }
     </script>
 </body>
