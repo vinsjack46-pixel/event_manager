@@ -28,6 +28,14 @@
             background: white;
             padding: 20px;
         }
+        .th-sortable {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        .th-sortable:hover {
+            background-color: #e9ecef;
+        }
     </style>
 </head>
 <body>
@@ -61,6 +69,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
+        // Stato globale della tabella per ricerca e ordinamento
+        let atletiCorrenti = [];
+        let currentSortCol = 'last_name';
+        let currentSortAsc = true;
+
         document.addEventListener('DOMContentLoaded', async () => {
             const client = window.supabaseClient || window.sb || window.supabase;
             if (!client) {
@@ -83,7 +96,7 @@
             let currentEventId = urlParams.get('event_id');
             let eventi = [];
 
-            // 2. Caricamento Eventi (uso di select('*') per evitare errori sulle colonne)
+            // 2. Caricamento Eventi con Filtro Permessi Rigido
             try {
                 if (isAdmin) {
                     const { data, error } = await client.from('eventi').select('*');
@@ -131,7 +144,7 @@
                 currentEventId = eventi[0].id;
             }
 
-            // 4. Popolamento Selettore
+            // 4. Popolamento Selettore Eventi
             const select = document.getElementById('eventSelector');
             if (select) {
                 select.innerHTML = '';
@@ -153,10 +166,11 @@
                 });
             }
 
-            // 5. Invocazione funzione di popolamento dati report
+            // 5. Caricamento Dati
             caricaDatiReport(currentEventId);
         });
 
+        // Caricamento Dati e Rendering Struttura Principale
         async function caricaDatiReport(eventId) {
             const container = document.getElementById('reportContent');
             if (!container) return;
@@ -180,33 +194,125 @@
                 return;
             }
 
+            // Memorizza gli atleti recuperati per consentire filtri/ordinamenti istantanei
+            atletiCorrenti = atleti;
+
+            // Genera la UI con Barra di Ricerca e Struttura Tabella
             container.innerHTML = `
-                <h5 class="fw-bold mb-3">Riepilogo Iscritti (${atleti.length})</h5>
+                <div class="row align-items-center mb-3 g-2">
+                    <div class="col-md-6">
+                        <h5 class="fw-bold mb-0">Riepilogo Iscritti <span id="counterBadge" class="badge bg-primary ms-2">${atleti.length}</span></h5>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="searchInput" class="form-control" placeholder="Cerca atleta, squadra, classe, sesso, specialità, categoria..." oninput="applicaFiltriEOrdinamento()">
+                        </div>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
-                    <table class="table table-striped align-middle">
-                        <thead>
+                    <table class="table table-striped align-middle border">
+                        <thead class="table-light">
                             <tr>
-                                <th>Atleta / Squadra</th>
-                                <th>Classe</th>
-                                <th>Sesso</th>
-                                <th>Specialità</th>
-                                <th>Categoria</th>
+                                <th class="th-sortable" onclick="cambiaOrdinamento('last_name')">Atleta / Squadra <i id="sortIcon_last_name" class="fas fa-sort ms-1"></i></th>
+                                <th class="th-sortable" onclick="cambiaOrdinamento('classe')">Classe <i id="sortIcon_classe" class="fas fa-sort ms-1"></i></th>
+                                <th class="th-sortable" onclick="cambiaOrdinamento('gender')">Sesso <i id="sortIcon_gender" class="fas fa-sort ms-1"></i></th>
+                                <th class="th-sortable" onclick="cambiaOrdinamento('specialty')">Specialità <i id="sortIcon_specialty" class="fas fa-sort ms-1"></i></th>
+                                <th class="th-sortable" onclick="cambiaOrdinamento('weight_category')">Categoria <i id="sortIcon_weight_category" class="fas fa-sort ms-1"></i></th>
                             </tr>
                         </thead>
-                        <tbody>
-                            ${atleti.map(a => `
-                                <tr>
-                                    <td><strong>${a.last_name || ''}</strong> ${a.first_name || ''}</td>
-                                    <td>${a.classe || '-'}</td>
-                                    <td>${a.gender || '-'}</td>
-                                    <td>${a.specialty || '-'}</td>
-                                    <td>${a.weight_category || '-'}</td>
-                                </tr>
-                            `).join('')}
+                        <tbody id="tableBody">
                         </tbody>
                     </table>
                 </div>
             `;
+
+            applicaFiltriEOrdinamento();
+        }
+
+        // Cambio di colonna o direzione ordinamento
+        function cambiaOrdinamento(colonna) {
+            if (currentSortCol === colonna) {
+                currentSortAsc = !currentSortAsc;
+            } else {
+                currentSortCol = colonna;
+                currentSortAsc = true;
+            }
+            applicaFiltriEOrdinamento();
+        }
+
+        // Filtro Globale + Ordinamento e Rendering Righe
+        function applicaFiltriEOrdinamento() {
+            const tbody = document.getElementById('tableBody');
+            const counterBadge = document.getElementById('counterBadge');
+            const searchInput = document.getElementById('searchInput');
+            if (!tbody) return;
+
+            const term = (searchInput ? searchInput.value : '').toLowerCase().trim();
+
+            // 1. Filtro globale su tutti i campi visibili
+            let filtrati = atletiCorrenti.filter(a => {
+                const nomeCompleto = `${a.last_name || ''} ${a.first_name || ''}`.toLowerCase();
+                const classe = (a.classe || '').toLowerCase();
+                const gender = (a.gender || '').toLowerCase();
+                const specialty = (a.specialty || '').toLowerCase();
+                const category = (a.weight_category || '').toLowerCase();
+
+                return nomeCompleto.includes(term) ||
+                       classe.includes(term) ||
+                       gender.includes(term) ||
+                       specialty.includes(term) ||
+                       category.includes(term);
+            });
+
+            // 2. Ordinamento alfabetico
+            filtrati.sort((a, b) => {
+                let valA = (getFieldValue(a, currentSortCol) || '').toString();
+                let valB = (getFieldValue(b, currentSortCol) || '').toString();
+
+                let cmp = valA.localeCompare(valB, 'it', { sensitivity: 'base', numeric: true });
+                return currentSortAsc ? cmp : -cmp;
+            });
+
+            // 3. Aggiorna contatore
+            if (counterBadge) counterBadge.innerText = `${filtrati.length} / ${atletiCorrenti.length}`;
+
+            // 4. Aggiorna Icone di Ordinamento
+            ['last_name', 'classe', 'gender', 'specialty', 'weight_category'].forEach(col => {
+                const icon = document.getElementById(`sortIcon_${col}`);
+                if (icon) {
+                    if (col === currentSortCol) {
+                        icon.className = currentSortAsc ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
+                    } else {
+                        icon.className = 'fas fa-sort ms-1 text-muted';
+                    }
+                }
+            });
+
+            // 5. Renderizzazione HTML righe
+            if (filtrati.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">Nessun iscritto corrisponde ai criteri di ricerca.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtrati.map(a => `
+                <tr>
+                    <td><strong>${a.last_name || ''}</strong> ${a.first_name || ''}</td>
+                    <td>${a.classe || '-'}</td>
+                    <td><span class="badge bg-light text-dark border">${a.gender || '-'}</span></td>
+                    <td>${a.specialty || '-'}</td>
+                    <td>${a.weight_category || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        // Helper estrazione valore colonna
+        function getFieldValue(atleta, field) {
+            if (field === 'last_name') {
+                return `${atleta.last_name || ''} ${atleta.first_name || ''}`.trim();
+            }
+            return atleta[field] || '';
         }
     </script>
 </body>
