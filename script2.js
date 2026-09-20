@@ -83,7 +83,6 @@ function toggleRegMode() {
         }
     }
 
-    // CORREZIONE APPLICATA: Rimuove il required dai campi nascosti per evitare l'errore "not focusable"
     const memberInputs = document.querySelectorAll('.member-input');
     memberInputs.forEach(input => {
         input.required = isTeam;
@@ -96,7 +95,6 @@ window.addMemberField = function(val = "") {
     const c = cont.children.length;
     if (c >= 6) return alert("Massimo 6 componenti per squadra.");
     
-    // CORREZIONE APPLICATA: Il nuovo campo è required solo se siamo effettivamente in modalità team
     const isTeam = document.querySelector('input[name="regType"]:checked')?.value === 'team';
     const isRequired = isTeam ? "required" : "";
 
@@ -295,10 +293,69 @@ window.editTeam = async function(id) {
 window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
 window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
 
+// --- FUNZIONE AGGIUNTA: Controllo Limiti Dinamico dal JSON ---
+async function verificaLimitiDinamici(eventId, specialty, classe) {
+    if (!currentSportConfig || !currentSportConfig.limiti) return true;
+
+    const limiti = currentSportConfig.limiti;
+
+    try {
+        const { data: atleti } = await sb
+            .from('atleti')
+            .select('specialty, classe')
+            .eq('event_id', eventId);
+
+        const listaAtleti = atleti || [];
+
+        // A. Controllo per categoria/specialità generica (es. KIDS, ParaKarate)
+        const limiteCategoria = limiti[specialty] || limiti[classe];
+        if (limiteCategoria !== undefined) {
+            const iscrittiCategoria = listaAtleti.filter(a => a.specialty === specialty || a.classe === classe).length;
+            if (iscrittiCategoria >= limiteCategoria) {
+                alert(`Limite raggiunto per ${specialty || classe}: massimo ${limiteCategoria} iscritti.`);
+                return false;
+            }
+        }
+
+        // B. Controllo specifico per KATA (se "KataMax" presente nel JSON)
+        if (specialty === "Kata" && limiti.KataMax !== undefined) {
+            const iscrittiKata = listaAtleti.filter(a => a.specialty === "Kata").length;
+            if (iscrittiKata >= limiti.KataMax) {
+                alert(`Limite raggiunto per la specialità KATA: massimo ${limiti.KataMax} iscritti.`);
+                return false;
+            }
+        }
+
+        // C. Controllo somma KATA + KUMITE (se "KataKumiteSum" presente nel JSON)
+        if ((specialty === "Kata" || specialty === "Kumite") && limiti.KataKumiteSum !== undefined) {
+            const iscrittiKataKumite = listaAtleti.filter(a => a.specialty === "Kata" || a.specialty === "Kumite").length;
+            if (iscrittiKataKumite >= limiti.KataKumiteSum) {
+                alert(`Limite globale raggiunto per KATA + KUMITE: massimo ${limiti.KataKumiteSum} iscritti complessivi.`);
+                return false;
+            }
+        }
+
+        return true;
+    } catch (err) {
+        console.error("Errore nella verifica limiti:", err);
+        return true;
+    }
+}
+
 async function addEntity(e) {
     e.preventDefault();
     const ev = sessionStorage.getItem('selectedEventId');
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
+
+    // --- CONTROLLO LIMITI DINAMICO (Solo in inserimento, non in modifica) ---
+    if (!editingAthleteId && !editingTeamId) {
+        const puoProcedere = await verificaLimitiDinamici(
+            ev, 
+            document.getElementById('specialty').value, 
+            document.getElementById('classe').value
+        );
+        if (!puoProcedere) return;
+    }
 
     const common = {
         event_id: ev, society_id: window.currentSocietyId,
