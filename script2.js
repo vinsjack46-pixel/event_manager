@@ -307,10 +307,7 @@ async function verificaLimitiDinamici(eventId, specialty, classe) {
 
         const listaAtleti = atleti || [];
 
-        // Helper per identificare se un atleta appartiene alla categoria KIDS
-        const isKids = (s, c) => s === 'KIDS' || c === 'KIDS' || (s !== 'Kata' && s !== 'Kumite' && s !== 'ParaKarate');
-
-        // A. Controllo LIMITE KIDS (se "KIDS" presente nel JSON)
+                // A. Controllo LIMITE KIDS (se "KIDS" presente nel JSON)
         if (limiti.KIDS !== undefined && isKids(specialty, classe)) {
             const iscrittiKids = listaAtleti.filter(a => isKids(a.specialty, a.classe)).length;
             if (iscrittiKids >= limiti.KIDS) {
