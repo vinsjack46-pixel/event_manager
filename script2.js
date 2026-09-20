@@ -293,13 +293,13 @@ window.editTeam = async function(id) {
 window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
 window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
 
+// --- CONTROLLO DINAMICO LIMITI: SOLO PER KIDS, ParaKarate, KataMax e KataKumiteSum ---
 async function verificaLimitiDinamici(eventId, specialty, classe) {
     if (!currentSportConfig || !currentSportConfig.limiti) return true;
 
     const limiti = currentSportConfig.limiti;
 
     try {
-        // Recupera TUTTI gli atleti già iscritti a questo evento
         const { data: atleti } = await sb
             .from('atleti')
             .select('specialty, classe')
@@ -307,16 +307,16 @@ async function verificaLimitiDinamici(eventId, specialty, classe) {
 
         const listaAtleti = atleti || [];
 
-                // A. Controllo LIMITE KIDS (se "KIDS" presente nel JSON)
-        if (limiti.KIDS !== undefined && isKids(specialty, classe)) {
-            const iscrittiKids = listaAtleti.filter(a => isKids(a.specialty, a.classe)).length;
+        // 1. Controllo LIMITE KIDS
+        if (limiti.KIDS !== undefined && (specialty === 'KIDS' || classe === 'KIDS')) {
+            const iscrittiKids = listaAtleti.filter(a => a.specialty === 'KIDS' || a.classe === 'KIDS').length;
             if (iscrittiKids >= limiti.KIDS) {
                 alert(`Limite raggiunto per la categoria KIDS: massimo ${limiti.KIDS} iscritti.`);
                 return false;
             }
         }
 
-        // B. Controllo LIMITE PARAKARATE (se "ParaKarate" presente nel JSON)
+        // 2. Controllo LIMITE PARAKARATE
         if (limiti.ParaKarate !== undefined && (specialty === 'ParaKarate' || classe === 'ParaKarate')) {
             const iscrittiPara = listaAtleti.filter(a => a.specialty === 'ParaKarate' || a.classe === 'ParaKarate').length;
             if (iscrittiPara >= limiti.ParaKarate) {
@@ -325,8 +325,8 @@ async function verificaLimitiDinamici(eventId, specialty, classe) {
             }
         }
 
-        // C. Controllo specifico per KATA (se "KataMax" presente nel JSON)
-        if (specialty === "Kata" && limiti.KataMax !== undefined) {
+        // 3. Controllo LIMITE KATA MAX
+        if (limiti.KataMax !== undefined && specialty === "Kata") {
             const iscrittiKata = listaAtleti.filter(a => a.specialty === "Kata").length;
             if (iscrittiKata >= limiti.KataMax) {
                 alert(`Limite raggiunto per la specialità KATA: massimo ${limiti.KataMax} iscritti.`);
@@ -334,8 +334,8 @@ async function verificaLimitiDinamici(eventId, specialty, classe) {
             }
         }
 
-        // D. Controllo somma KATA + KUMITE (se "KataKumiteSum" presente nel JSON)
-        if ((specialty === "Kata" || specialty === "Kumite") && limiti.KataKumiteSum !== undefined) {
+        // 4. Controllo SOMMA KATA + KUMITE
+        if (limiti.KataKumiteSum !== undefined && (specialty === "Kata" || specialty === "Kumite")) {
             const iscrittiKataKumite = listaAtleti.filter(a => a.specialty === "Kata" || a.specialty === "Kumite").length;
             if (iscrittiKataKumite >= limiti.KataKumiteSum) {
                 alert(`Limite globale raggiunto per KATA + KUMITE: massimo ${limiti.KataKumiteSum} iscritti complessivi.`);
@@ -349,12 +349,13 @@ async function verificaLimitiDinamici(eventId, specialty, classe) {
         return true;
     }
 }
+
 async function addEntity(e) {
     e.preventDefault();
     const ev = sessionStorage.getItem('selectedEventId');
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
-    // --- CONTROLLO LIMITI DINAMICO (Solo in inserimento, non in modifica) ---
+    // CONTROLLO LIMITI DINAMICO (Solo in inserimento nuovi atleti/squadre)
     if (!editingAthleteId && !editingTeamId) {
         const puoProcedere = await verificaLimitiDinamici(
             ev, 
