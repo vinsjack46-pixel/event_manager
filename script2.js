@@ -1,6 +1,6 @@
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA8NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
 const sb = createClient(supabaseUrl, supabaseKey);
 
@@ -34,11 +34,26 @@ async function initKarateDashboard() {
     if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = sessionStorage.getItem('selectedEventName') || "";
 
     try {
-        const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', 'karate').single();
+        // --- RECUPERO DINAMICO DELLO SPORT_ID ---
+        let sportId = sessionStorage.getItem('selectedSportId');
+        
+        // Se lo sport_id non è in sessionStorage, lo recuperiamo dalla tabella 'eventi'
+        if (!sportId) {
+            const { data: evento } = await sb.from('eventi').select('sport_id').eq('id', eventId).single();
+            if (evento && evento.sport_id) {
+                sportId = evento.sport_id;
+            }
+        }
+
+        // Se ancora non trovato, usiamo 'karate' come fallback di default
+        sportId = sportId || 'karate';
+
+        // Carica la configurazione dello sport dinamico
+        const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
         if (config) {
             currentSportConfig = config.regole;
         }
-    } catch(e) { console.error(e); }
+    } catch(e) { console.error("Errore caricamento configurazione sport:", e); }
 
     const { data: { user } } = await sb.auth.getUser();
     if (user) {
@@ -293,7 +308,7 @@ window.editTeam = async function(id) {
 window.delA = async (id) => { if(confirm("Eliminare l'atleta selezionato?")) { await sb.from('atleti').delete().eq('id',id); fetchAthletes(); }};
 window.delT = async (id) => { if(confirm("Eliminare la squadra selezionata?")) { await sb.from('teams').delete().eq('id',id); fetchTeams(); }};
 
-// --- CONTROLLO DINAMICO LIMITI: SOLO PER KIDS, ParaKarate, KataMax e KataKumiteSum ---
+// --- CONTROLLO DINAMICO LIMITI ---
 async function verificaLimitiDinamici(eventId, specialty, classe) {
     if (!currentSportConfig || !currentSportConfig.limiti) return true;
 
@@ -355,7 +370,7 @@ async function addEntity(e) {
     const ev = sessionStorage.getItem('selectedEventId');
     const isTeam = document.querySelector('input[name="regType"]:checked').value === 'team';
 
-    // CONTROLLO LIMITI DINAMICO (Solo in inserimento nuovi atleti/squadre)
+    // CONTROLLO LIMITI DINAMICO
     if (!editingAthleteId && !editingTeamId) {
         const puoProcedere = await verificaLimitiDinamici(
             ev, 
