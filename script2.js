@@ -1,6 +1,7 @@
 const { createClient } = window.supabase;
 const supabaseUrl = 'https://nhsvadkqagsqgirvoibg.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA8NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
+// CHIAVE CORRETTA (Senza caratteri corrotti)
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3ZhZGtxYWdzcWdpcnZvaWJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5NzQ1MjQsImV4cCI6MjA4NzU1MDUyNH0.v0PPOfmX1p_sHkV2ZwzaH8gxr7VwN9MMRB1AclEOhvQ';
 
 const sb = createClient(supabaseUrl, supabaseKey);
 
@@ -33,11 +34,26 @@ async function initKarateDashboard() {
     if (document.getElementById('eventNameDisplay')) document.getElementById('eventNameDisplay').innerText = sessionStorage.getItem('selectedEventName') || "";
     if (document.getElementById('nomeGaraTitolo')) document.getElementById('nomeGaraTitolo').innerText = sessionStorage.getItem('selectedEventName') || "";
 
+    // 1. Verifica Sessione Utente
+    const { data: { user }, error: userError } = await sb.auth.getUser();
+    if (userError || !user) {
+        console.warn("Sessione scaduta o non valida:", userError?.message);
+        window.location.href = "login.html";
+        return;
+    }
+
+    // 2. Recupero Società dell'utente
+    const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
+    if (soc) {
+        window.currentSocietyId = soc.id;
+        if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
+        if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
+    }
+
+    // 3. Recupero Dinamico dello Sport dell'Evento
     try {
-        // --- RECUPERO DINAMICO DELLO SPORT_ID ---
         let sportId = sessionStorage.getItem('selectedSportId');
         
-        // Se lo sport_id non è in sessionStorage, lo recuperiamo dalla tabella 'eventi'
         if (!sportId) {
             const { data: evento } = await sb.from('eventi').select('sport_id').eq('id', eventId).single();
             if (evento && evento.sport_id) {
@@ -45,26 +61,21 @@ async function initKarateDashboard() {
             }
         }
 
-        // Se ancora non trovato, usiamo 'karate' come fallback di default
         sportId = sportId || 'karate';
 
-        // Carica la configurazione dello sport dinamico
-        const { data: config } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+        const { data: config, error: configErr } = await sb.from('configurazioni_sport').select('*').eq('sport_id', sportId).single();
+        if (configErr) console.warn("Attenzione caricamento configurazione sport:", configErr.message);
         if (config) {
             currentSportConfig = config.regole;
         }
-    } catch(e) { console.error("Errore caricamento configurazione sport:", e); }
+    } catch(e) { 
+        console.error("Errore caricamento configurazione sport:", e); 
+    }
 
-    const { data: { user } } = await sb.auth.getUser();
-    if (user) {
-        const { data: soc } = await sb.from('societa').select('*').eq('user_id', user.id).single();
-        if (soc) {
-            window.currentSocietyId = soc.id;
-            if (document.getElementById('societyNameDisplay')) document.getElementById('societyNameDisplay').innerText = soc.nome;
-            if (document.getElementById('nomeSocietaHeader')) document.getElementById('nomeSocietaHeader').innerText = soc.nome;
-            fetchAthletes();
-            fetchTeams();
-        }
+    // 4. Carica Atleti e Team
+    if (window.currentSocietyId) {
+        fetchAthletes();
+        fetchTeams();
     }
 
     document.querySelectorAll('input[name="regType"]').forEach(r => r.addEventListener('change', toggleRegMode));
