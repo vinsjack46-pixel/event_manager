@@ -185,7 +185,7 @@
             caricaDatiReport(currentEventId);
         });
 
-        // Carica dati atleti e società per l'evento selezionato
+        // Carica dati atleti, squadre e società per l'evento selezionato
         async function caricaDatiReport(eventId) {
             const container = document.getElementById('reportContent');
             if (!container) return;
@@ -195,15 +195,18 @@
             const client = window.supabaseClient || window.sb || window.supabase;
             
             try {
-                // Recupero atleti e lista società in parallelo per mappare i nomi società
-                const [resAtleti, resSocieta] = await Promise.all([
+                // Recupero sia atleti singoli che squadre e lista società in parallelo
+                const [resAtleti, resTeams, resSocieta] = await Promise.all([
                     client.from('atleti').select('*').eq('event_id', eventId),
+                    client.from('teams').select('*').eq('event_id', eventId),
                     client.from('societa').select('id, nome')
                 ]);
 
                 if (resAtleti.error) throw resAtleti.error;
+                if (resTeams.error) throw resTeams.error;
 
                 const atletiRaw = resAtleti.data || [];
+                const teamsRaw = resTeams.data || [];
                 const socMap = {};
 
                 if (resSocieta.data) {
@@ -212,13 +215,13 @@
                     });
                 }
 
-                if (atletiRaw.length === 0) {
+                if (atletiRaw.length === 0 && teamsRaw.length === 0) {
                     container.innerHTML = `<div class="alert alert-info text-center">Nessun atleta o squadra presente per questo evento.</div>`;
                     return;
                 }
 
-                // Normalizzazione dati per ricerca e ordinamento agevoli
-                atletiGaraData = atletiRaw.map(a => {
+                // Normalizzazione Atleti Singoli
+                const atletiFormattati = atletiRaw.map(a => {
                     const cognome = (a.last_name || '').trim();
                     const nome = (a.first_name || '').trim();
                     const nomeCompleto = `${cognome} ${nome}`.trim() || 'Senza Nome';
@@ -231,7 +234,9 @@
 
                     return {
                         id: a.id,
+                        tipo: 'Atleta',
                         fullName: nomeCompleto,
+                        membri: '',
                         societa: nomeSocieta,
                         classe: a.classe || '-',
                         sesso: sessoFormatted,
@@ -239,6 +244,32 @@
                         weightCategory: a.weight_category || '-'
                     };
                 });
+
+                // Normalizzazione Squadre / Teams
+                const teamsFormattati = teamsRaw.map(t => {
+                    const nomeTeam = t.team_name || t.name || 'Squadra senza nome';
+                    let listaMembri = '';
+                    if (t.members) {
+                        listaMembri = Array.isArray(t.members) ? t.members.join(', ') : t.members;
+                    }
+
+                    const nomeSocieta = t.societa || t.nome_societa || socMap[t.society_id] || socMap[t.societa_id] || '-';
+
+                    return {
+                        id: t.id,
+                        tipo: 'Team',
+                        fullName: nomeTeam,
+                        membri: listaMembri,
+                        societa: nomeSocieta,
+                        classe: t.classe || '-',
+                        sesso: t.gender || '-',
+                        specialty: t.specialty || 'Squadra',
+                        weightCategory: t.weight_category || '-'
+                    };
+                });
+
+                // Unione atleti e squadre
+                atletiGaraData = [...atletiFormattati, ...teamsFormattati];
 
                 // Rendering dell'interfaccia con Barra di Ricerca e Tabella Ordinabile
                 renderInterfacciaReport();
@@ -263,7 +294,7 @@
                     <!-- Barra di Ricerca Unica -->
                     <div class="search-box w-100">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cerca per Atleta, Società, Classe, Categoria...">
+                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cerca per Atleta, Squadra, Componenti, Società, Classe...">
                     </div>
                 </div>
 
@@ -301,7 +332,7 @@
             // Listener per la ricerca in tempo reale
             document.getElementById('searchInput').addEventListener('input', aggiornaTabella);
 
-            // Primo popolamento tabella (con ordinamento di default)
+            // Primo popolamento tabella
             aggiornaTabella();
         }
 
@@ -320,11 +351,12 @@
         function aggiornaTabella() {
             const query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
 
-            // 1. Filtraggio globale su tutti i campi visibili
+            // 1. Filtraggio globale su tutti i campi visibili compresi i membri della squadra
             let atletiFiltrati = atletiGaraData.filter(item => {
                 if (!query) return true;
                 return (
                     item.fullName.toLowerCase().includes(query) ||
+                    item.membri.toLowerCase().includes(query) ||
                     item.societa.toLowerCase().includes(query) ||
                     item.classe.toLowerCase().includes(query) ||
                     item.sesso.toLowerCase().includes(query) ||
@@ -369,16 +401,34 @@
                 return;
             }
 
-            tbody.innerHTML = atletiFiltrati.map(a => `
-                <tr>
-                    <td><strong>${a.fullName}</strong></td>
-                    <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
-                    <td>${a.classe}</td>
-                    <td>${a.sesso}</td>
-                    <td>${a.specialty}</td>
-                    <td>${a.weightCategory}</td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = atletiFiltrati.map(a => {
+                if (a.tipo === 'Team') {
+                    return `
+                        <tr class="table-success-light">
+                            <td>
+                                <strong class="text-success"><i class="fas fa-users me-1"></i> ${a.fullName}</strong>
+                                ${a.membri ? `<br><small class="text-muted">Comp: ${a.membri}</small>` : ''}
+                            </td>
+                            <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
+                            <td>${a.classe}</td>
+                            <td>${a.sesso}</td>
+                            <td><span class="badge bg-success-subtle text-success border border-success-subtle">${a.specialty}</span></td>
+                            <td>${a.weightCategory}</td>
+                        </tr>
+                    `;
+                } else {
+                    return `
+                        <tr>
+                            <td><strong>${a.fullName}</strong></td>
+                            <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
+                            <td>${a.classe}</td>
+                            <td>${a.sesso}</td>
+                            <td>${a.specialty}</td>
+                            <td>${a.weightCategory}</td>
+                        </tr>
+                    `;
+                }
+            }).join('');
         }
     </script>
 </body>
