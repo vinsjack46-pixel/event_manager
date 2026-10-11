@@ -27,6 +27,7 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
             background: white;
             padding: 24px;
+            margin-bottom: 25px;
         }
         .sort-header {
             cursor: pointer;
@@ -73,21 +74,24 @@
     </nav>
 
     <!-- Contenuto Principale Report -->
-    <div class="container-fluid main-container">
-        <div class="card-custom">
-            <div id="reportContent">
-                <p class="text-muted text-center py-4">Seleziona un evento dal menu in alto per visualizzare i dettagli.</p>
-            </div>
+    <div class="container-fluid main-container" id="reportContentContainer">
+        <div class="text-center py-5">
+            <p class="text-muted">Seleziona un evento dal menu in alto per visualizzare i dettagli.</p>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
-        // Stato Globale per Filtraggio e Ordinamento
+        // Stato Globale
         let atletiGaraData = [];
-        let sortColonnaCorrente = 'fullName';
-        let sortAscendente = true;
+        let teamsGaraData = [];
+        
+        let sortAtletiCol = 'fullName';
+        let sortAtletiAsc = true;
+
+        let sortTeamsCol = 'fullName';
+        let sortTeamsAsc = true;
 
         document.addEventListener('DOMContentLoaded', async () => {
             const client = window.supabaseClient || window.sb || window.supabase;
@@ -185,17 +189,16 @@
             caricaDatiReport(currentEventId);
         });
 
-        // Carica dati atleti, squadre e società per l'evento selezionato
+        // Caricamento dati separati per Atleti e Squadre
         async function caricaDatiReport(eventId) {
-            const container = document.getElementById('reportContent');
+            const container = document.getElementById('reportContentContainer');
             if (!container) return;
 
-            container.innerHTML = `<div class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Caricamento dati report in corso...</div>`;
+            container.innerHTML = `<div class="card-custom text-center py-5"><span class="spinner-border text-primary me-2"></span>Caricamento dati report in corso...</div>`;
 
             const client = window.supabaseClient || window.sb || window.supabase;
             
             try {
-                // Recupero sia atleti singoli che squadre e lista società in parallelo
                 const [resAtleti, resTeams, resSocieta] = await Promise.all([
                     client.from('atleti').select('*').eq('event_id', eventId),
                     client.from('teams').select('*').eq('event_id', eventId),
@@ -215,13 +218,8 @@
                     });
                 }
 
-                if (atletiRaw.length === 0 && teamsRaw.length === 0) {
-                    container.innerHTML = `<div class="alert alert-info text-center">Nessun atleta o squadra presente per questo evento.</div>`;
-                    return;
-                }
-
                 // Normalizzazione Atleti Singoli
-                const atletiFormattati = atletiRaw.map(a => {
+                atletiGaraData = atletiRaw.map(a => {
                     const cognome = (a.last_name || '').trim();
                     const nome = (a.first_name || '').trim();
                     const nomeCompleto = `${cognome} ${nome}`.trim() || 'Senza Nome';
@@ -234,9 +232,7 @@
 
                     return {
                         id: a.id,
-                        tipo: 'Atleta',
                         fullName: nomeCompleto,
-                        membri: '',
                         societa: nomeSocieta,
                         classe: a.classe || '-',
                         sesso: sessoFormatted,
@@ -246,18 +242,17 @@
                 });
 
                 // Normalizzazione Squadre / Teams
-                const teamsFormattati = teamsRaw.map(t => {
+                teamsGaraData = teamsRaw.map(t => {
                     const nomeTeam = t.team_name || t.name || 'Squadra senza nome';
                     let listaMembri = '';
                     if (t.members) {
                         listaMembri = Array.isArray(t.members) ? t.members.join(', ') : t.members;
                     }
 
-                    const nomeSocieta = t.societa || t.nome_societa || socMap[t.society_id] || socMap[t.societa_id] || '-';
+                    const nomeSocieta = t.societa || t.nome_societa || socMap[t.society_id] || socMap[t.society_id] || '-';
 
                     return {
                         id: t.id,
-                        tipo: 'Team',
                         fullName: nomeTeam,
                         membri: listaMembri,
                         societa: nomeSocieta,
@@ -268,11 +263,8 @@
                     };
                 });
 
-                // Unione atleti e squadre
-                atletiGaraData = [...atletiFormattati, ...teamsFormattati];
-
-                // Rendering dell'interfaccia con Barra di Ricerca e Tabella Ordinabile
-                renderInterfacciaReport();
+                // Costruzione struttura a due tabelle
+                renderStrutturaTabelle(container);
 
             } catch (err) {
                 console.error("Errore caricamento report:", err);
@@ -280,79 +272,185 @@
             }
         }
 
-        // Costruisce la struttura HTML con la barra di ricerca
-        function renderInterfacciaReport() {
-            const container = document.getElementById('reportContent');
-            
+        // Crea la struttura fissa con le due sezioni separate
+        function renderStrutturaTabelle(container) {
             container.innerHTML = `
-                <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-                    <div>
-                        <h5 class="fw-bold mb-1">Riepilogo Iscritti</h5>
-                        <span class="badge bg-primary rounded-pill" id="badgeCount">Totale: ${atletiGaraData.length}</span>
+                <!-- SEZIONE ATLETI SINGOLI -->
+                <div class="card-custom">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-primary"><i class="fas fa-user me-2"></i>Atleti Singoli Iscritti</h5>
+                            <span class="badge bg-primary rounded-pill" id="badgeAtletiCount">Totale: ${atletiGaraData.length}</span>
+                        </div>
+                        <div class="search-box w-100" style="max-width: 350px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchAtleti" class="form-control form-control-sm" placeholder="Cerca atleta, società, classe...">
+                        </div>
                     </div>
 
-                    <!-- Barra di Ricerca Unica -->
-                    <div class="search-box w-100">
-                        <i class="fas fa-search"></i>
-                        <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Cerca per Atleta, Squadra, Componenti, Società, Classe...">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="sort-header" onclick="ordinaAtleti('fullName')">
+                                        Atleta <i class="fas fa-sort ms-1 text-muted" id="sortA-fullName"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaAtleti('societa')">
+                                        Società <i class="fas fa-sort ms-1 text-muted" id="sortA-societa"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaAtleti('classe')">
+                                        Classe <i class="fas fa-sort ms-1 text-muted" id="sortA-classe"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaAtleti('sesso')">
+                                        Sesso <i class="fas fa-sort ms-1 text-muted" id="sortA-sesso"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaAtleti('specialty')">
+                                        Specialità <i class="fas fa-sort ms-1 text-muted" id="sortA-specialty"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaAtleti('weightCategory')">
+                                        Categoria <i class="fas fa-sort ms-1 text-muted" id="sortA-weightCategory"></i>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyAtleti"></tbody>
+                        </table>
                     </div>
                 </div>
 
-                <!-- Tabella Dati -->
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th class="sort-header" onclick="ordinaPer('fullName')">
-                                    Atleta / Squadra <i class="fas fa-sort ms-1 text-muted" id="sort-fullName"></i>
-                                </th>
-                                <th class="sort-header" onclick="ordinaPer('societa')">
-                                    Società <i class="fas fa-sort ms-1 text-muted" id="sort-societa"></i>
-                                </th>
-                                <th class="sort-header" onclick="ordinaPer('classe')">
-                                    Classe <i class="fas fa-sort ms-1 text-muted" id="sort-classe"></i>
-                                </th>
-                                <th class="sort-header" onclick="ordinaPer('sesso')">
-                                    Sesso <i class="fas fa-sort ms-1 text-muted" id="sort-sesso"></i>
-                                </th>
-                                <th class="sort-header" onclick="ordinaPer('specialty')">
-                                    Specialità <i class="fas fa-sort ms-1 text-muted" id="sort-specialty"></i>
-                                </th>
-                                <th class="sort-header" onclick="ordinaPer('weightCategory')">
-                                    Categoria <i class="fas fa-sort ms-1 text-muted" id="sort-weightCategory"></i>
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody id="tbodyAtleti">
-                        </tbody>
-                    </table>
+                <!-- SEZIONE SQUADRE / TEAMS -->
+                <div class="card-custom">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
+                        <div>
+                            <h5 class="fw-bold mb-1 text-success"><i class="fas fa-users me-2"></i>Squadre / Team Iscritti</h5>
+                            <span class="badge bg-success rounded-pill" id="badgeTeamsCount">Totale: ${teamsGaraData.length}</span>
+                        </div>
+                        <div class="search-box w-100" style="max-width: 350px;">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchTeams" class="form-control form-control-sm" placeholder="Cerca squadra, componenti, società...">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="sort-header" onclick="ordinaTeams('fullName')">
+                                        Nome Squadra / Componenti <i class="fas fa-sort ms-1 text-muted" id="sortT-fullName"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaTeams('societa')">
+                                        Società <i class="fas fa-sort ms-1 text-muted" id="sortT-societa"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaTeams('classe')">
+                                        Classe <i class="fas fa-sort ms-1 text-muted" id="sortT-classe"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaTeams('sesso')">
+                                        Sesso <i class="fas fa-sort ms-1 text-muted" id="sortT-sesso"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaTeams('specialty')">
+                                        Specialità <i class="fas fa-sort ms-1 text-muted" id="sortT-specialty"></i>
+                                    </th>
+                                    <th class="sort-header" onclick="ordinaTeams('weightCategory')">
+                                        Categoria <i class="fas fa-sort ms-1 text-muted" id="sortT-weightCategory"></i>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyTeams"></tbody>
+                        </table>
+                    </div>
                 </div>
             `;
 
-            // Listener per la ricerca in tempo reale
-            document.getElementById('searchInput').addEventListener('input', aggiornaTabella);
+            // Assegnazione listener di ricerca indipendenti
+            document.getElementById('searchAtleti').addEventListener('input', aggiornaTabellaAtleti);
+            document.getElementById('searchTeams').addEventListener('input', aggiornaTabellaTeams);
 
-            // Primo popolamento tabella
-            aggiornaTabella();
+            // Primo popolamento tabelle
+            aggiornaTabellaAtleti();
+            aggiornaTabellaTeams();
         }
 
-        // Funzione per gestire l'ordinamento al click sull'intestazione di colonna
-        function ordinaPer(colonna) {
-            if (sortColonnaCorrente === colonna) {
-                sortAscendente = !sortAscendente;
+        // --- GESTIONE TABELLA ATLETI ---
+        function ordinaAtleti(colonna) {
+            if (sortAtletiCol === colonna) {
+                sortAtletiAsc = !sortAtletiAsc;
             } else {
-                sortColonnaCorrente = colonna;
-                sortAscendente = true;
+                sortAtletiCol = colonna;
+                sortAtletiAsc = true;
             }
-            aggiornaTabella();
+            aggiornaTabellaAtleti();
         }
 
-        // Filtra, ordina e renderizza le righe della tabella
-        function aggiornaTabella() {
-            const query = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
+        function aggiornaTabellaAtleti() {
+            const query = (document.getElementById('searchAtleti')?.value || '').toLowerCase().trim();
 
-            // 1. Filtraggio globale su tutti i campi visibili compresi i membri della squadra
-            let atletiFiltrati = atletiGaraData.filter(item => {
+            let filtrati = atletiGaraData.filter(item => {
+                if (!query) return true;
+                return (
+                    item.fullName.toLowerCase().includes(query) ||
+                    item.societa.toLowerCase().includes(query) ||
+                    item.classe.toLowerCase().includes(query) ||
+                    item.sesso.toLowerCase().includes(query) ||
+                    item.specialty.toLowerCase().includes(query) ||
+                    item.weightCategory.toLowerCase().includes(query)
+                );
+            });
+
+            filtrati.sort((a, b) => {
+                const valA = (a[sortAtletiCol] || '').toString().toLowerCase();
+                const valB = (b[sortAtletiCol] || '').toString().toLowerCase();
+                const comp = valA.localeCompare(valB, 'it', { numeric: true, sensitivity: 'base' });
+                return sortAtletiAsc ? comp : -comp;
+            });
+
+            ['fullName', 'societa', 'classe', 'sesso', 'specialty', 'weightCategory'].forEach(col => {
+                const icon = document.getElementById(`sortA-${col}`);
+                if (icon) {
+                    if (col === sortAtletiCol) {
+                        icon.className = sortAtletiAsc ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
+                    } else {
+                        icon.className = 'fas fa-sort ms-1 text-muted';
+                    }
+                }
+            });
+
+            const badge = document.getElementById('badgeAtletiCount');
+            if (badge) badge.textContent = `Mostrati: ${filtrati.length} di ${atletiGaraData.length}`;
+
+            const tbody = document.getElementById('tbodyAtleti');
+            if (!tbody) return;
+
+            if (filtrati.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nessun atleta trovato.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = filtrati.map(a => `
+                <tr>
+                    <td><strong>${a.fullName}</strong></td>
+                    <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
+                    <td>${a.classe}</td>
+                    <td>${a.sesso}</td>
+                    <td>${a.specialty}</td>
+                    <td>${a.weightCategory}</td>
+                </tr>
+            `).join('');
+        }
+
+        // --- GESTIONE TABELLA SQUADRE ---
+        function ordinaTeams(colonna) {
+            if (sortTeamsCol === colonna) {
+                sortTeamsAsc = !sortTeamsAsc;
+            } else {
+                sortTeamsCol = colonna;
+                sortTeamsAsc = true;
+            }
+            aggiornaTabellaTeams();
+        }
+
+        function aggiornaTabellaTeams() {
+            const query = (document.getElementById('searchTeams')?.value || '').toLowerCase().trim();
+
+            let filtrati = teamsGaraData.filter(item => {
                 if (!query) return true;
                 return (
                     item.fullName.toLowerCase().includes(query) ||
@@ -365,70 +463,48 @@
                 );
             });
 
-            // 2. Ordinamento Alfabetico
-            atletiFiltrati.sort((a, b) => {
-                const valA = (a[sortColonnaCorrente] || '').toString().toLowerCase();
-                const valB = (b[sortColonnaCorrente] || '').toString().toLowerCase();
-                
+            filtrati.sort((a, b) => {
+                const valA = (a[sortTeamsCol] || '').toString().toLowerCase();
+                const valB = (b[sortTeamsCol] || '').toString().toLowerCase();
                 const comp = valA.localeCompare(valB, 'it', { numeric: true, sensitivity: 'base' });
-                return sortAscendente ? comp : -comp;
+                return sortTeamsAsc ? comp : -comp;
             });
 
-            // 3. Aggiornamento Icone di Ordinamento
             ['fullName', 'societa', 'classe', 'sesso', 'specialty', 'weightCategory'].forEach(col => {
-                const icon = document.getElementById(`sort-${col}`);
+                const icon = document.getElementById(`sortT-${col}`);
                 if (icon) {
-                    if (col === sortColonnaCorrente) {
-                        icon.className = sortAscendente ? 'fas fa-sort-up ms-1 text-primary' : 'fas fa-sort-down ms-1 text-primary';
+                    if (col === sortTeamsCol) {
+                        icon.className = sortTeamsAsc ? 'fas fa-sort-up ms-1 text-success' : 'fas fa-sort-down ms-1 text-success';
                     } else {
                         icon.className = 'fas fa-sort ms-1 text-muted';
                     }
                 }
             });
 
-            // 4. Aggiornamento Badge Contatore
-            const badge = document.getElementById('badgeCount');
-            if (badge) {
-                badge.textContent = `Mostrati: ${atletiFiltrati.length} di ${atletiGaraData.length}`;
-            }
+            const badge = document.getElementById('badgeTeamsCount');
+            if (badge) badge.textContent = `Mostrati: ${filtrati.length} di ${teamsGaraData.length}`;
 
-            // 5. Generazione HTML Righe
-            const tbody = document.getElementById('tbodyAtleti');
+            const tbody = document.getElementById('tbodyTeams');
             if (!tbody) return;
 
-            if (atletiFiltrati.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nessun iscritto corrisponde alla ricerca.</td></tr>`;
+            if (filtrati.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-4">Nessuna squadra trovata.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = atletiFiltrati.map(a => {
-                if (a.tipo === 'Team') {
-                    return `
-                        <tr class="table-success-light">
-                            <td>
-                                <strong class="text-success"><i class="fas fa-users me-1"></i> ${a.fullName}</strong>
-                                ${a.membri ? `<br><small class="text-muted">Comp: ${a.membri}</small>` : ''}
-                            </td>
-                            <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
-                            <td>${a.classe}</td>
-                            <td>${a.sesso}</td>
-                            <td><span class="badge bg-success-subtle text-success border border-success-subtle">${a.specialty}</span></td>
-                            <td>${a.weightCategory}</td>
-                        </tr>
-                    `;
-                } else {
-                    return `
-                        <tr>
-                            <td><strong>${a.fullName}</strong></td>
-                            <td><span class="badge bg-light text-dark border">${a.societa}</span></td>
-                            <td>${a.classe}</td>
-                            <td>${a.sesso}</td>
-                            <td>${a.specialty}</td>
-                            <td>${a.weightCategory}</td>
-                        </tr>
-                    `;
-                }
-            }).join('');
+            tbody.innerHTML = filtrati.map(t => `
+                <tr class="table-success-light">
+                    <td>
+                        <strong class="text-success"><i class="fas fa-users me-1"></i> ${t.fullName}</strong>
+                        ${t.membri ? `<br><small class="text-muted">Comp: ${t.membri}</small>` : ''}
+                    </td>
+                    <td><span class="badge bg-light text-dark border">${t.societa}</span></td>
+                    <td>${t.classe}</td>
+                    <td>${t.sesso}</td>
+                    <td><span class="badge bg-success-subtle text-success border border-success-subtle">${t.specialty}</span></td>
+                    <td>${t.weightCategory}</td>
+                </tr>
+            `).join('');
         }
     </script>
 </body>
