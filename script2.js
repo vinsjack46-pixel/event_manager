@@ -419,7 +419,7 @@ async function addEntity(e) {
     };
 
     if (isTeam) {
-        const payload = { ...common, team_name: document.getElementById('team_name').value, gender: document.getElementById('team_gender').value, team_year: parseInt(document.getElementById('team_year').value), members: Array.from(document.querySelectorAll('.member-input')).map(i=>i.value.trim()) };
+        const payload = { ...common, tam_name: document.getElementById('team_name').value, gender: document.getElementById('team_gender').value, team_year: parseInt(document.getElementById('team_year').value), members: Array.from(document.querySelectorAll('.member-input')).map(i=>i.value.trim()) };
         
         if (editingTeamId) {
             await sb.from('teams').update([payload]).eq('id', editingTeamId);
