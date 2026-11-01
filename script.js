@@ -71,7 +71,7 @@ async function caricaListaEventi() {
             let htmlDest = "index-judo.html";
             if (sportId === "karate") { badgeColor = "bg-danger"; htmlDest = "index-karate.html"; }
             if (sportId === "fitarco") { badgeColor = "bg-success text-white"; htmlDest = "index-fitarco.html"; }
-            if (sportId === "karate_fijlkam") { badgeColor = "bg-danger"; htmlDest = "index-fijlkam_kata.html"; }
+            if (sportId === "karate_fijlkam") { badgeColor = "bg-danger"; htmlDest = "index-karate_fijlkam.html"; }
             if (sportId === "2026_coppa_italia_opes") { badgeColor = "bg-danger"; htmlDest = "index-2026_coppa_italia_opes.html"; }
 
             // Genera l'HTML della locandina con formato A4 verticale
