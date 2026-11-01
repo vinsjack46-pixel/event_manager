@@ -179,7 +179,7 @@ function checkIsKids(specialty) {
     if (!specialty) return false;
     const spec = specialty.toString().toLowerCase().trim();
     return spec.includes('Combinata + Tecniche Libere') || spec.includes('Combinata + Kata')  || spec.includes('Palloncino')
-        || spec.includes('Percorso + Palloncino') || spec.includes('Percorso + Kata') || spec.includes('combinata');
+        || spec.includes('Percorso_Palloncino') || spec.includes('Percorso-Kata') || spec.includes('combinata');
 }
 
 async function fetchAthletes() {
