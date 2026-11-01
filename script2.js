@@ -178,7 +178,7 @@ function handleSpecialtyChange() {
 function checkIsKids(specialty) {
     if (!specialty) return false;
     const spec = specialty.toString().toLowerCase().trim();
-    return spec.includes('Palloncino') || spec.includes('Percorso_Palloncino') || spec.includes('Percorso-Kata');
+    return spec.includes('Palloncino') || spec.includes('Percorso_Palloncino') || spec.includes('Percorso_Kata');
 }
 
 async function fetchAthletes() {
