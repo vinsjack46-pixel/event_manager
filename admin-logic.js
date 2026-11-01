@@ -211,12 +211,40 @@ async function createEvent(e) {
     
     try {
         const client = getSupabaseClient();
+        
+        // 1. Gestione Upload Locandina su Supabase Storage
+        const fileInput = document.getElementById('eventPoster');
+        let locandinaUrl = null;
+
+        if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const fileName = `${Date.now()}_${file.name}`;
+            
+            const { data: uploadData, error: uploadError } = await client.storage
+                .from('locandine')
+                .upload(fileName, file);
+
+            if (uploadError) {
+                alert("Errore caricamento immagine locandina: " + uploadError.message);
+                return;
+            }
+
+            const { data: publicUrlData } = client.storage
+                .from('locandine')
+                .getPublicUrl(fileName);
+                
+            locandinaUrl = publicUrlData.publicUrl;
+        }
+
+        // 2. Inserimento Evento con l'URL della locandina
         const { error } = await client.from('eventi').insert([{ 
             nome: document.getElementById('eventName').value, 
             data_evento: document.getElementById('eventDate').value, 
             luogo: document.getElementById('eventLocation').value,
-            sport_id: sId 
+            sport_id: sId,
+            locandina_url: locandinaUrl 
         }]);
+
         if (!error) { 
             document.getElementById('eventForm').reset(); 
             loadFilterEvents();
