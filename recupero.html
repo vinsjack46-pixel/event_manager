@@ -114,13 +114,13 @@
 </head>
 <body>
 
-    <div class="main-card animate__animated animate__fadeIn">
+    <div class="main-card">
         <div class="card-header-custom">
             <div class="icon-circle">
                 <i class="fas fa-key"></i>
             </div>
             <h2 class="fw-bold mb-1">Password dimenticata?</h2>
-            <p class="text-muted mb-0">Riceverai un link via email per impostarne una nuova.</p>
+            <p class="text-muted mb-0">Riceverai un codice OTP a 6 cifre via email.</p>
         </div>
 
         <div class="form-section">
@@ -133,7 +133,7 @@
                 </div>
 
                 <button type="submit" class="btn-reset">
-                    <i class="fas fa-paper-plane me-2"></i>Invia Link di Ripristino
+                    <i class="fas fa-paper-plane me-2"></i>Invia Codice OTP
                 </button>
             </form>
         </div>
@@ -146,18 +146,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="script.js"></script>
     <script>
-        document.getElementById('resetForm').addEventListener('submit', (e) => {
-            // Blocco immediato dell'evento nativo
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
             const btn = e.target.querySelector('button');
-            const email = document.getElementById('resetEmail').value;
+            const email = document.getElementById('resetEmail').value.trim();
+            if (!email) return;
             
-            // Aggiornamento interfaccia istantaneo
             btn.disabled = true;
             btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Invio in corso...';
 
-            // Esecuzione asincrona fuori dal thread sincrono del gestore di eventi
             setTimeout(async () => {
                 try {
                     const client = window.supabaseClient || window.sb || window.supabase;
@@ -166,20 +164,21 @@
                         throw new Error("Impossibile connettersi al servizio di autenticazione.");
                     }
 
-                    const { error } = await client.auth.resetPasswordForEmail(email, {
-                       redirectTo: 'https://event-manager-pearl-five.vercel.app/update-password.html',
-                    });
+                    // Richiesta OTP a Supabase (sfrutta il template con {{ .Token }})
+                    const { error } = await client.auth.resetPasswordForEmail(email);
 
                     if (error) {
                         alert("Errore: " + error.message);
                     } else {
-                        alert("Email inviata! Controlla la tua posta in arrivo (anche la cartella Spam).");
+                        alert("Codice inviato con successo! Controlla la tua casella di posta.");
+                        sessionStorage.setItem('resetEmail', email);
+                        window.location.href = "update-password.html";
                     }
                 } catch (err) {
                     alert("Si è verificato un errore: " + err.message);
                 } finally {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Invia Link di Ripristino';
+                    btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Invia Codice OTP';
                 }
             }, 0);
         });
